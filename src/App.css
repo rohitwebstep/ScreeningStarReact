@@ -1,0 +1,578 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&family=Oswald:wght@200..700&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap');
+
+@font-face {
+    font-family: 'Helvetica';
+    src: url('./fonts/Helvetica-BoldOblique.eot');
+    src: url('./fonts/Helvetica-BoldOblique.eot?#iefix') format('embedded-opentype'),
+        url('./fonts/Helvetica-BoldOblique.woff2') format('woff2'),
+        url('./fonts/Helvetica-BoldOblique.woff') format('woff'),
+        url('./fonts/Helvetica-BoldOblique.ttf') format('truetype'),
+        url('./fonts/Helvetica-BoldOblique.svg#Helvetica-BoldOblique') format('svg');
+    font-weight: bold;
+    font-style: italic;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Helvetica';
+    src: url('./fonts/Helvetica-Compressed.eot');
+    src: url('./fonts/Helvetica-Compressed.eot?#iefix') format('embedded-opentype'),
+        url('./fonts/Helvetica-Compressed.woff2') format('woff2'),
+        url('./fonts/Helvetica-Compressed.woff') format('woff'),
+        url('./fonts/Helvetica-Compressed.ttf') format('truetype'),
+        url('./fonts/Helvetica-Compressed.svg#Helvetica-Compressed') format('svg');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Helvetica';
+    src: url('./fonts/Helvetica-Bold.eot');
+    src: url('./fonts/Helvetica-Bold.eot?#iefix') format('embedded-opentype'),
+        url('./fonts/Helvetica-Bold.woff2') format('woff2'),
+        url('./fonts/Helvetica-Bold.woff') format('woff'),
+        url('./fonts/Helvetica-Bold.ttf') format('truetype'),
+        url('./fonts/Helvetica-Bold.svg#Helvetica-Bold') format('svg');
+    font-weight: bold;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Helvetica';
+    src: url('./fonts/Helvetica.eot');
+    src: url('./fonts/Helvetica.eot?#iefix') format('embedded-opentype'),
+        url('./fonts/Helvetica.woff2') format('woff2'),
+        url('./fonts/Helvetica.woff') format('woff'),
+        url('./fonts/Helvetica.ttf') format('truetype'),
+        url('./fonts/Helvetica.svg#Helvetica') format('svg');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Helvetica';
+    src: url('./fonts/Helvetica-Light.eot');
+    src: url('./fonts/Helvetica-Light.eot?#iefix') format('embedded-opentype'),
+        url('./fonts/Helvetica-Light.woff2') format('woff2'),
+        url('./fonts/Helvetica-Light.woff') format('woff'),
+        url('./fonts/Helvetica-Light.ttf') format('truetype'),
+        url('./fonts/Helvetica-Light.svg#Helvetica-Light') format('svg');
+    font-weight: 300;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Helvetica';
+    src: url('./fonts/HelveticaRounded-Bold.eot');
+    src: url('./fonts/HelveticaRounded-Bold.eot?#iefix') format('embedded-opentype'),
+        url('./fonts/HelveticaRounded-Bold.woff2') format('woff2'),
+        url('./fonts/HelveticaRounded-Bold.woff') format('woff'),
+        url('./fonts/HelveticaRounded-Bold.ttf') format('truetype'),
+        url('./fonts/HelveticaRounded-Bold.svg#HelveticaRounded-Bold') format('svg');
+    font-weight: bold;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Helvetica';
+    src: url('./fonts/Helvetica-Oblique.eot');
+    src: url('./fonts/Helvetica-Oblique.eot?#iefix') format('embedded-opentype'),
+        url('./fonts/Helvetica-Oblique.woff2') format('woff2'),
+        url('./fonts/Helvetica-Oblique.woff') format('woff'),
+        url('./fonts/Helvetica-Oblique.ttf') format('truetype'),
+        url('./fonts/Helvetica-Oblique.svg#Helvetica-Oblique') format('svg');
+    font-weight: normal;
+    font-style: italic;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Varta';
+    src: url('./fonts/Varta-Regular.eot');
+    src: url('./fonts/Varta-Regular.eot?#iefix') format('embedded-opentype'),
+        url('./fonts/Varta-Regular.woff2') format('woff2'),
+        url('./fonts/Varta-Regular.woff') format('woff'),
+        url('./fonts/Varta-Regular.ttf') format('truetype'),
+        url('./fonts/Varta-Regular.svg#Varta-Regular') format('svg');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Varta';
+    src: url('./fonts/Varta-Regular_1.eot');
+    src: url('./fonts/Varta-Regular_1.eot?#iefix') format('embedded-opentype'),
+        url('./fonts/Varta-Regular_1.woff2') format('woff2'),
+        url('./fonts/Varta-Regular_1.woff') format('woff'),
+        url('./fonts/Varta-Regular_1.ttf') format('truetype'),
+        url('./fonts/Varta-Regular_1.svg#Varta-Regular') format('svg');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Varta';
+    src: url('./fonts/Varta-Regular_2.eot');
+    src: url('./fonts/Varta-Regular_2.eot?#iefix') format('embedded-opentype'),
+        url('./fonts/Varta-Regular_2.woff2') format('woff2'),
+        url('./fonts/Varta-Regular_2.woff') format('woff'),
+        url('./fonts/Varta-Regular_2.ttf') format('truetype'),
+        url('./fonts/Varta-Regular_2.svg#Varta-Regular') format('svg');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Varta';
+    src: url('./fonts/Varta-Regular_3.eot');
+    src: url('./fonts/Varta-Regular_3.eot?#iefix') format('embedded-opentype'),
+        url('./fonts/Varta-Regular_3.woff2') format('woff2'),
+        url('./fonts/Varta-Regular_3.woff') format('woff'),
+        url('./fonts/Varta-Regular_3.ttf') format('truetype'),
+        url('./fonts/Varta-Regular_3.svg#Varta-Regular') format('svg');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+
+
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+body {
+    font-family:  "Helvetica" ;
+    margin: 0;
+    padding: 0;
+}
+
+.react-datepicker-wrapper {
+    width: 100%;
+}
+
+li.relative ul, li.relative ul li, li.relative ul a{
+    font-size: 16px;
+    font-weight: normal;
+    font-family: 'Helvetica';
+}
+div.relative ul, div.relative ul li, div.relative ul a{
+    font-size: 16px;
+    font-weight: normal;
+    font-family: 'Helvetica';
+}
+li.relative ul, li.relative ul li, li.relative ul button{
+    font-size: 16px;
+    font-weight: normal;
+    font-family: 'Helvetica';
+}
+.tab-container {
+    display: flex; 
+    padding: 10px;
+  }
+  
+  /* Each individual tab */
+  .tab {
+    position: relative;
+    padding-right: 20px; 
+    
+  }
+  .activeSubmenu {
+    transform: scale(1.1);
+    border-color: #ed901d;
+    border-width: 3px;
+    margin-bottom: 5px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); 
+    border-radius: 8px;
+transition: all 0.3s ease-in-out;
+
+  }
+
+  .tab-link {
+    display: block;
+    padding: 10px 20px;
+    text-decoration: none;
+    font-weight: 600;
+    position: relative;
+    z-index: 1;
+    white-space: nowrap; /* Prevent wrapping */
+  }
+  
+  /* Arrow effect using ::after */
+
+  
+  /* Hover effect to change tab and arrow color */
+  .tab:hover .tab-link {
+   text-shadow: 5px 5px 5px 5px ;
+    color: black;
+  }
+  
+  .tab:hover::after {
+    border-left-color: #3b82f6; /* Blue arrow on hover */
+  }
+  .z-999{
+    z-index: 999;
+  }
+  .z-9999{
+    z-index: 99999 !important;
+  }
+  .z-99999 {
+    z-index: 9999999999 !important;
+  }
+  .polygon{
+    clip-path: polygon(0% 0%, 92% 0%, 100% 50%, 92% 100%, 0% 100%, 0% 50%);
+  
+}
+.upload-button {
+    padding: 0.5rem 1rem;
+    
+    color: #fff;
+    border-radius: 0.25rem;
+    cursor: pointer;
+}
+
+
+
+
+input.select-search-input {
+    background: #f7f6fb;
+    border-radius: 6px;
+}
+/* Modal overlay */
+.modal-overlay {
+    background-color: rgba(0, 0, 0, 0.5);
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+  }
+  
+  /* Modal content */
+  .modal-content {
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    width: 400px;
+    max-width: 100%;
+  }
+
+
+  .swiper-slide.swiper-slide-visible {
+    max-width: 137px;
+    min-width: 137px !important;
+    height: 137px !important;
+    min-height: 137px !important;
+}
+
+.swiper-slide.swiper-slide-visible img {
+    width: 100%;
+    height: 100%;
+}
+.modal-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    width: 80%;
+    max-width: 800px;
+  }
+  
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+  }
+  .swal-custom-popup {
+    border-radius: 10px;
+    padding: 20px;
+    background-color: #ffffff;
+    text-align: center;
+  }
+  
+  .swal-custom-html img {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+  
+  .swal-custom-html p {
+    color: #2c3e50;
+    font-size: 14px;
+  }
+  
+  /* Add glow effect when row is highlighted */
+.highlight {
+    background-color: rgba(255, 255, 0, 0.2); /* Light yellow background */
+    border: 2px solid yellow; /* Yellow border */
+}
+/* Base Styles */
+.sidebar-item {
+    display: flex;
+    justify-content: center;
+    margin: 0 30px;
+    border: 1px solid #7d7d7d;
+    min-height: 130px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease-in-out;
+  }
+  
+  /* Hover Effects */
+  .sidebar-item:hover {
+    background: #c1dff2;
+    color: white;
+    transform: scale(1.05);
+    box-shadow: 0 6px 10px rgba(0, 0, 0, 0.2);
+  }
+  
+  /* Active Tab */
+  .sidebar-item.active {
+    background: #c1dff2;
+    color: #4d606b;
+    transform: scale(1.05);
+    font-weight: 600;
+  }
+  
+  .sidebar-item .icon {
+    font-size: 2rem;
+    margin: auto;
+  }
+  
+  /* Dropdown Animation */
+ /* Define the initial state of the dropdown when closed */
+.dropdown {
+    transform: scaleY(0);
+    opacity: 0;
+    transform-origin: top;
+    transition: transform 1s ease-in-out, opacity 0.4s ease-in-out;
+  }
+  
+  /* Define the state of the dropdown when opened */
+  .dropdown.open {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+  
+  /* Ensure the animation is triggered when the dropdown is active */
+  .dropdown-item {
+    display: flex;
+    justify-content: center;
+    margin: 0 30px;
+    border: 1px solid #7d7d7d;
+    min-height: 130px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: all 1s ease-in-out;
+  }
+  
+  /* Hover effect for the dropdown items */
+  .dropdown-item:hover {
+    background: #c1dff2;
+    color: white;
+    transform: scale(1.05);
+    box-shadow: 0 6px 10px rgba(0, 0, 0, 0.2);
+  }
+  
+  /* Active state for the dropdown items */
+  .dropdown-item.active {
+    background: #c1dff2;
+    color: #4d606b;
+    transform: scale(1.05);
+    font-weight: 600;
+  }
+  
+  @keyframes slideIn {
+    0% {
+      transform: translateY(-20px);
+      opacity: 0;
+    }
+    100% {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  
+  @keyframes slideOut {
+    0% {
+      transform: translateY(0);
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(-20px);
+      opacity: 0;
+    }
+  }
+  
+  li.staggered {
+    animation: slideOut 0.9s ease-in-out;
+    
+  }
+  
+  li.staggered {
+    animation-delay: 0.9s;
+  }
+  li.notstaggered {
+    animation: slideIn 0.7s ease-in-out;
+    }
+    .custom-modal-content {
+      outline: none;
+      background: white;
+      border-radius: 8px;
+      width: 90%;
+      max-width: 800px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      z-index: 1001;
+    }
+    .modal-container {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+    }
+    
+    
+    
+    /* List of attachments */
+    .modal-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    
+    .modal-list-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+    
+    .modal-list-text {
+      font-size: 1rem;
+      color: #333;
+    }
+    
+    
+    /* Footer (close button container) */
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 1rem;
+    }
+    
+    .modal-close-button {
+      padding: 8px 16px;
+      background-color: #dc3545;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    
+    .modal-close-button:hover {
+      background-color: #c82333;
+    }
+    .select-search-container.select-search-is-multiple ul.select-search-options {
+      display: none;
+    }
+    .select-search-container.select-search-is-multiple.select-search-has-focus ul.select-search-options {
+      display: block !important;
+    }
+    .fileViewer img{
+    max-width: 150px;
+    height: 150px;
+    object-fit: contain; 
+    margin: 0 auto;
+    }
+    .fileViewer_service img{
+      max-width: 60px;
+    height: 60px;
+    } 
+    .custom-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgb(0 0 0 / 10%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }    
+
+    .admin_modal .modal-content {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) !important;
+      background: white;
+      padding: 0 !important;
+      border-radius: 8px;
+      box-shadow: 0 15px 22px rgba(0, 0, 0, 0.1) !important;
+      width: 91% !important;
+      max-width: 787px !important;
+      z-index: 9999;
+  }
+  .admin_modal .modal-content .bg-white.rounded-lg.shadow-xl.max-w-lg.w-full.mx-6.transform.transition-all.duration-300.ease-out.scale-100 {
+    /* background-color: #ccc !important; */
+    box-shadow: 0px 5px 47px 11px;
+    /* backdrop-filter: opacity(0.5); */
+}
+
+.mobileOnly {
+  display: none !important;
+}
+@media (max-width: 768px) {
+  .mobileOnly {
+    display: block ;
+  }
+    .polygon{
+    clip-path: polygon(0% 0%, 97% 0%, 100% 50%, 97% 100%, 0% 100%, 0% 50%);
+  
+}
+}
+
+.custom-title {
+  font-size: 30px;  /* Adjust title font size */
+  font-weight: bold;
+}
+
+.custom-content {
+  font-size: 20px;  /* Adjust message font size */
+}
+
+
+
+.visible_feild .dropdown-heading {
+    background: #f7f6fb;
+    border: none;
+}
+
+.visible_feild .rmsc .dropdown-container {
+    border: none;
+}
+.visible_feild .rmsc .dropdown-container:focus-within {
+  border: none;
+}
