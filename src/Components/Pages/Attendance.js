@@ -508,80 +508,132 @@ const Attendance = () => {
 
         {/* Table */}
         <div className="overflow-x-auto">
-          {paginatedData.map((admin, index) => (
-            <div key={admin.admin_id} className="mb-12">
-              {/* ✅ Admin Heading */}
-              <h2 className="text-lg font-semibold text-blue-700 mb-2">
-                SL NO: {index + 1} — {admin.admin_name} ({admin.emp_id})
-              </h2>
+          <table className="min-w-full border-collapse border border-black rounded-lg whitespace-nowrap mb-4">
+            <thead>
+              <tr className="bg-[#c1dff2] text-[#4d606b] text-center">
+                <th className="border border-black px-4 py-2">SL NO</th>
+                <th className="border border-black px-4 py-2">EMPLOYEE ID</th>
+                <th className="border border-black px-4 py-2">NAME OF THE EMPLOYEE</th>
+                <th className="border border-black px-4 py-2">ATTENDANCE</th>
+                {Array.from({ length: 31 }, (_, i) => (
+                  <th key={i + 1} className="border border-black px-2 py-2">
+                    {i + 1}
+                  </th>
+                ))}
+                <th className="border border-black px-4 py-2">LEAVE</th>
+                <th className="border border-black px-4 py-2">PRESENT</th>
+                <th className="border border-black px-4 py-2">LEAVE FROM</th>
+                <th className="border border-black px-4 py-2">LEAVE TO</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[...paginatedData].flatMap((admin, index) => {
+                const breakTypes = [
+                  "LOGIN",
+                  "TEA BREAK IN-1",
+                  "TEA BREAK OUT-1",
+                  "LUNCH BREAK IN",
+                  "LUNCH BREAK OUT",
+                  "TEA BREAK IN-2",
+                  "TEA BREAK OUT-2",
+                  "LOGOUT"
+                ];
 
-              {/* ✅ Year loop */}
-              {Object.keys(admin.daily_records).sort().map((year) => (
-                <div key={year} className="mb-6">
-                  <h3 className="text-md font-semibold text-gray-800 mb-1">Year: {year}</h3>
+                // Convert to array of { admin, year, month, records } for sorting
+                const monthYearGroups = [];
 
-                  {/* ✅ Month loop */}
-                  {Object.keys(admin.daily_records[year]).sort().map((month) => {
-                    const monthRecords = admin.daily_records[year][month];
-                    const daysInMonth = getDaysInMonth(year, month);
+                Object.keys(admin.daily_records).forEach(year => {
+                  Object.keys(admin.daily_records[year]).forEach(month => {
+                    monthYearGroups.push({
+                      admin,
+                      year,
+                      month,
+                      records: admin.daily_records[year][month]
+                    });
+                  });
+                });
 
-                    return (
-                      <div key={month} className="mb-6">
-                        <h4 className="text-sm font-medium text-gray-600 mb-1">Month: {month}</h4>
+                // Sort by year DESC, then month DESC
+                monthYearGroups.sort((a, b) => {
+                  const ya = parseInt(a.year);
+                  const yb = parseInt(b.year);
+                  const ma = parseInt(a.month);
+                  const mb = parseInt(b.month);
+                  return yb !== ya ? yb - ya : mb - ma;
+                });
 
-                        {/* ✅ Table */}
-                        <table className="min-w-full border-collapse border border-black rounded-lg whitespace-nowrap mb-4">
-                          <thead>
-                            <tr className="bg-[#c1dff2] text-[#4d606b]">
-                              <th className="border border-black px-4 py-2">ATTENDANCE</th>
-                              {Array.from({ length: daysInMonth }, (_, i) => (
-                                <th
-                                  key={i + 1}
-                                  className="border border-black px-2 py-2 text-center"
-                                >
-                                  {i + 1}
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {breakTypes.map((label, i) => (
-                              <tr key={i} className="text-center">
-                                <td className="border border-black capitalize font-medium">{label}</td>
+                let rowIndex = index + 1;
 
-                                {Array.from({ length: daysInMonth }, (_, dayIndex) => {
-                                  const day = dayIndex + 1;
-                                  const record = monthRecords.find(
-                                    (r) => new Date(r.date).getDate() === day
-                                  );
+                // Render
+                return monthYearGroups.map(({ admin, year, month, records }) => {
+                  const daysInMonth = getDaysInMonth(year, month);
+                  const presentCount = records.filter(r => r.first_login_time || r.last_logout_time).length;
+                  const leaveCount = records.length - presentCount;
+                  const leaveFrom = records.find(r => !r.first_login_time && !r.last_logout_time)?.date || "";
+                  const leaveTo = [...records].reverse().find(r => !r.first_login_time && !r.last_logout_time)?.date || "";
 
-                                  const key = label.toLowerCase();
-                                  let value = "";
+                  return (
+                    <React.Fragment key={`${admin.emp_id}-${year}-${month}`}>
+                      {/* Month-Year Header Row */}
+                      <tr className="bg-yellow-100 text-center font-bold text-black">
+                        <td colSpan={35} className="border border-black py-2 text-lg">
+                          ATTENDANCE SHEET — {admin.admin_name} ({admin.emp_id}) — {month.padStart(2, '0')}/{year}
+                        </td>
+                      </tr>
 
-                                  if (record) {
-                                    if (label === "LOGIN") value = record.first_login_time;
-                                    else if (label === "LOGOUT") value = record.last_logout_time;
-                                    else value = record.break_times?.[key];
-                                  }
+                      {/* Attendance Rows */}
+                      {breakTypes.map((label, i) => (
+                        <tr key={`${admin.emp_id}-${label}-${year}-${month}`} className="text-center">
+                          {i === 0 && (
+                            <>
+                              <td rowSpan={breakTypes.length} className="border border-black">{rowIndex}</td>
+                              <td rowSpan={breakTypes.length} className="border border-black">{admin.emp_id}</td>
+                              <td rowSpan={breakTypes.length} className="border border-black">{admin.admin_name}</td>
+                            </>
+                          )}
+                          <td className="border border-black">{label}</td>
+                          {Array.from({ length: 31 }, (_, d) => {
+                            const day = d + 1;
+                            const record = records.find(r => new Date(r.date).getDate() === day);
+                            const key = label.toLowerCase();
+                            let value = "";
 
-                                  return (
-                                    <td key={dayIndex} className="border border-black text-xs px-2 py-1">
-                                      {formatDate(value)}
-                                    </td>
-                                  );
-                                })}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-          ))}
+                            if (record) {
+                              if (label === "LOGIN") value = record.first_login_time;
+                              else if (label === "LOGOUT") value = record.last_logout_time;
+                              else value = record.break_times?.[key];
+                            }
+
+                            return (
+                              <td key={d} className="border border-black text-xs px-2 py-1">
+                                {formatDate(value)}
+                              </td>
+                            );
+                          })}
+                          {i === 0 && (
+                            <>
+                              <td rowSpan={breakTypes.length} className="border border-black">{leaveCount}</td>
+                              <td rowSpan={breakTypes.length} className="border border-black">{presentCount}</td>
+                              <td rowSpan={breakTypes.length} className="border border-black">
+                                {leaveFrom ? formatDate2(leaveFrom) : ""}
+                              </td>
+                              <td rowSpan={breakTypes.length} className="border border-black">
+                                {leaveTo ? formatDate2(leaveTo) : ""}
+                              </td>
+                            </>
+                          )}
+                        </tr>
+                      ))}
+                    </React.Fragment>
+                  );
+                });
+              })}
+
+            </tbody>
+          </table>
         </div>
+
+
 
 
 
