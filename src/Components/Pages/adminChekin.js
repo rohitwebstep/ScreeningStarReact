@@ -493,6 +493,17 @@ const AdminChekin = () => {
         let isFirstLoad = true;
 
         const applicationInfo = data.find(item => item.main_id === maindata.main_id);
+
+        const generate_report_type = applicationInfo.generate_report_type;
+        if (!generate_report_type) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Report Type Required',
+                text: 'Please select a report type before generating the report.',
+            });
+            return;
+        }
+
         setLoadingGenrate(index);
         setApiLoading(true)
 
@@ -535,7 +546,7 @@ const AdminChekin = () => {
 
         const sideMargin = 10;
 
-        const mainTitle = "CONFIDENTIAL BACKGROUND VERIFICATION REPORT";
+        const mainTitle = generate_report_type || "CONFIDENTIAL BACKGROUND VERIFICATION REPORT";
         let customLogo;
         if (applicationInfo?.custom_template == "yes") {
             if (applicationInfo?.custom_logo?.trim()) {
@@ -611,10 +622,20 @@ const AdminChekin = () => {
 
         doc.setFillColor(246, 246, 246);
         doc.rect(sideMargin, titleY, titleWidth, titleHeight, 'F'); // Centered background rectangle with 
-        const headerTableDataOne = [
-            ["NAME OF ORGANISATION", companyName || 'null'],
-            ["NAME OF APPLICANT", applicationInfo.name || "N/A"],
-        ];
+        let headerTableDataOne;
+
+        if (generate_report_type == 'CONFIDENTIAL BACKGROUND SCREENING REPORT') {
+            headerTableDataOne = [
+                ["NAME OF ORGANISATION", companyName || 'null'],
+                ["NAME OF APPLICANT", applicationInfo.name || "N/A"],
+            ];
+        } else if (generate_report_type == 'VENDOR CONFIDENTIAL SCREENING REPORT') {
+            headerTableDataOne = [
+                ["VERIFICATION INITIATED BY", companyName || 'null'],
+                ["NAME OF THE VENDOR / SUPPLIER", applicationInfo.name || "N/A"],
+            ];
+        }
+
         doc.autoTable({
             body: headerTableDataOne,
             startY: 54,
@@ -625,10 +646,20 @@ const AdminChekin = () => {
                 textColor: [0, 0, 0],
                 lineWidth: 0.2,
                 lineColor: [62, 118, 165],
+                overflow: 'visible',
             },
             columnStyles: {
-                0: { cellWidth: 50 },
-                2: { cellWidth: 50 },
+                0: {
+                    cellWidth: 80, // Adjust width based on label size
+                    halign: 'left',
+                    valign: 'middle',
+                    overflow: 'visible',
+                },
+                1: {
+                    cellWidth: 'auto',
+                    halign: 'left',
+                    valign: 'middle',
+                }
             },
             theme: 'grid',
             headStyles: {
@@ -642,6 +673,7 @@ const AdminChekin = () => {
             didParseCell: function (data) {
                 if (data.section === 'body' && data.column.index === 0) {
                     data.cell.styles.font = 'TimesNewRomanBold'; // Bold font for headings
+                    data.cell.styles.whiteSpace = 'nowrap';
                 } else if (data.section === 'body' && data.column.index === 1) {
                     data.cell.styles.font = 'TimesNewRomanLight'; // Light font for values
                 }
@@ -665,13 +697,26 @@ const AdminChekin = () => {
         doc.text(mainTitle, pageWidth / 2, verticalCenter, { align: 'center' });
 
         console.log('applicationInfo', applicationInfo)
-        const headerTableData = [
-            ["REFERENCE ID", String(applicationInfo.application_id).toUpperCase(), "DATE OF BIRTH", formatDate(applicationInfo.dob) || "N/A"],
-            ["EMPLOYEE ID", String(applicationInfo.employee_id || "N/A").toUpperCase(), "INSUFF CLEARED", formatDate(applicationInfo.first_insuff_reopened_date) || "N/A"],
-            ["VERIFICATION INITIATED", formatDate(applicationInfo.initiation_date).toUpperCase() || "N/A", "FINAL REPORT DATE", formatDate(applicationInfo.report_date) || "N/A"],
-            ["VERIFICATION PURPOSE", (applicationInfo.verification_purpose || "EMPLOYMENT").toUpperCase(), "VERIFICATION STATUS", (applicationInfo.final_verification_status || "N/A").toUpperCase()],
-            ["REPORT TYPE", (applicationInfo.report_type || "EMPLOYMENT").replace(/_/g, " ").toUpperCase(), "REPORT STATUS", (applicationInfo.report_status || "N/A").toUpperCase()]
-        ];
+        let headerTableData;
+
+        if (generate_report_type == 'CONFIDENTIAL BACKGROUND SCREENING REPORT') {
+            headerTableData = [
+                ["REFERENCE ID", String(applicationInfo.application_id).toUpperCase(), "DATE OF BIRTH", formatDate(applicationInfo.dob) || "N/A"],
+                ["EMPLOYEE ID", String(applicationInfo.employee_id || "N/A").toUpperCase(), "INSUFF CLEARED", formatDate(applicationInfo.first_insuff_reopened_date) || "N/A"],
+                ["VERIFICATION INITIATED", formatDate(applicationInfo.initiation_date).toUpperCase() || "N/A", "FINAL REPORT DATE", formatDate(applicationInfo.report_date) || "N/A"],
+                ["VERIFICATION PURPOSE", (applicationInfo.verification_purpose || "EMPLOYMENT").toUpperCase(), "VERIFICATION STATUS", (applicationInfo.final_verification_status || "N/A").toUpperCase()],
+                ["REPORT TYPE", (applicationInfo.report_type || "EMPLOYMENT").replace(/_/g, " ").toUpperCase(), "REPORT STATUS", (applicationInfo.report_status || "N/A").toUpperCase()]
+            ];
+        } else if (generate_report_type == 'VENDOR CONFIDENTIAL SCREENING REPORT') {
+            headerTableData = [
+                ["REFERENCE ID", String(applicationInfo.application_id).toUpperCase(), "INCORPORATED DATE", formatDate(applicationInfo.dob) || "N/A"],
+                ["EMPLOYEE ID", String(applicationInfo.employee_id || "N/A").toUpperCase(), "INSUFF CLEARED", formatDate(applicationInfo.first_insuff_reopened_date) || "N/A"],
+                ["VERIFICATION INITIATED", formatDate(applicationInfo.initiation_date).toUpperCase() || "N/A", "FINAL REPORT DATE", formatDate(applicationInfo.report_date) || "N/A"],
+                // This row has only 2 cells (spans full row)
+                ["VERIFICATION STATUS", (applicationInfo.final_verification_status || "N/A").toUpperCase(), "REPORT STATUS", (applicationInfo.report_status || "N/A").toUpperCase()],
+                ["REPORT TYPE", (applicationInfo.report_type || "EMPLOYMENT").replace(/_/g, " ").toUpperCase()]
+            ];
+        }
 
         const colorMapping = {
             Yellow: 'yellow',

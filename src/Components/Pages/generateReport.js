@@ -1,4 +1,4 @@
-import React, { useState, useEffect, forwardRef,useCallback, useRef } from 'react';
+import React, { useState, useEffect, forwardRef, useCallback, useRef } from 'react';
 import Swal from 'sweetalert2'
 import axios from 'axios';
 import { Swiper, SwiperSlide } from 'swiper/react';
@@ -13,7 +13,7 @@ import Select from "react-select";
 
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
-import { format, parseISO,parse , isValid } from 'date-fns';
+import { format, parseISO, parse, isValid } from 'date-fns';
 
 const optionsData = [
     { label: "Category 1", options: [{ value: "option1", text: "Option 1" }, { value: "option2", text: "Option 2" }] },
@@ -116,11 +116,12 @@ const GenerateReport = () => {
     });
     const [isNotMandatory, setIsNotMandatory] = useState(false);
     const [formData, setFormData] = useState({
-        client_organization_name : '',
-        client_applicant_name  : '',
-        client_applicant_gender : '',
-        client_organization_code : '',
+        client_organization_name: '',
+        client_applicant_name: '',
+        client_applicant_gender: '',
+        client_organization_code: '',
         updated_json: {
+            generate_report_type: '',
             month_year: '',
             initiation_date: '',
             organization_name: '',
@@ -434,17 +435,17 @@ const GenerateReport = () => {
         return `${year}-${month}-${day}`;
     };
     const formatDateDDMMYY = (date) => {
-    if (!date) return null;
+        if (!date) return null;
 
-    const d = new Date(date);
-    if (isNaN(d)) return null; // Handles invalid date strings
+        const d = new Date(date);
+        if (isNaN(d)) return null; // Handles invalid date strings
 
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    
-    return `${day}-${month}-${year}`;
-};
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+
+        return `${day}-${month}-${year}`;
+    };
 
     const fetchApplicationData = useCallback(() => {
         const adminId = JSON.parse(localStorage.getItem("admin"))?.id;
@@ -498,11 +499,12 @@ const GenerateReport = () => {
                 // It's essential to track the most updated `cmdDates`
                 setFormData((prevFormData) => ({
                     ...prevFormData,
-                    client_organization_name : applicationData.customer_name || result.branchInfo.name || prevFormData.client_organization_name || '',
-                    client_applicant_name : applicationData.name || prevFormData.updated_json.name || '',
-                    client_applicant_gender : applicationData.gender || prevFormData.client_applicant_gender || '' ,
-                    client_organization_code : result.customerInfo.client_unique_id || cmtData.client_code || prevFormData.updated_json.client_code || '',
+                    client_organization_name: applicationData.customer_name || result.branchInfo.name || prevFormData.client_organization_name || '',
+                    client_applicant_name: applicationData.name || prevFormData.updated_json.name || '',
+                    client_applicant_gender: applicationData.gender || prevFormData.client_applicant_gender || '',
+                    client_organization_code: result.customerInfo.client_unique_id || cmtData.client_code || prevFormData.updated_json.client_code || '',
                     updated_json: {
+                        generate_report_type: cmtData.generate_report_type || applicationData.generate_report_type || prevFormData.updated_json.generate_report_type || '',
                         month_year: cmtData.month_year || applicationData.month_year || prevFormData.updated_json.month_year || '',
                         verification_purpose: cmtData.verification_purpose || prevFormData.updated_json.verification_purpose || '',
                         employee_id: cmtData.employee_id || applicationData.employee_id || prevFormData.updated_json.employee_id || '',
@@ -736,7 +738,7 @@ const GenerateReport = () => {
                     const topLevelField = name.replace('updated_json.', '');
                     updatedFormData.updated_json[topLevelField] = value;
                 }
-                else{
+                else {
                     setFormData((prevData) => ({
                         ...prevData,
                         [name]: value,
@@ -1902,49 +1904,29 @@ const GenerateReport = () => {
                     />
                     // Date Of Exit:
                 );
-                case "datepicker": {
-                    const isDateOfExit = label === "Date Of Exit:";
-                
-                    if (isDateOfExit) {
-                        const CustomInput = forwardRef(({ value, onClick, onChange }, ref) => (
-                            <input
-                                type="text"
-                                ref={ref}
-                                value={value}
-                                onClick={onClick} // opens calendar on click
-                                onChange={(e) => {
-                                    handleInputChange(
-                                        { target: { name: input.name, value: e.target.value, type: "text" } },
-                                        index,
-                                        snakeCaseLabel
-                                    );
-                                }}
-                                placeholder="Type text or pick a date"
-                                className={`w-full p-2 border border-gray-300 ${snakeCaseLabel} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                                onBlur={(e) => handleBlur(e, label, inputColumn)}
-                            />
-                        ));
-                
-                        return (
-                            <DatePicker
-                                selected={parseAndValidateDate(inputValue)}
-                                onChange={(date) => {
-                                    const formatted = date ? format(date, "yyyy-MM-dd") : "";
-                                    handleInputChange(
-                                        { target: { name: input.name, value: formatted, type: "date" } },
-                                        index,
-                                        snakeCaseLabel
-                                    );
-                                }}
-                                customInput={<CustomInput value={inputValue} />}
-                                placeholderText="Type text or pick a date"
-                                dateFormat="dd-MM-yyyy"
-                                isClearable
-                            />
-                        );
-                    }
-                
-                    // Normal datepickers (not "Date Of Exit")
+            case "datepicker": {
+                const isDateOfExit = label === "Date Of Exit:";
+
+                if (isDateOfExit) {
+                    const CustomInput = forwardRef(({ value, onClick, onChange }, ref) => (
+                        <input
+                            type="text"
+                            ref={ref}
+                            value={value}
+                            onClick={onClick} // opens calendar on click
+                            onChange={(e) => {
+                                handleInputChange(
+                                    { target: { name: input.name, value: e.target.value, type: "text" } },
+                                    index,
+                                    snakeCaseLabel
+                                );
+                            }}
+                            placeholder="Type text or pick a date"
+                            className={`w-full p-2 border border-gray-300 ${snakeCaseLabel} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                            onBlur={(e) => handleBlur(e, label, inputColumn)}
+                        />
+                    ));
+
                     return (
                         <DatePicker
                             selected={parseAndValidateDate(inputValue)}
@@ -1956,20 +1938,40 @@ const GenerateReport = () => {
                                     snakeCaseLabel
                                 );
                             }}
-                            onChangeRaw={(e) => {
-                                const rawValue = e.target.value;
-                                handleInputChange(
-                                    { target: { name: input.name, value: rawValue, type: "text" } },
-                                    index,
-                                    snakeCaseLabel
-                                );
-                            }}
-                            className="w-full p-2 border border-gray-300 uppercase rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            customInput={<CustomInput value={inputValue} />}
+                            placeholderText="Type text or pick a date"
                             dateFormat="dd-MM-yyyy"
-                            placeholderText="Select a date"
+                            isClearable
                         />
                     );
-                }     case "dropdown":
+                }
+
+                // Normal datepickers (not "Date Of Exit")
+                return (
+                    <DatePicker
+                        selected={parseAndValidateDate(inputValue)}
+                        onChange={(date) => {
+                            const formatted = date ? format(date, "yyyy-MM-dd") : "";
+                            handleInputChange(
+                                { target: { name: input.name, value: formatted, type: "date" } },
+                                index,
+                                snakeCaseLabel
+                            );
+                        }}
+                        onChangeRaw={(e) => {
+                            const rawValue = e.target.value;
+                            handleInputChange(
+                                { target: { name: input.name, value: rawValue, type: "text" } },
+                                index,
+                                snakeCaseLabel
+                            );
+                        }}
+                        className="w-full p-2 border border-gray-300 uppercase rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        dateFormat="dd-MM-yyyy"
+                        placeholderText="Select a date"
+                    />
+                );
+            } case "dropdown":
                 return (
                     <select
                         name={input.name}
@@ -2404,7 +2406,7 @@ const GenerateReport = () => {
                                                         }
                                                     });
                                                 }}
-                                                
+
                                                 dateFormat="dd-MM-yyyy"
                                                 className="w-full border p-2 outline-none uppercase rounded-md mt-2"
                                             />
@@ -3029,15 +3031,15 @@ const GenerateReport = () => {
 
                                 <div className="mb-4">
                                     <label className='capitalize text-gray-500' htmlFor="first_insufficiency_marks">First Level Insufficiency Remarks</label>
-                                     <MultiSelect
+                                    <MultiSelect
                                         id="first_insufficiency_marks"
                                         name="first_insufficiency_marks"
                                         className="text-xl"
                                         value={formData.updated_json?.insuffDetails?.first_insufficiency_marks || []}
                                         onChange={handleMultiSelectChange}
                                         options={optionsData}
-                                       isDisabled={true}
-                                    /> 
+                                        isDisabled={true}
+                                    />
                                     {/* <input
                                         type="text"
                                         id="first_insufficiency_marks"
@@ -3073,13 +3075,13 @@ const GenerateReport = () => {
                                         dateFormat="dd-MM-yyyy"
                                         className="uppercase border w-full rounded-md p-2 mt-2"
                                     /> */}
-                                     <input
+                                    <input
                                         type="text"
                                         name="first_insuff_date"
                                         className="w-full p-3 mb-4 border border-gray-300 rounded-md"
                                         value={formatDateDDMMYY(formData.updated_json.insuffDetails.first_insuff_date) || ''}
-                                    disabled
-                                    /> 
+                                        disabled
+                                    />
                                 </div>
                                 <div className="mb-4">
                                     <label className='capitalize text-gray-500' htmlFor="first_insuff_reopened_date">First Insuff Cleared Date / Re-Opened date</label>
@@ -3102,8 +3104,8 @@ const GenerateReport = () => {
                                         name="first_insuff_date"
                                         className="w-full p-3 mb-4 border border-gray-300 rounded-md"
                                         value={formatDateDDMMYY(formData.updated_json.insuffDetails.first_insuff_reopened_date) || ''}
-                                    disabled
-                                    /> 
+                                        disabled
+                                    />
                                     {errors.first_insuff_reopened_date && (
                                         <p className="text-red-500 text-sm">{errors.first_insuff_reopened_date}</p>
                                     )}
@@ -3116,7 +3118,7 @@ const GenerateReport = () => {
                                         value={formData.updated_json?.insuffDetails?.second_insufficiency_marks || []}
                                         onChange={handleMultiSelectChange}
                                         options={optionsData}
-                                         isDisabled={true}
+                                        isDisabled={true}
                                     />
                                     {/* <input
                                         type="text"
@@ -3155,13 +3157,13 @@ const GenerateReport = () => {
                                         dateFormat="dd-MM-yyyy"
                                         className="uppercase border w-full rounded-md p-2 mt-2"
                                     /> */}
-                                      <input
+                                    <input
                                         type="text"
                                         name="second_insuff_date"
                                         className="w-full p-3 mb-4 border border-gray-300 rounded-md"
                                         value={formatDateDDMMYY(formData.updated_json.insuffDetails.second_insuff_date) || ''}
-                                    disabled
-                                    /> 
+                                        disabled
+                                    />
                                 </div>
                                 <div className="mb-4">
                                     <label className='capitalize text-gray-500' htmlFor="second Insuff Cleared Date / Re-Opened date">Second Insuff Cleared Date / Re-Opened date</label>
@@ -3178,13 +3180,13 @@ const GenerateReport = () => {
                                         dateFormat="dd-MM-yyyy"
                                         className="uppercase border w-full rounded-md p-2 mt-2"
                                     /> */}
-        <input
+                                    <input
                                         type="text"
                                         name="second_insuff_reopened_date"
                                         className="w-full p-3 mb-4 border border-gray-300 rounded-md"
                                         value={formatDateDDMMYY(formData.updated_json.insuffDetails.second_insuff_reopened_date) || ''}
-                                    disabled
-                                    /> 
+                                        disabled
+                                    />
                                 </div>
                                 <div className="mb-4">
                                     <label className='capitalize text-gray-500' htmlFor="third Level Insufficiency Remarks">third Level Insufficiency Remarks</label>
@@ -3233,13 +3235,13 @@ const GenerateReport = () => {
                                             dateFormat="dd-MM-yyyy"
                                             className="uppercase border w-full rounded-md p-2 mt-2"
                                         /> */}
-   <input
-                                        type="text"
-                                        name="third_insuff_date"
-                                        className="w-full p-3 mb-4 border border-gray-300 rounded-md"
-                                        value={formatDateDDMMYY(formData.updated_json.insuffDetails.third_insuff_date) || ''}
-                                    disabled
-                                    /> 
+                                        <input
+                                            type="text"
+                                            name="third_insuff_date"
+                                            className="w-full p-3 mb-4 border border-gray-300 rounded-md"
+                                            value={formatDateDDMMYY(formData.updated_json.insuffDetails.third_insuff_date) || ''}
+                                            disabled
+                                        />
                                     </div>
                                     <div className="mb-4">
                                         <label className='capitalize text-gray-500' htmlFor="third Insuff Cleared Date / Re-Opened date">third Insuff Cleared Date / Re-Opened date</label>
@@ -3256,13 +3258,13 @@ const GenerateReport = () => {
                                             dateFormat="dd-MM-yyyy"
                                             className="uppercase border w-full rounded-md p-2 mt-2"
                                         /> */}
-                                          <input
-                                        type="text"
-                                        name="third_insuff_reopened_date"
-                                        className="w-full p-3 mb-4 border border-gray-300 rounded-md"
-                                        value={formatDateDDMMYY(formData.updated_json.insuffDetails.third_insuff_reopened_date) || ''}
-                                    disabled
-                                    /> 
+                                        <input
+                                            type="text"
+                                            name="third_insuff_reopened_date"
+                                            className="w-full p-3 mb-4 border border-gray-300 rounded-md"
+                                            value={formatDateDDMMYY(formData.updated_json.insuffDetails.third_insuff_reopened_date) || ''}
+                                            disabled
+                                        />
                                     </div>
                                 </div>
                                 <div className="mb-4 ">
@@ -3339,6 +3341,22 @@ const GenerateReport = () => {
                                             className="border rounded-md p-2 mt-2 uppercase w-full">
                                             <option value="interim_report">Interim Report</option>
                                             <option value="final_report">Final Report</option>
+                                        </select>
+
+                                    </div>
+                                    <div className="mb-4">
+                                        <label className='capitalize text-gray-500' htmlFor="report status">Generate Report Type:</label>
+                                        <select name="updated_json.generate_report_type" id=""
+                                            value={formData.updated_json.generate_report_type}
+                                            onChange={handleChange}
+                                            className="border rounded-md p-2 mt-2 uppercase w-full">
+                                            <option value="">Select Report Type</option>
+                                            <option value="CONFIDENTIAL BACKGROUND SCREENING REPORT">
+                                                CONFIDENTIAL BACKGROUND SCREENING REPORT
+                                            </option>
+                                            <option value="VENDOR CONFIDENTIAL SCREENING REPORT">
+                                                VENDOR CONFIDENTIAL SCREENING REPORT
+                                            </option>
                                         </select>
 
                                     </div>
