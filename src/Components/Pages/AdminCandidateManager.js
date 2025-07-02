@@ -6,9 +6,8 @@ import Swal from 'sweetalert2';
 
 const AdminCandidateManager = () => {
     const navigate = useNavigate();
-    const {validateAdminLogin,setApiLoading,apiLoading} = useApiLoading();
-
-    
+    const { validateAdminLogin, setApiLoading, apiLoading } = useApiLoading();
+    const [responseError, setResponseError] = useState(null);
     const [activeId, setActiveId] = useState(null);
     const [filterData, setFilterData] = useState([]);
     const [clientData, setClientData] = useState([]);
@@ -21,8 +20,8 @@ const AdminCandidateManager = () => {
     const [searchTerm, setSearchTerm] = useState("");
 
     const [currentPage, setCurrentPage] = useState(1);
-    const rowsPerPage = 10;
-    const totalPages = Math.ceil(clientData.length / rowsPerPage);
+    const [rowsPerPage, setRowsPerPage] = useState(10);
+    const optionsPerPage = [10, 50, 100, 200]; const totalPages = Math.ceil(clientData.length / rowsPerPage);
     const paginatedData = clientData.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
 
     const handlePageChange = (page) => {
@@ -62,14 +61,28 @@ const AdminCandidateManager = () => {
         const urlWithParams = `${baseUrl}?${queryParams.toString()}`;
 
         fetch(urlWithParams, requestOptions)
-            .then((response) => response.json())
+            .then((response) => {
+                return response.json().then((result) => {
+                    // Check if the API response status is false
+                    if (result.status === false) {
+                        // Log the message from the API response
+                        console.error('API Error:', result.message);
+                        Swal.fire('Error!', `${result.message}`, 'error');
+                        setResponseError(result.message);
+
+                        // Optionally, you can throw an error here if you want to halt the further execution
+                        throw new Error(result.message);
+                    }
+                    return result;
+                });
+            })
             .then((result) => {
                 const newToken = result.token || result._token || token;
                 if (newToken) {
                     localStorage.setItem("_token", newToken);
                 }
                 setClientData(result.data.customers);
-                setFilterData(result.data.filterOptions || []) ;
+                setFilterData(result.data.filterOptions || []);
 
                 setLoading(false);
             })
@@ -152,10 +165,14 @@ const AdminCandidateManager = () => {
 
     const handleSearch = (e) => {
         setSearchTerm(e.target.value);
+        setCurrentPage(1)
     };
 
     const filteredData = paginatedData.filter((data) =>
-        data.name.toLowerCase().includes(searchTerm.toLowerCase())
+        data.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        data.client_unique_id.toLowerCase().includes(searchTerm.toLowerCase())
+
+
     );
 
     const handleBlock = async (id) => {
@@ -192,7 +209,7 @@ const AdminCandidateManager = () => {
                 );
                 const result = await response.json();
 
-                const newToken = result.token || result._token || storedToken ;
+                const newToken = result.token || result._token || storedToken;
                 if (newToken) {
                     localStorage.setItem("_token", newToken);
                 }
@@ -216,165 +233,182 @@ const AdminCandidateManager = () => {
     );
     return (
         <div className="">
-            <div className="bg-white border border-black p-12 w-full mx-auto">
+            <div className="bg-white border border-black md:p-12 p-6 w-full mx-auto">
 
-                <div className='flex justify-between items-baseline mb-3' >
+                <div className='md:flex justify-between items-baseline mb-3' >
 
-                    <div className="w-1/2 text-right">
+                    <div className="md:w-1/2 text-left">
                         <input
                             type="text"
-                            placeholder="Search by Name"
+                            placeholder="Search by Name, Client Id  "
                             className="w-full rounded-md p-2.5 border border-gray-300"
                             value={searchTerm}
                             onChange={handleSearch}
                         />
+                        <select
+                            value={rowsPerPage}
+                            onChange={(e) => {
+                                setRowsPerPage(Number(e.target.value));
+                                setCurrentPage(1);
+                            }}
+                            className="border rounded-lg px-3 py-1 text-gray-700 bg-white mt-2  shadow-sm focus:ring-2 focus:ring-blue-400"
+                        >
+                            {optionsPerPage.map((option) => (
+                                <option key={option} value={option}>
+                                    {option}
+                                </option>
+                            ))}
+                        </select>
                     </div>
 
                 </div>
-                <table className="min-w-full border-collapse border border-black rounded-lg">
-                    <thead>
-                        <tr className="bg-[#c1dff2] text-left text-[#4d606b]">
-                            <th className="uppercase border border-black px-4 py-2 text-center">SL</th>
-                            <th className="uppercase border border-black px-4 py-2">Client ID</th>
-                            <th className="uppercase border border-black px-4 py-2">Organization Name</th>
-                            <th className="uppercase border border-black px-4 py-2">Client Spoc</th>
-                            <th className="uppercase border border-black px-4 py-2 text-center">Active Cases</th>
-                            <th className="uppercase border border-black px-4 py-2 text-center" colSpan={2}>Action</th>
-                        </tr>
-                    </thead>
-                    {loading ? (
-                        <tbody className="h-10">
-                            <tr className="">
-                                <td colSpan="10" className="w-full py-10 h-10  text-center">
-                                    <div className="flex justify-center  items-center w-full h-full">
-                                        <div className="loader border-t-4 border-[#2c81ba] rounded-full w-10 h-10 animate-spin"></div>
-                                    </div>
-                                </td>
+                <div className='overflow-x-scroll'>
+                    <table className="min-w-full border-collapse border border-black rounded-lg">
+                        <thead>
+                            <tr className="bg-[#c1dff2] whitespace-nowrap text-left text-[#4d606b]">
+                                <th className="uppercase border border-black px-4 py-2 text-center">SL</th>
+                                <th className="uppercase border border-black px-4 py-2">Client ID</th>
+                                <th className="uppercase border border-black px-4 py-2">Organization Name</th>
+                                <th className="uppercase border border-black px-4 py-2">Client Spoc</th>
+                                <th className="uppercase border border-black px-4 py-2 text-center">Active Cases</th>
+                                <th className="uppercase border border-black px-4 py-2 text-center" colSpan={2}>Action</th>
                             </tr>
-                        </tbody>
-                    ) : (
-                        <tbody>
-                            {filteredData.length > 0 ? (
-                                paginatedData.map((item, index) => (
-                                    <React.Fragment key={item.client_unique_id}>
-                                        <tr className="text-left">
-                                            <td className="border border-black px-4 py-2 text-center">{(currentPage - 1) * rowsPerPage + index + 1}</td>
-                                            <td className="border border-black px-4 py-2">{item.client_unique_id}</td>
-                                            <td className="border border-black px-4 py-2">{item.name || 'N/A'}</td>
-                                            <td className="border border-black px-4 py-2">
-                                                {item.client_spoc_name && item.client_spoc_name.length > 0
-                                                    ? item.client_spoc_name.join(", ")
-                                                    : 'N/A'}
-                                            </td>
-                                            <td className="border border-black px-4 py-2 text-center">{item.application_count}</td>
-
-                                            {item.head_branch_applications_count >= 0 && (
-                                                <td className="border border-black px-4 py-2 text-center">
-                                                    {item.application_count <= item.head_branch_applications_count ? (
-                                                        // Condition 1: Show only Check In button
-                                                        <button
-                                                            className="px-4 py-2 text-white rounded-md font-bold bg-green-500 hover:bg-green-600 hover:scale-105 transition-transform duration-300 ease-in-out transform"
-                                                            onClick={() => handleCheckInGo(item.head_branch_id, item.main_id)}
-                                                        >
-                                                            Check In
-                                                        </button>
-                                                    ) : item.application_count > item.head_branch_applications_count && item.head_branch_applications_count > 0 ? (
-                                                        // Condition 2: Show both Check In and View Branches buttons
-                                                        <>
-                                                            <button
-                                                                className="px-4 py-2 text-white rounded-md font-bold bg-green-500 hover:bg-green-600 hover:scale-105 transition-transform duration-300 ease-in-out transform"
-                                                                onClick={() => handleCheckInGo(item.head_branch_id, item.main_id)}
-                                                            >
-                                                                Check In
-                                                            </button>
-                                                            <button
-                                                                onClick={() => handleCheckIn(item.main_id)}
-                                                                className={`ml-2 px-4 py-2 text-white rounded-md font-bold bg-green-500 hover:bg-green-600 transition-transform duration-300 ease-in-out transform ${isLoading === item.main_id
-                                                                    ? 'opacity-50 cursor-not-allowed'
-                                                                    : activeCases && activeCases.main_id === item.main_id
-                                                                        ? 'bg-red-500 hover:bg-red-600 focus:ring-2 focus:ring-red-300'
-                                                                        : 'bg-green-500 hover:bg-green-600 focus:ring-2 focus:ring-green-300'
-                                                                    } ${!isLoading && 'hover:scale-105'}`}
-                                                                disabled={isLoading === item.main_id}
-                                                            >
-                                                                {activeCases && activeCases.main_id === item.main_id ? 'Less' : 'View Branches'}
-                                                            </button>
-                                                        </>
-                                                    ) : (
-                                                        // Condition 3: Show only View Branches button
-                                                        item.head_branch_applications_count === 0 && item.application_count > 0 && (
-                                                            <button
-                                                                onClick={() => handleCheckIn(item.main_id)}
-                                                                className={`px-4 py-2 text-white rounded-md font-bold bg-green-500 hover:bg-green-600 transition-transform duration-300 ease-in-out transform ${isLoading === item.main_id
-                                                                    ? 'opacity-50 cursor-not-allowed'
-                                                                    : activeCases && activeCases.main_id === item.main_id
-                                                                        ? 'bg-red-500 hover:bg-red-600 focus:ring-2 focus:ring-red-300'
-                                                                        : 'bg-green-500 hover:bg-green-600 focus:ring-2 focus:ring-green-300'
-                                                                    } ${!isLoading && 'hover:scale-105'}`}
-                                                                disabled={isLoading === item.main_id}
-                                                            >
-                                                                {activeCases && activeCases.main_id === item.main_id ? 'Less' : 'View Branches'}
-                                                            </button>
-                                                        )
-                                                    )}
+                        </thead>
+                        {loading ? (
+                            <tbody className="h-10">
+                                <tr className="">
+                                    <td colSpan="10" className="w-full py-10 h-10  text-center">
+                                        <div className="flex justify-center  items-center w-full h-full">
+                                            <div className="loader border-t-4 border-[#2c81ba] rounded-full w-10 h-10 animate-spin"></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        ) : (
+                            <tbody>
+                                {filteredData.length > 0 ? (
+                                    filteredData.map((item, index) => (
+                                        <React.Fragment key={item.client_unique_id}>
+                                            <tr className="text-left">
+                                                <td className="border border-black px-4 py-2 text-center">{(currentPage - 1) * rowsPerPage + index + 1}</td>
+                                                <td className="border border-black px-4 py-2">{item.client_unique_id}</td>
+                                                <td className="border border-black px-4 py-2">{item.name || 'N/A'}</td>
+                                                <td className="border border-black px-4 py-2">
+                                                    {item.client_spoc_name}
                                                 </td>
-                                            )}
-                                            <td className="border border-black text-center px-4  py-2">
-                                                <button
-                                                    onClick={() => handleBlock(item.main_id)}
-                                                    disabled={isBlockLoading && activeId === item.main_id}
-                                                    className={`px-4 py-2 text-white bg-red-500  hover:bg-red-600 font-semibold rounded-md transition-transform duration-300 ease-in-out ${isBlockLoading && activeId === item.main_id
-                                                        ? 'opacity-50 cursor-not-allowed'
-                                                        : 'bg-red-500 hover:bg-red-600 focus:ring-2 focus:ring-red-300 hover:scale-105'
-                                                        }`}
-                                                >
-                                                    {isBlockLoading && activeId === item.main_id ? 'Blocking...' : 'Block'}
-                                                </button>
-                                            </td>
-                                        </tr>
-                                        {activeCases && activeCases.main_id === item.main_id && nonHeadBranchData.length > 0 && (
-                                            <tr className="text-center py-4">
-                                                <td colSpan="8" className="border border-black px-4 py-8">
-                                                    <table className="w-full mt-2">
-                                                        <thead>
-                                                            <tr className="bg-gray-300">
-                                                                <th className=" uppercase border border-black px-4 py-2">SL</th>
-                                                                <th className=" uppercase border border-black px-4 py-2">Branch Name</th>
-                                                                <th className=" uppercase border border-black px-4 py-2">Application count</th>
-                                                                <th className=" uppercase border border-black px-4 py-2">Check in</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            {nonHeadBranchData.map((branch, index) => (
-                                                                <tr key={branch.branch_id}>
-                                                                    <td className="border border-black px-4 py-2">{index + 1}</td>
-                                                                    <td className="border border-black px-4 py-2">{branch.branch_name}</td>
-                                                                    <td className="border border-black px-4 py-2">{branch.application_count}</td>
-                                                                    <td className="border border-black px-4 py-2">
-                                                                        <button
-                                                                            className="px-4 py-2 text-white rounded-md font-bold bg-green-500 hover:bg-green-600 hover:scale-105  transition-transform duration-300 ease-in-out transform "
-                                                                            onClick={() => handleCheckInGo(branch.branch_id, item.main_id, branch.branch_name)}
-                                                                        >
-                                                                            Check In
-                                                                        </button>
-                                                                    </td>
-                                                                </tr>
-                                                            ))}
-                                                        </tbody>
-                                                    </table>
+                                                <td className="border border-black px-4 py-2 text-center">{item.application_count}</td>
+
+                                                {item.head_branch_applications_count >= 0 && (
+                                                    <td className="border border-black px-4 py-2 text-center">
+                                                        <div className='md:block flex whitespace-nowrap'>
+                                                            {item.application_count <= item.head_branch_applications_count ? (
+                                                                // Condition 1: Show only CHECK IN button
+                                                                <button
+                                                                    className="px-4 uppercase py-2 text-white rounded-md font-bold bg-green-500 hover:bg-green-600 hover:scale-105 transition-transform duration-300 ease-in-out transform"
+                                                                    onClick={() => handleCheckInGo(item.head_branch_id, item.main_id)}
+                                                                >
+                                                                    CHECK IN
+                                                                </button>
+                                                            ) : item.application_count > item.head_branch_applications_count && item.head_branch_applications_count > 0 ? (
+                                                                // Condition 2: Show both CHECK IN and VIEW BRANCHES buttons
+                                                                <>
+                                                                    <button
+                                                                        className="px-4 py-2 text-white rounded-md font-bold bg-green-500 hover:bg-green-600 hover:scale-105 transition-transform duration-300 ease-in-out transform"
+                                                                        onClick={() => handleCheckInGo(item.head_branch_id, item.main_id)}
+                                                                    >
+                                                                        CHECK IN
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => handleCheckIn(item.main_id)}
+                                                                        className={`ml-2 px-4 py-2 text-white rounded-md font-bold bg-green-500 hover:bg-green-600 transition-transform duration-300 ease-in-out transform ${isLoading === item.main_id
+                                                                            ? 'opacity-50 cursor-not-allowed'
+                                                                            : activeCases && activeCases.main_id === item.main_id
+                                                                                ? 'bg-red-500 hover:bg-red-600 focus:ring-2 focus:ring-red-300'
+                                                                                : 'bg-green-500 hover:bg-green-600 focus:ring-2 focus:ring-green-300'
+                                                                            } ${!isLoading && 'hover:scale-105'}`}
+                                                                        disabled={isLoading === item.main_id}
+                                                                    >
+                                                                        {activeCases && activeCases.main_id === item.main_id ? 'Less' : 'VIEW BRANCHES'}
+                                                                    </button>
+                                                                </>
+                                                            ) : (
+                                                                // Condition 3: Show only VIEW BRANCHES button
+                                                                item.head_branch_applications_count === 0 && item.application_count > 0 && (
+                                                                    <button
+                                                                        onClick={() => handleCheckIn(item.main_id)}
+                                                                        className={`px-4 py-2 text-white rounded-md font-bold bg-green-500 hover:bg-green-600 transition-transform duration-300 ease-in-out transform ${isLoading === item.main_id
+                                                                            ? 'opacity-50 cursor-not-allowed'
+                                                                            : activeCases && activeCases.main_id === item.main_id
+                                                                                ? 'bg-red-500 hover:bg-red-600 focus:ring-2 focus:ring-red-300'
+                                                                                : 'bg-green-500 hover:bg-green-600 focus:ring-2 focus:ring-green-300'
+                                                                            } ${!isLoading && 'hover:scale-105'}`}
+                                                                        disabled={isLoading === item.main_id}
+                                                                    >
+                                                                        {activeCases && activeCases.main_id === item.main_id ? 'Less' : 'VIEW BRANCHES'}
+                                                                    </button>
+                                                                )
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                )}
+
+                                                <td className="border border-black text-center px-4  py-2">
+                                                    <button
+                                                        onClick={() => handleBlock(item.main_id)}
+                                                        disabled={isBlockLoading && activeId === item.main_id}
+                                                        className={`px-4 py-2 text-white bg-red-500  hover:bg-red-600 font-semibold rounded-md transition-transform duration-300 ease-in-out ${isBlockLoading && activeId === item.main_id
+                                                            ? 'opacity-50 cursor-not-allowed'
+                                                            : 'bg-red-500 hover:bg-red-600 focus:ring-2 focus:ring-red-300 hover:scale-105'
+                                                            }`}
+                                                    >
+                                                        {isBlockLoading && activeId === item.main_id ? 'Blocking...' : 'Block'}
+                                                    </button>
                                                 </td>
                                             </tr>
-                                        )}
-                                    </React.Fragment>
-                                ))
-                            ) : (
-                                <tr>
-                                    <td colSpan="6" className="text-center p-4">You have no data</td>
-                                </tr>
-                            )}
-                        </tbody>
-                    )}
-                </table>
+                                            {activeCases && activeCases.main_id === item.main_id && nonHeadBranchData.length > 0 && (
+                                                <tr className="text-center py-4">
+                                                    <td colSpan="8" className="border border-black px-4 py-8">
+                                                        <table className="w-full mt-2">
+                                                            <thead>
+                                                                <tr className="bg-gray-300">
+                                                                    <th className=" uppercase border border-black px-4 py-2">SL</th>
+                                                                    <th className=" uppercase border border-black px-4 py-2">Branch Name</th>
+                                                                    <th className=" uppercase border border-black px-4 py-2">Application count</th>
+                                                                    <th className=" uppercase border border-black px-4 py-2">CHECK IN</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                {nonHeadBranchData.map((branch, index) => (
+                                                                    <tr key={branch.branch_id}>
+                                                                        <td className="border border-black px-4 py-2">{index + 1}</td>
+                                                                        <td className="border border-black px-4 py-2">{branch.branch_name}</td>
+                                                                        <td className="border border-black px-4 py-2">{branch.application_count}</td>
+                                                                        <td className="border border-black px-4 py-2">
+                                                                            <button
+                                                                                className="px-4 py-2 text-white rounded-md font-bold bg-green-500 hover:bg-green-600 hover:scale-105  transition-transform duration-300 ease-in-out transform "
+                                                                                onClick={() => handleCheckInGo(branch.branch_id, item.main_id, branch.branch_name)}
+                                                                            >
+                                                                                CHECK IN
+                                                                            </button>
+                                                                        </td>
+                                                                    </tr>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </React.Fragment>
+                                    ))
+                                ) : (
+                                    <td colSpan="6" className="text-center text-red-500 p-4">
+                                        {responseError && responseError !== "" ? responseError : "No data available in table"}
+                                    </td>
+                                )}
+                            </tbody>
+                        )}
+                    </table>
+                </div>
                 <div className="flex justify-between items-center mt-4">
                     <button
                         onClick={() => handlePageChange(currentPage - 1)}

@@ -1,18 +1,96 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, forwardRef,useCallback, useRef } from 'react';
 import Swal from 'sweetalert2'
 import axios from 'axios';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import 'swiper/css'; // Correct import path for CSS
 import { Navigation, Thumbs } from 'swiper'; // Import modules directly
 import { useNavigate } from "react-router-dom";
-import { FaChevronLeft } from 'react-icons/fa';
+import { FaChevronLeft, FaLaptopHouse } from 'react-icons/fa';
 import { jsPDF } from 'jspdf';
+import { useApiLoading } from '../ApiLoadingContext';
+import PDFuser from "../../imgs/PDFuser.png"
+import Select from "react-select";
+
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
+import { format, parseISO,parse , isValid } from 'date-fns';
+
+const optionsData = [
+    { label: "Category 1", options: [{ value: "option1", text: "Option 1" }, { value: "option2", text: "Option 2" }] },
+    { label: "Category 2", options: [{ value: "option3", text: "Option 3" }, { value: "option4", text: "Option 4" }] },
+];
+
+const MultiSelect = ({ id, name, value, onChange, options, isDisabled }) => {
+    const groupedOptions = options.map((group) => ({
+        label: group.label,
+        options: group.options.map((option) => ({
+            value: option.value,
+            label: option.text,
+        })),
+    }));
+
+    const handleChange = (selectedOptions) => {
+        const values = selectedOptions ? selectedOptions.map((option) => option.value) : [];
+        onChange(name, values);
+    };
+
+    return (
+        <Select
+            isMulti
+            id={id}
+            name={name}
+            options={groupedOptions}
+            value={groupedOptions.flatMap((group) =>
+                group.options.filter((option) => value.includes(option.value))
+            )}
+            onChange={handleChange}
+            isDisabled={isDisabled} // <-- Add this line
+            placeholder="NA"
+            classNamePrefix="react-select text-xl"
+            styles={{
+                control: (base) => ({
+                    ...base,
+                    border: "1px solid #D1D5DB",
+                    borderRadius: "6px",
+                    padding: "8px",
+                    boxShadow: "none",
+                    fontSize: "20px"
+                }),
+            }}
+        />
+    );
+};
+
+
 const GenerateReport = () => {
+    const [isAllEmpty, setIsAllEmpty] = useState(false);
+    const parseDate = (value) => {
+        if (!value) return null;
+        try {
+            const date = parseISO(value);
+            return isValid(date) ? date : null;
+        } catch {
+            return null;
+        }
+    };
+    const parseAndValidateDate = (value) => {
+        if (!value) return null;
+        const date = typeof value === 'string' ? parseISO(value) : new Date(value);
+        return isValid(date) ? date : null;
+    };
+    const [isAllCompleted, setIsAllCompleted] = useState(false);
+
+    const [selectedCheckbox, setSelectedCheckbox] = useState('')
+    const { validateAdminLogin, setApiLoading, apiLoading } = useApiLoading();
+    const [checkboxState, setCheckboxState] = useState({});
+
     const navigate = useNavigate();
     const [submittedData, setSubmittedData] = useState(null); // State to hold submitted data
     const [files, setFiles] = useState([]);
     const [serpreviewfiles, setSerpreviewfiles] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [submitLoading, setSubmitLoading] = useState(false);
+    const [adminNamesNew, setAdminNamesNew] = useState([]);
     const [servicesForm, setServicesForm] = useState('');
     const [applicationRefID, setApplicationRefID] = useState('');
     const [servicesDataInfo, setServicesDataInfo] = useState('');
@@ -32,22 +110,77 @@ const GenerateReport = () => {
     const inputRefs = useRef({});
     const [myDataQc, setMyDataQc] = useState("");
     const [cmtData, setCmtData] = useState([]);
-    console.log('myvisivblefeilds', visibleFeilds)
     const [cmdDates, setCmdDates] = useState({
         dob: "",
         initiationDate: "",
     });
     const [isNotMandatory, setIsNotMandatory] = useState(false);
     const [formData, setFormData] = useState({
+        client_organization_name : '',
+        client_applicant_name  : '',
+        client_applicant_gender : '',
+        client_organization_code : '',
         updated_json: {
+            month_year: '',
+            initiation_date: '',
+            organization_name: '',
+            verification_purpose: '',
+            employee_id: '',
+            client_code: '',
+            applicant_name: '',
+            contact_number: '',
+            contact_number2: '',
+            father_name: '',
+            spouse_name: '',
+            dob: '',
+            gender: '',
+            marital_status: '',
+            nationality: '',
+            QC_Date: '',
+            QC_Analyst_Name: '',
+            data_entry_analyst_name: '',
+            date_of_data: '',
+            insuff: '',
+            address: {
+                address_house_no: "",
+                address_floor: " ",
+                address_cross: " ",
+                address_street: "",
+                address_main: "",
+                address_area: " ",
+                address_locality: "",
+                address_city: "",
+                address_landmark: " ",
+                address_taluk: "",
+                address_district: "",
+                address_state: "",
+                address_pin_code: ""
+            },
+
+            permanent_address: {
+                permanent_address: "",
+                permanent_address_house_no: "",
+                permanent_address_floor: "",
+                permanent_address_cross: "",
+                permanent_address_street: "",
+                permanent_address_main: "",
+                permanent_address_area: "",
+                permanent_address_locality: "",
+                permanent_address_city: "",
+                permanent_address_landmark: "",
+                permanent_address_taluk: "",
+                permanent_address_district: "",
+                permanent_address_state: "",
+                permanent_address_pin_code: ""
+            },
             insuffDetails: {
-                first_insufficiency_marks: '',
+                first_insufficiency_marks: [],
                 first_insuff_date: '',
                 first_insuff_reopened_date: '',
-                second_insufficiency_marks: '',
+                second_insufficiency_marks: [],
                 second_insuff_date: '',
                 second_insuff_reopened_date: '',
-                third_insufficiency_marks: '',
+                third_insufficiency_marks: [],
                 third_insuff_date: '',
                 third_insuff_reopened_date: '',
                 overall_status: '',
@@ -55,8 +188,7 @@ const GenerateReport = () => {
                 report_status: '',
                 report_type: '',
                 final_verification_status: '',
-                is_verify: '',
-                component_status: '',
+                is_verify: 'no',
                 deadline_date: '',
                 insuff_address: '',
                 basic_entry: '',
@@ -73,7 +205,7 @@ const GenerateReport = () => {
                 report_generate_by: '',
                 qc_done_by: '',
                 qc_date: '',
-                delay_reason: '',
+                delay_reason: [],
             },
         },
     });
@@ -91,7 +223,7 @@ const GenerateReport = () => {
     };
     const [selectedStatuses, setSelectedStatuses] = useState([]);
 
-    // Initialize `selectedStatuses` only if it's empty or if `servicesDataInfo` changes length
+    // console.log('servicesDataInfo', servicesDataInfo, selectedStatuses)
     useEffect(() => {
         if (servicesDataInfo && servicesDataInfo.length > 0) {
             // Check if selectedStatuses has been initialized already to avoid resetting
@@ -104,18 +236,33 @@ const GenerateReport = () => {
             }
         }
     }, [servicesDataInfo]); // Only trigger when `servicesDataInfo` changes
-
     const handleStatusChange = (e, index) => {
+        const value = e.target.value;
+        if (value.trim() === "") return; // Ignore empty values
+
         const updatedStatuses = [...selectedStatuses];
-        updatedStatuses[index] = e.target.value;
+        updatedStatuses[index] = value;
         setSelectedStatuses(updatedStatuses);
+
+        // Check if there are any non-empty values
+        const allEmpty = updatedStatuses.every(status => status === '');
+        setIsAllEmpty(allEmpty);
     };
 
-    // Check if all statuses are 'completed' (as per your original logic)
-    const allCompleted = selectedStatuses.every(status =>
-        status && status.includes('completed')
-    );
 
+    console.log('statusss', selectedStatuses);
+    console.log('isAllEmpty', isAllEmpty);
+
+    useEffect(() => {
+        const allCompleted = selectedStatuses.every(status =>
+            status === '' || status.includes('completed') || status.includes('nil')
+        ) && !selectedStatuses.every(status => status === '');
+
+        setIsAllCompleted(allCompleted);
+    }, [selectedStatuses]);
+
+
+    console.log('allCompleted', isAllCompleted)
     const handleFileChange = async (index, dbTable, fileName, e) => {
         const selectedFiles = Array.from(e.target.files);
 
@@ -155,7 +302,19 @@ const GenerateReport = () => {
 
 
     const fromTat = new URLSearchParams(window.location.search).get('from-tat');
+    const redirectAfterSuccess = () => {
+        const branchidFromUrl = new URLSearchParams(window.location.search).get('branchid');
+        const clientIdFromUrl = new URLSearchParams(window.location.search).get('clientId');
 
+        const branchId = branchidFromUrl || cmtData.branch_id;
+        const customerId = clientIdFromUrl || cmtData.customer_id;
+
+        if (fromTat == 1) {
+            navigate("/admin-tat-reminder");
+        } else {
+            navigate(`/admin-chekin?clientId=${customerId}&branchId=${branchId}`);
+        }
+    };
     // Set referenceId only once when applicationId changes
     useEffect(() => {
         if (applicationId) setReferenceId(applicationId);
@@ -163,11 +322,13 @@ const GenerateReport = () => {
 
     const fetchServicesJson = useCallback(async (servicesList) => {
         setLoading(true);
+        setApiLoading(true);
         const adminId = JSON.parse(localStorage.getItem("admin"))?.id;
         const token = localStorage.getItem("_token");
 
         // Return an empty array if servicesList is empty or undefined
         if (!servicesList || servicesList.length === 0) {
+            setApiLoading(false);
             setLoading(false);
             console.warn("Services list is empty.");
             return [];
@@ -186,6 +347,8 @@ const GenerateReport = () => {
 
             if (response.ok) {
                 setLoading(false);
+                setApiLoading(false);
+
                 const result = await response.json();
 
                 // Update the token if a new one is provided
@@ -195,15 +358,36 @@ const GenerateReport = () => {
                 }
 
                 // Filter out null or invalid items
-                const filteredResults = result.results.filter((item) => item != null);
+                const filteredResults = result.results.filter((item) => item !== null && item.serviceStatus !== false);
                 setServicesDataInfo(filteredResults);
+
+
+                if (result?.results?.length) {
+                    const newCheckboxState = {};
+
+                    result.results.forEach((item) => {
+                        if (item.annexureData) {
+                            Object.keys(item.annexureData).forEach((key) => {
+                                if (key.startsWith("checkbox_annexure_")) {
+                                    newCheckboxState[key] = item.annexureData[key];
+                                }
+                            });
+                        }
+                    });
+
+                    setCheckboxState(newCheckboxState);
+                }
                 return filteredResults;
             } else {
+                setApiLoading(false);
+
                 setLoading(false);
                 console.error("Failed to fetch service data:", response.statusText);
                 return [];
             }
         } catch (error) {
+            setApiLoading(false);
+
             setLoading(false);
             console.error("Error fetching service data:", error);
             return [];
@@ -213,7 +397,7 @@ const GenerateReport = () => {
     },
         []);
 
-
+    // console.log('checkboxState', checkboxState)
     function parseAndConvertDate(inputDate) {
         // Try parsing with the built-in Date constructor
         let parsedDate = new Date(inputDate);
@@ -249,6 +433,19 @@ const GenerateReport = () => {
         const day = String(d.getDate()).padStart(2, '0');
         return `${year}-${month}-${day}`;
     };
+    const formatDateDDMMYY = (date) => {
+    if (!date) return null;
+
+    const d = new Date(date);
+    if (isNaN(d)) return null; // Handles invalid date strings
+
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    
+    return `${day}-${month}-${year}`;
+};
+
     const fetchApplicationData = useCallback(() => {
         const adminId = JSON.parse(localStorage.getItem("admin"))?.id;
         const token = localStorage.getItem('_token');
@@ -267,11 +464,16 @@ const GenerateReport = () => {
                 }
                 const applicationData = result.application;
                 const cmtData = result.CMTData || [];
+                if (!cmtData.deadline_date) {
+                    cmtData.deadline_date = cmtData.new_deadline_date;
+                }
                 const services = applicationData.services;
                 setApplicantImage(applicationData.photo);
                 fetchServicesJson(services);
                 setServicesForm(services);
                 setServicesData(result);
+                const uniqueNames = [...new Set(result.admins.map(admin => admin.name))];
+                setAdminNamesNew(uniqueNames);
                 setBranchInfo(result.branchInfo);
                 setCustomerInfo(result.customerInfo);
                 const visiblefeilds = JSON.parse(result.customerInfo.visible_fields);
@@ -296,7 +498,69 @@ const GenerateReport = () => {
                 // It's essential to track the most updated `cmdDates`
                 setFormData((prevFormData) => ({
                     ...prevFormData,
+                    client_organization_name : applicationData.customer_name || result.branchInfo.name || prevFormData.client_organization_name || '',
+                    client_applicant_name : applicationData.name || prevFormData.updated_json.name || '',
+                    client_applicant_gender : applicationData.gender || prevFormData.client_applicant_gender || '' ,
+                    client_organization_code : result.customerInfo.client_unique_id || cmtData.client_code || prevFormData.updated_json.client_code || '',
                     updated_json: {
+                        month_year: cmtData.month_year || applicationData.month_year || prevFormData.updated_json.month_year || '',
+                        verification_purpose: cmtData.verification_purpose || prevFormData.updated_json.verification_purpose || '',
+                        employee_id: cmtData.employee_id || applicationData.employee_id || prevFormData.updated_json.employee_id || '',
+                        contact_number: cmtData.contact_number || prevFormData.updated_json.contact_number || '',
+                        contact_number2: cmtData.contact_number2 || prevFormData.updated_json.contact_number2 || '',
+                        spouse_name: cmtData.spouse_name || prevFormData.updated_json.spouse_name || '',
+                        nationality: cmtData.nationality || prevFormData.updated_json.nationality || '',
+                        QC_Date: cmtData?.QC_Date
+                            ? new Date(cmtData.QC_Date).toISOString().split('T')[0]
+                            : (prevFormData?.updated_json?.QC_Date
+                                ? new Date(prevFormData.updated_json.QC_Date).toISOString().split('T')[0]
+                                : ''),
+                        QC_Analyst_Name: cmtData.QC_Analyst_Name || prevFormData.updated_json.QC_Analyst_Name || '',
+                        data_entry_analyst_name: cmtData.data_entry_analyst_name || prevFormData.updated_json.data_entry_analyst_name || '',
+                        date_of_data: cmtData.date_of_data || prevFormData.updated_json.date_of_data || '',
+                        father_name: cmtData.father_name || prevFormData.updated_json.father_name || '',
+                        initiation_date: cmtData?.initiation_date
+                            ? new Date(cmtData.initiation_date).toISOString().split('T')[0]
+                            : (prevFormData?.updated_json?.insuffDetails?.initiation_date
+                                ? new Date(prevFormData.updated_json.insuffDetails.initiation_date).toISOString().split('T')[0]
+                                : ''),
+                        dob: cmtData?.dob
+                            ? new Date(cmtData.dob).toISOString().split('T')[0]
+                            : (prevFormData?.updated_json?.insuffDetails?.dob
+                                ? new Date(prevFormData.updated_json.insuffDetails.dob).toISOString().split('T')[0]
+                                : ''),
+                        marital_status: cmtData.marital_status || prevFormData.updated_json.marital_status || '',
+                        insuff: cmtData.insuff || prevFormData.updated_json.insuff || '',
+                        address: {
+                            address: cmtData.address || prevFormData.updated_json.address.address || '',
+                            address_floor: cmtData.address_floor || prevFormData.updated_json.address.address_floor || '',
+                            address_cross: cmtData.address_cross || prevFormData.updated_json.address.address_cross || '',
+                            address_street: cmtData.address_street || prevFormData.updated_json.address.address_street || '',
+                            address_main: cmtData.address_main || prevFormData.updated_json.address.address_main || '',
+                            address_area: cmtData.address_area || prevFormData.updated_json.address.address_area || '',
+                            address_locality: cmtData.address_locality || prevFormData.updated_json.address.address_locality || '',
+                            address_city: cmtData.address_city || prevFormData.updated_json.address.address_city || '',
+                            address_landmark: cmtData.address_landmark || prevFormData.updated_json.address.address_landmark || '',
+                            address_taluk: cmtData.address_taluk || prevFormData.updated_json.address.address_taluk || '',
+                            residence_mobile_number: cmtData.residence_mobile_number || prevFormData.updated_json.address.residence_mobile_number || '',
+                            address_state: cmtData.address_state || prevFormData.updated_json.address.address_state || '',
+                            address_pin_code: cmtData.address_pin_code || prevFormData.updated_json.address.address_pin_code || '',
+                        },
+                        permanent_address: {
+                            permanent_sender_name: cmtData.permanent_sender_name || prevFormData.updated_json.permanent_address.permanent_sender_name || '',
+                            permanent_receiver_name: cmtData.permanent_receiver_name || prevFormData.updated_json.permanent_address.permanent_receiver_name || '',
+                            permanent_address: cmtData.permanent_address || prevFormData.updated_json.permanent_address.permanent_address || '',
+                            permanent_address_street: cmtData.permanent_address_street || prevFormData.updated_json.permanent_address.permanent_address_street || '',
+                            permanent_address_main: cmtData.permanent_address_main || prevFormData.updated_json.permanent_address.permanent_address_main || '',
+                            permanent_address_area: cmtData.permanent_address_area || prevFormData.updated_json.permanent_address.permanent_address_area || '',
+                            permanent_address_locality: cmtData.permanent_address_locality || prevFormData.updated_json.permanent_address.permanent_address_locality || '',
+                            permanent_address_city: cmtData.permanent_address_city || prevFormData.updated_json.permanent_address.permanent_address_city || '',
+                            permanent_address_landmark: cmtData.permanent_address_landmark || prevFormData.updated_json.permanent_address.permanent_address_landmark || '',
+                            permanent_address_taluk: cmtData.permanent_address_taluk || prevFormData.updated_json.permanent_address.permanent_address_taluk || '',
+                            permanent_address_district: cmtData.permanent_address_district || prevFormData.updated_json.permanent_address.permanent_address_district || '',
+                            permanent_address_state: cmtData.permanent_address_state || prevFormData.updated_json.permanent_address.permanent_address_state || '',
+                            permanent_address_pin_code: cmtData.permanent_address_pin_code || prevFormData.updated_json.permanent_address.permanent_address_pin_code || '',
+                        },
                         insuffDetails: {
                             first_insufficiency_marks: cmtData.first_insufficiency_marks || prevFormData.updated_json.insuffDetails.first_insufficiency_marks || '',
                             first_insuff_date: (cmtData.first_insuff_date && !isNaN(new Date(cmtData.first_insuff_date).getTime()))
@@ -354,15 +618,14 @@ const GenerateReport = () => {
                                     ? parseAndConvertDate(prevFormData.updated_json.insuffDetails.report_date)
                                     : null),
 
-                            report_status: cmtData.report_status ? cmtData.report_status : prevFormData.updated_json.insuffDetails.report_status,
+                            report_status: cmtData.report_status ? cmtData.report_status : prevFormData.updated_json.insuffDetails.report_status || 'open',
 
-                            report_type: cmtData.report_type ? cmtData.report_type : prevFormData.updated_json.insuffDetails.report_type,
+                            report_type: cmtData.report_type ? cmtData.report_type : prevFormData.updated_json.insuffDetails.report_type || 'interim_report',
 
-                            final_verification_status: cmtData.final_verification_status ? cmtData.final_verification_status : prevFormData.updated_json.insuffDetails.final_verification_status,
+                            final_verification_status: cmtData.final_verification_status ? cmtData.final_verification_status : prevFormData.updated_json.insuffDetails.final_verification_status || 'green',
 
-                            is_verify: cmtData.is_verify ? cmtData.is_verify : prevFormData.updated_json.insuffDetails.is_verify,
+                            is_verify: cmtData.is_verify ? cmtData.is_verify : prevFormData.updated_json.insuffDetails.is_verify || 'no',
 
-                            component_status: cmtData.component_status ? cmtData.component_status : prevFormData.updated_json.insuffDetails.component_status,
 
                             deadline_date: (cmtData.deadline_date && !isNaN(new Date(cmtData.deadline_date).getTime()))
                                 ? parseAndConvertDate(cmtData.deadline_date)
@@ -403,16 +666,20 @@ const GenerateReport = () => {
 
                             // Repeat for the rest of insuffDetails...
                             // Add additional fields similarly...
-                        },
+                        }
+
                     }
                 }));
-                setMyDataQc(myDataQc || applicationData.is_data_qc)
+                setMyDataQc(applicationData.is_data_qc || myDataQc)
             })
             .catch((error) => {
+                setApiLoading(false);
+
                 setLoading(false);
                 console.error('Error fetching application data:', error);
             });
-    }, [applicationId, branchid, fetchServicesJson, setServicesForm, setServicesData, setBranchInfo, setCustomerInfo, setFormData, setLoading]);
+
+    }, [applicationId, branchid, fetchServicesJson, setApiLoading, setServicesForm, setServicesData, setBranchInfo, setCustomerInfo, setFormData, setLoading]);
 
     const handleChange = (e) => {
         const { name, value, type, options } = e.target;
@@ -469,7 +736,14 @@ const GenerateReport = () => {
                     const topLevelField = name.replace('updated_json.', '');
                     updatedFormData.updated_json[topLevelField] = value;
                 }
+                else{
+                    setFormData((prevData) => ({
+                        ...prevData,
+                        [name]: value,
+                    }));
+                }
             }
+            // console.log('updatedFormData', updatedFormData)
             return updatedFormData;
         });
     };
@@ -479,10 +753,12 @@ const GenerateReport = () => {
 
     const fetchAdminList = useCallback(() => {
         setLoading(true);
+        setApiLoading(true);
         const admin_id = JSON.parse(localStorage.getItem("admin"))?.id;
         const storedToken = localStorage.getItem("_token");
 
         if (!admin_id || !storedToken) {
+            setApiLoading(false);
             setLoading(false);
             console.error("Admin ID or token not found in local storage");
             return;
@@ -500,9 +776,11 @@ const GenerateReport = () => {
         fetch(url, requestOptions)
             .then((response) => {
                 if (!response.ok) {
+                    setApiLoading(false);
                     setLoading(false);
                     throw new Error(`HTTP error! Status: ${response.status}`);
                 }
+                setApiLoading(true);
                 setLoading(true);
                 return response.json(); // Parse response JSON
             })
@@ -521,17 +799,20 @@ const GenerateReport = () => {
                     setAdminNames(spocsWithIds);
                 } else {
                     setLoading(false);
+                    setApiLoading(false);
 
                     console.error("Error:", data.message || "Invalid response structure");
                 }
             })
             .catch((error) => {
                 setLoading(false);
+                setApiLoading(false);
 
                 console.error("Fetch error:", error.message);
             })
             .finally(() => {
                 setLoading(true);
+                setApiLoading(false);
 
             });
     }, []);
@@ -619,6 +900,7 @@ const GenerateReport = () => {
             }
         }
     };
+
     const handleDataQCChange = (e) => {
         const value = e.target.value;
         setMyDataQc(value);
@@ -635,20 +917,15 @@ const GenerateReport = () => {
         if (!formData.updated_json.insuffDetails.overall_status) {
             newErrors.overall_status = "Overall Status is required.";
         }
-
-        // Validate first_insuff_reopened_date
-        if (!formData.updated_json.insuffDetails.first_insuff_reopened_date) {
-            newErrors.first_insuff_reopened_date = "This field is required.";
+        var myDataQc = document.getElementById("myData_qc").value;
+        if (!myDataQc) {
+            newErrors.myData_qc = "Data QC is required.";
         }
-        // var myDataQc = document.getElementById("myData_qc").value;
-        // if (!myDataQc) {
-        //     newErrors.myData_qc = "Data QC is required.";
-        // }
 
         if (Array.isArray(servicesDataInfo)) {
             servicesDataInfo.forEach((serviceData, index) => {
                 if (serviceData.serviceStatus) {
-                    const formJson = JSON.parse(serviceData.reportFormJson.json);
+                    const formJson = JSON.parse(serviceData?.reportFormJson?.json);
                     const selectedStatus = selectedStatuses[index];
 
                     // Check if status is selected
@@ -663,7 +940,7 @@ const GenerateReport = () => {
 
 
         setErrors(newErrors);
-        console.log('errrors', errors)
+        // console.log('errrors', errors)
 
 
         if (Object.keys(newErrors).length > 0) {
@@ -673,11 +950,41 @@ const GenerateReport = () => {
 
         return Object.keys(newErrors).length === 0;
     };
+    const formatAddress = (address, groupSize = 3) => {
+        if (!address?.trim()) return ""; // Return empty string if no address
 
+        const parts = address.split(",").map(part => part.trim());
+        let formattedAddress = [];
+
+        for (let i = 0; i < parts.length; i += groupSize) {
+            formattedAddress.push(parts.slice(i, i + groupSize).join(", "));
+        }
+
+        return formattedAddress.join("<br>"); // Join with line breaks for HTML
+    };
+
+    const getAddressHTML = (customerInfo) => {
+        const customAddress = customerInfo?.custom_address?.trim();
+        const hasCustomAddress = !!customAddress;
+
+        return hasCustomAddress
+            ? formatAddress(customAddress) // If custom address exists, format it
+            : ` 
+                <div class="sspltd" style="text-align: left; margin-top:10px; font-size: 16px; font-weight: bold;">
+                     ${cmtData.organization_name || "Screeningstar Solutions Pvt Ltd"}
+                </div>
+                <div class="address" style="text-align: left;margin-top: 5px; font-size: 18px; font-weight: bold;">
+                    No 93/9, Varthur Main Road, Marathahalli, Bangalore, Karnataka
+                </div>
+                <div class="address" style="text-align: left;margin-top: 5px; font-size: 18px; font-weight: bold;margin-bottom: 50px;">
+                    India, Pin Code - 560037
+                </div>
+            `;
+    };
 
 
     const handleSubmit = useCallback(async (e) => {
-        console.log("Submission triggered");
+        // console.log("Submission triggered");
         e.preventDefault();
         window.scrollTo({
             top: 0,
@@ -686,48 +993,70 @@ const GenerateReport = () => {
         const fileEntries = Object.entries(files);
         const fileCount = fileEntries.length;
         if (isNotMandatory || validate()) {
-            console.log("Validation passed");
+            // console.log("Validation passed");
+            setApiLoading(true);
             setLoading(true);
+            setSubmitLoading(true);
             try {
                 const adminData = JSON.parse(localStorage.getItem("admin"));
                 const token = localStorage.getItem("_token");
                 const validServicesDataInfo = Array.isArray(servicesDataInfo) ? servicesDataInfo : [];
-
-                console.log("Admin Data:", adminData);
-                console.log("Token:", token);
-                console.log("Services Data Info:", validServicesDataInfo);
-
+                console.log('servicesDataInfo', servicesDataInfo)
+                // console.log("Admin Data:", adminData);
+                // console.log("Token:", token);
+                // console.log("Services Data Info:", validServicesDataInfo);
                 const submissionData = validServicesDataInfo
                     .map((serviceData, index) => {
                         if (serviceData.serviceStatus) {
+                            // console.log(`Processing service at index ${index}`);
+
                             const formJson = serviceData.reportFormJson?.json
                                 ? JSON.parse(serviceData.reportFormJson.json)
                                 : null;
+                            // console.log('Form JSON:', formJson);
+
                             if (!formJson) {
                                 console.warn(`Invalid formJson for service at index ${index}`);
                                 return null;
                             }
 
                             const annexure = {};
+                            // console.log('Initial annexure:', annexure);
 
                             formJson.rows.forEach((row) => {
+                                // console.log('Processing row:', row);
                                 row.inputs.forEach((input) => {
+                                    // console.log('Processing input:', input);
                                     let fieldName = input.name;
                                     const fieldValue =
                                         serviceData.annexureData && serviceData.annexureData.hasOwnProperty(fieldName)
                                             ? serviceData.annexureData[fieldName]
                                             : "";
+                                    // console.log(`Field name: ${fieldName}, Field value: ${fieldValue}`);
 
                                     const tableKey = formJson.db_table;
+                                    // console.log('Table key:', tableKey);
 
                                     if (fieldName.endsWith("[]")) {
                                         fieldName = fieldName.slice(0, -2);
+                                        // console.log('Trimmed field name:', fieldName);
                                     }
 
-                                    if (fieldName.startsWith("annexure.")) {
-                                        const [, category, key] = fieldName.split(".");
-                                        if (!annexure[category]) annexure[category] = {};
-                                        annexure[category][key] = fieldValue;
+                                    if (fieldName.startsWith("annexure_")) {
+                                        const annexureCheckboxName = `checkbox_${fieldName}`;
+                                        console.log("Generated annexureCheckboxName:", annexureCheckboxName);
+
+                                        const annexureCheckboxValue =
+                                            serviceData.annexureData &&
+                                                serviceData.annexureData.hasOwnProperty(annexureCheckboxName) &&
+                                                [1, "1", true].includes(serviceData.annexureData[annexureCheckboxName])
+                                                ? true
+                                                : false;
+
+                                        console.log(`Determined annexureCheckboxValue for ${annexureCheckboxName}:`, annexureCheckboxValue);
+
+                                        annexure[tableKey][annexureCheckboxName] = annexureCheckboxValue;
+                                        console.log(`Stored annexureCheckboxValue under annexure[${tableKey}][${annexureCheckboxName}]`);
                                     } else {
                                         if (!annexure[tableKey]) annexure[tableKey] = {};
                                         annexure[tableKey][fieldName] = fieldValue;
@@ -735,19 +1064,28 @@ const GenerateReport = () => {
                                 });
                             });
 
+
                             const category = formJson.db_table;
                             const status = selectedStatuses?.[index] || "";
+
+                            const checkboxStatus = selectedCheckbox?.[index] || 0;
+
                             if (annexure[category]) {
                                 annexure[category].status = status;
+                                // console.log(`Added status to annexure[${category}]:`, annexure[category].status);
                             }
 
                             return { annexure };
                         }
+
+                        // console.log(`Skipping service at index ${index} due to serviceStatus being false`);
                         return null;
                     })
                     .filter((service) => service !== null);
 
-                console.log("Submission Data:", submissionData);
+                console.log('Final submissionData:', submissionData);
+
+                // console.log("Submission Data:", submissionData);
                 const rawFilteredSubmissionData = submissionData.filter((item) => item !== null);
                 const filteredSubmissionData = rawFilteredSubmissionData.reduce(
                     (acc, item) => ({ ...acc, ...item.annexure }),
@@ -763,7 +1101,7 @@ const GenerateReport = () => {
                     });
                 });
 
-                console.log("Filtered Submission Data:", filteredSubmissionData);
+                // console.log("Filtered Submission Data:", filteredSubmissionData);
 
                 const replaceEmptyWithNull = (obj) => {
                     for (let key in obj) {
@@ -777,14 +1115,41 @@ const GenerateReport = () => {
                     }
                     return obj;
                 };
+                const isStringified = (value) =>
+                    typeof value === "string" && (value.startsWith("{") || value.startsWith("["));
 
-                const modifiedFormData = replaceEmptyWithNull({ ...formData });
+                const safeStringify = (value) =>
+                    isStringified(value) ? value : JSON.stringify(value ?? ""); // Handle null/undefined safely
+
+                const modifiedFormData = {
+                    ...formData,
+                    updated_json: {
+                        ...formData.updated_json,
+                        insuffDetails: {
+                            ...formData.updated_json.insuffDetails,
+                            first_insufficiency_marks: typeof formData.updated_json.insuffDetails.first_insufficiency_marks === 'string'
+                                ? formData.updated_json.insuffDetails.first_insufficiency_marks
+                                : JSON.stringify(formData.updated_json.insuffDetails.first_insufficiency_marks),
+                            second_insufficiency_marks: typeof formData.updated_json.insuffDetails.second_insufficiency_marks === 'string'
+                                ? formData.updated_json.insuffDetails.second_insufficiency_marks
+                                : JSON.stringify(formData.updated_json.insuffDetails.second_insufficiency_marks),
+                            third_insufficiency_marks: typeof formData.updated_json.insuffDetails.third_insufficiency_marks === 'string'
+                                ? formData.updated_json.insuffDetails.third_insufficiency_marks
+                                : JSON.stringify(formData.updated_json.insuffDetails.third_insufficiency_marks),
+                            delay_reason: typeof formData.updated_json.insuffDetails.delay_reason === 'string'
+                                ? formData.updated_json.insuffDetails.delay_reason
+                                : JSON.stringify(formData.updated_json.insuffDetails.delay_reason),
+                        }
+                    }
+                };
+                console.log('modifiedFormData', modifiedFormData);
+
 
                 // Use 'wip' as the default value if `overall_status` is not present in `insuffDetails`.
                 const overall_status =
                     modifiedFormData.updated_json?.insuffDetails?.overall_status || 'wip';
 
-                // Update the formData and ensure `overall_status` is only inside `insuffDetails`.
+
                 setFormData({
                     ...modifiedFormData,
                     overall_status: undefined, // Explicitly remove `overall_status` from the outer object
@@ -792,43 +1157,18 @@ const GenerateReport = () => {
                         ...modifiedFormData.updated_json,
                         insuffDetails: {
                             ...modifiedFormData.updated_json.insuffDetails,
-                            overall_status, // Add or update the overall_status inside insuffDetails
+                            overall_status: overall_status, // Make sure this gets assigned properly
                         },
                     },
                 });
-
-
-
-
-
-
-                console.log("Modified Form Data:", modifiedFormData);
-                const insuffDetails = modifiedFormData?.updated_json?.insuffDetails;
-
-                if (insuffDetails) {
-                    // Update the parent object with stringified values of the specified keys
-                    if (insuffDetails.first_insufficiency_marks) {
-                        insuffDetails.first_insufficiency_marks = JSON.stringify(insuffDetails.first_insufficiency_marks);
-                    }
-
-                    if (insuffDetails.second_insufficiency_marks) {
-                        insuffDetails.second_insufficiency_marks = JSON.stringify(insuffDetails.second_insufficiency_marks);
-                    }
-
-                    if (insuffDetails.third_insufficiency_marks) {
-                        insuffDetails.third_insufficiency_marks = JSON.stringify(insuffDetails.third_insufficiency_marks);
-                    }
-
-                    if (insuffDetails.delay_reason) {
-                        insuffDetails.delay_reason = JSON.stringify(insuffDetails.delay_reason);
-                    }
+                const myDataQc = document.getElementById("myData_qc")?.value || null;
+                if (!myDataQc) {
+                    console.error("myData_qc value is missing!");
+                    throw new Error("myData_qc value is required.");
                 }
 
-                const myDataQc = document.getElementById("myData_qc")?.value || null;
-                // if (!myDataQc) {
-                //     console.error("myData_qc value is missing!");
-                //     throw new Error("myData_qc value is required.");
-                // }
+
+                console.log('modifiedFormData(jhrkwserweertwe', modifiedFormData);
 
                 const raw = JSON.stringify({
                     admin_id: adminData?.id,
@@ -836,7 +1176,7 @@ const GenerateReport = () => {
                     branch_id: branchid,
                     customer_id: branchInfo.customer_id,
                     application_id: applicationId,
-                    data_qc: 1,
+                    data_qc: myDataQc,
                     ...modifiedFormData,
                     annexure: filteredSubmissionData || {},
                     send_mail: Object.keys(files).length === 0 ? 1 : 0,
@@ -852,7 +1192,7 @@ const GenerateReport = () => {
                     requestOptions
                 );
 
-                console.log("Response Status:", response.status);
+                // console.log("Response Status:", response.status);
 
                 let result;
                 if (!response.ok) {
@@ -866,7 +1206,7 @@ const GenerateReport = () => {
                 }
 
                 result = await response.json();
-                console.log("API Response:", result);
+                // console.log("API Response:", result);
 
                 const newToken = result._token || result.token || localStorage.getItem("_token");
                 if (newToken) {
@@ -874,13 +1214,18 @@ const GenerateReport = () => {
                 }
 
                 if (fileCount === 0) {
-                    Swal.fire("Success!", "Application updated successfully.", "success");
+                    Swal.fire("Success!", "Application updated successfully.", "success").then(() => {
+                        redirectAfterSuccess();
+                    });
                 }
 
                 if (fileCount > 0) {
                     await uploadCustomerLogo(result.email_status);
-                    Swal.fire("Success!", "Application updated successfully.", "success");
+                    Swal.fire("Success!", "Application updated successfully.", "success").then(() => {
+                        redirectAfterSuccess();
+                    });
                 }
+
 
                 const branchidFromUrl = new URLSearchParams(window.location.search).get('branchid');
                 const clientIdFromUrl = new URLSearchParams(window.location.search).get('clientId');
@@ -899,31 +1244,33 @@ const GenerateReport = () => {
                 // Show API error message dynamically if available
                 Swal.fire("Error", error.message || "Failed to submit the application. Please try again.", "error");
             } finally {
+                setApiLoading(false);
+                setSubmitLoading(false);
                 setLoading(false);
             }
 
         } else {
-            console.log("Validation failed");
+            // console.log("Validation failed");
         }
 
     }, [isNotMandatory, validate, servicesDataInfo, branchid, branchInfo, applicationId, formData, selectedStatuses, files, navigate]);
 
     const handlePreview = useCallback(async (e) => {
-        console.log("Preview triggered");
+        // console.log("Preview triggered");
         e.preventDefault();
         const fileEntries = Object.entries(files);
         const fileCount = fileEntries.length;
 
         if (isNotMandatory || validate()) {
-            console.log("Validation passed");
+            // console.log("Validation passed");
 
             const adminData = JSON.parse(localStorage.getItem("admin"));
             const token = localStorage.getItem("_token");
             const validServicesDataInfo = Array.isArray(servicesDataInfo) ? servicesDataInfo : [];
 
-            console.log("Admin Data:", adminData);
-            console.log("Token:", token);
-            console.log("Services Data Info:", validServicesDataInfo);
+            // console.log("Admin Data:", adminData);
+            // console.log("Token:", token);
+            // console.log("Services Data Info:", validServicesDataInfo);
 
             const submissionData = validServicesDataInfo
                 .map((serviceData, index) => {
@@ -992,7 +1339,7 @@ const GenerateReport = () => {
                 });
             });
 
-            console.log("Filtered Submission Data:", filteredSubmissionData);
+            // console.log("Filtered Submission Data:", filteredSubmissionData);
 
             const replaceEmptyWithNull = (obj) => {
                 for (let key in obj) {
@@ -1008,32 +1355,44 @@ const GenerateReport = () => {
             };
 
             const modifiedFormData = replaceEmptyWithNull({ ...formData });
-            console.log("Modified Form Data:", modifiedFormData);
-            console.log(applicantImage)
+            // console.log("Modified Form Data:", modifiedFormData);
+            // console.log(applicantImage)
             // Array of common color names
-const colorNames = [
-    'red', 'green', 'blue', 'yellow', 'pink', 'purple', 'orange', 'black', 'white', 'gray', 'brown', 'cyan', 'magenta'
-];
+            const colorNames = [
+                'red', 'green', 'blue', 'yellow', 'pink', 'purple', 'orange', 'black', 'white', 'gray', 'brown', 'cyan', 'magenta'
+            ];
 
-// Function to check for color names
-const checkColorInStatus = (status) => {
-    // Check if any color name is in the status
-    for (let color of colorNames) {
-        if (status.toLowerCase().includes(color)) {
-            return color;  // Return the found color name
-        }
-    }
-    return status;  // Return the original status if no color name is found
-};
+            // Function to check for color names
+            const checkColorInStatus = (status) => {
+                // Check if any color name is in the status
+                for (let color of colorNames) {
+                    if (status.toLowerCase().includes(color)) {
+                        return color;  // Return the found color name
+                    }
+                }
+                return status;  // Return the original status if no color name is found
+            };
+            const screeningLogo = "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pjlypcpvDuukOgwksTjmVQZgP8pYTl9gmsRhtTtjv1/psD45106F+VeYJjBQ2pQ4335voBwiIiIiIiIiIiIyiAks03QgY1dNZaCkeVQx/66BcmLz1I3ghrlS5S7HdVId2P+HY3Fygo/ein24hel4qHXYh/th4bpV4wzY/184rVEHm2F+q4GSXsd5diED5RAREREREREREZFhTGCZpoO/Ym6iO619VDFfNlBOS6rlgnSltYbDKp/IlSpDHNZHDSRoicWWVxmC/fceFnM4rPJh7HuX54uQDq7GfJiBki7FeXZ3A+UQERERERERERGRYUxgmaYDU93w3aOK+fUNlNOSarmwAxZXOa52sVypYqLrRTKghSQWx7zKEOy3NbF4wHG12+M7cK3jOuU8Ky1FpzVQ0hY4z5poyUVERERERERERESGMYFlmg7mxPyfBkoag2lqVcz/10BZsVXLhSmw+BLTxA6rvSFXqmzjsD5qIkYSiy2vMgb77FkslnFY5U+YpsN34AeHdco5dnHMRxoqbRqcY78xVBYREREREREREREZxASWDTr4CPM/GShpbVXMu25RIQ/CJTmxkeNqB+VKldGO66QG8D04EIsz6/wvtrzKGOyr1bB42HG1t+B7sKXjOuX8ejTmxxso6Q2cXxc0UA4RERERERERERFZwASWDTq4HPOdDZR0pSrmTZTTkmq5sK6SLgzdOjVXqhzuuE5qAt+FbbHo20XcldhPzr+T1Bj201NYLO+42vXxXXB9npDzq6mWZufj/LqvgXKIiIiIiIiIiIjIAiawbNDBppjfZqCkANP0qph33k1btVyoYDHIYZWyrjPnSpWqwzopBnwXJFlwJKansH9O8x0PjQv7ZwgWjzmu9it8F0yMQdUaHcyA+WfKzG/Xxji33mGgHCIiIiIiIiIiIrKACSwbdDAV5l8rM9t3LVXMP2ignJZUy4XjsDjGcbX75kqV8x3XSdTWcKxK8mqI42pPx7F6qOM65dxaUtJyKr3fME2Bc+sYA2URERERERERERGRBUxg2aKDJzFfwUBJvroR/CMWnyq33xFphfWnXKnCh8pEMUSt4551XK0kf2bBcfqJ43pNnldfwHl1KQPlEBERERERERERkSVMYNmig6MwP8FAST67EbxfSQswt07IlSquW34RtSUco49gsarjau/BMbq+4zpNdx94Is6pRxso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t8bP4jMj9wYAAAAA2CVZYMFy5HLTNCyzDo7ca87dXpv67nFz7rH25PLBqPecc5e6tDo9DUurT865FwAAAAAAm7HAgpXKZfeod0nDIqsutW464w53TX334Rk/59qXy6NSve/UbNVTbvW1/lDkLCetAAAAAADassCCWcll7zQssurpoIMie63i2S5MfTfm5QrXjlwWon5vBs90buTMyAfjtT57Bs8HAAAAAMCMWGDBvORy66j3iNw9cqfIVZbx1Selvjt6LnPtDHL566hHLPOrvpbqsiql96bhlFWZ9VgAAAAAAMyGBRaMJZf9oh4QucOmx9tEfnUr//XNU999fqzR1pxc6gm3s7bxX1yYhhNWP0/ffWWM0QAAAAAAWD0LLGgll8unYYl1+8jtNj3W+2h9NvXdbVqONnm51N9ddSF17cgX0i8uq/7F6SoAAAAAgLXNAgumZLi/016p777cepTJy2XfqBvjtZrF/bAAAAAAAJgQCywAAAAAAAAmxQILAAAAAACASbHAAgAAAAAAYFIssAAAAAAAAJgUCywAAAAAAAAmxQILAAAAAACASbHAAgAAAAAAYFIssAAAAAAAAJgUCywAAAAAAAAmxQILAAAAAACASbHAAgAAAAAAYFIssAAAAAAAAJgUCywAAAAAAAAmxQILAAAAAACASbHAAgAAAAAAYFIssAAAAAAAAJgUCywAAAAAAAAmxQILAAAAAACASbHAAgAAAAAAYFIssAAAAAAAAJgUCywAAAAAAAAmxQILAAAAAACASbHAAgAAAAAAYFIssAAAAAAAAJiU/wX1BOTgEvIMowAAAABJRU5ErkJggg=="
+
             const header = `
                     <div class="preview-section mb-5 p-4 border border-gray-300 rounded-lg bg-white shadow-md">
-                        <div class="grid grid-cols-2 gap-3 mb-5">
-                             <div class="preview-field" style="margin-bottom: 15px; ">
-                                <img  class="headerImage" src="data:image/png;base64,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"  />
-                                <div>
-                                 <img style="width: 12rem; height: 12rem;" className="applicantImage" src=${applicantImage} alt="Applicant" />
-                                </div>
-                           </div>
+                        <div class="grid md:grid-cols-2 gap-3 mb-5">
+                            <div class="preview-field" style="margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+        <img
+            class="headerImage"
+            src="${customerInfo.custom_template == "yes" ? customerInfo.custom_logo : screeningLogo}" 
+            alt="Customer Logo"
+            style="width: 500px; height: 400px; border: 2px solid #3d75a6; padding: 20px;" 
+        />
+        <div>
+            <img 
+                class="applicantImage"
+                src="${applicantImage ? applicantImage : PDFuser}" 
+                alt="Applicant Image" 
+                style="width: 12rem; height: 12rem; border: 2px solid #3d75a6; padding: 20px;" 
+            />
+        </div>
+    </div>
                         </div>
                         <div class="w-full h-12 border-b-4 border-black mb-8">
                         </div>
@@ -1128,7 +1487,6 @@ const checkColorInStatus = (status) => {
                                     <td style="border: 1px solid black; padding: 20px 40px;"><div style=" background-color: red;padding: 40px;" ></div></td>
                                 <td style="border: 1px solid black; padding: 20px 40px;"><div style="background-color: yellow; padding: 40px;"></div></td>  
                                     <td style="border: 1px solid black;padding: 20px 40px;"><div style=" background-color: orange;padding: 40px;" ></div></td>
-                                    <td style="border: 1px solid black;padding: 20px 40px;"><div style="background-color: pink;padding: 40px;" ></div></td>
                                     <td style="border: 1px solid black;padding: 20px 40px;"><div style="background-color: green;padding: 40px;" ></div></td>
                                 </tr>
                             </table>
@@ -1177,7 +1535,7 @@ const checkColorInStatus = (status) => {
                             </th>
                             </tr>
 
-                            <tr>
+                            <tr ">
                                 <th style="text-align: left; font-size: 18px; font-weight: bold; color: #333; padding: 15px; border-bottom: 1px solid #ddd; ">
                                     PARTICULARS
                                 </th>
@@ -1193,7 +1551,7 @@ const checkColorInStatus = (status) => {
                             ${Object.entries(mergedFields).map(([label, values]) => {
                     return `
                                     <tr>
-                                        <td style="padding: 10px; font-weight: 500; color: #4a4a4a; text-transform: capitalize;">
+                                        <td style="padding: 10px; white-space:nowrap; font-weight: 500; color: #4a4a4a; text-transform: capitalize;">
                                             ${label.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase())}
                                         </td>
                                         <td style="padding: 10px; background-color: #f8f8f8;">
@@ -1211,32 +1569,42 @@ const checkColorInStatus = (status) => {
 
                 const annexureHtml = annexures.length
                     ? `
-                  <div class="annexures-section" style="margin-top: 20px; margin-bottom: 50px; ">
-                      <h3 style="font-size: 18px; font-weight: bold; color: #333; margin-bottom: 10px;">
-                          Annexures:
-                      </h3>
-                      ${Object.entries(fields).map(([fieldName, fieldValue]) => {
-                        const previewFiles = serpreviewfiles[mysection] || null;
-                        console.log('previewFiles', previewFiles)
-                        console.log('mysection', fieldName)
-                        return annexures.map(annexure => {
-                            if (fieldName.startsWith("annexure")) {
-                                const values = previewFiles ? previewFiles : fieldValue.split(",");
-                                return values.map(value => `
-                                <div style="padding: 10px; border: 2px solid #3d75a6; text-align: center; margin-bottom: 30px;">
-                                    <img 
-                                    src="${value.trim()}" 
-                                    alt="${fieldName || 'No Annexures Available'}" 
-                                    style="max-width: 80%; min-width: 50%; border-radius: 5px; object-fit: cover;" 
-                                    />                                </div>
+                    ${(() => {
+                        const annexureEntries = Object.entries(fields).filter(([fieldName]) => fieldName.startsWith("annexure"));
 
-                             
-                            `).join('');
-                            }
-                            return '';
-                        }).join('');
-                    }).join('')}
-                  </div>
+                        // Check if there are any valid annexures
+                        const hasAnnexures = annexureEntries.some(([fieldName, fieldValue]) => {
+                            const previewFiles = serpreviewfiles[mysection] || null;
+                            console.log('fieldValue', fieldValue)
+                            const values = previewFiles ? previewFiles : fieldValue?.split(",");
+                            return values?.some(value => value?.trim() !== "");
+                        });
+
+                        if (!hasAnnexures) return ""; // Hide the entire section if no annexures exist
+
+                        return `
+                          <div class="annexures-section" style="margin-top: 20px; margin-bottom: 50px;">
+                            <h3 style="font-size: 18px; font-weight: bold; color: #333; margin-bottom: 10px;">
+                              Annexures:
+                            </h3>
+                            ${annexureEntries.map(([fieldName, fieldValue]) => {
+                            const previewFiles = serpreviewfiles[mysection] || null;
+                            const values = previewFiles ? previewFiles : fieldValue.split(",");
+
+                            return values.map(value => `
+                                <div style="padding: 10px; border: 2px solid #3d75a6; text-align: center; margin-bottom: 30px;">
+                                  <img 
+                                    src="${value.trim()}" 
+                                    alt="${fieldName}" 
+                                    style="max-width: 80%; min-width: 50%; border-radius: 5px; object-fit: cover;" 
+                                  />
+                                </div>
+                              `).join('');
+                        }).join('')}
+                          </div>
+                        `;
+                    })()}
+                      
                 `
                     : "";
 
@@ -1257,13 +1625,16 @@ const checkColorInStatus = (status) => {
     <div class="contentfooter" style="margin-top: 2px; margin-bottom: 5px; font-weight: 700; font-size: 18px; line-height: 2;">
     information provided. The Client is responsible for employment decisions based on the information provided in this
     report.</div> <div class="contentfooter" style="margin-top: 2px; margin-bottom: 5px; font-weight: 700; font-size: 18px; line-height: 2;"> For any clarifications you can mail us at compliance@screeningstar.com<a href="mailto:compliance@screeningstar.com">compliance@screeningstar.com</a>.</div>
+ ${customerInfo.custom_address ? `
+    <div class="sspltd" style="text-align: left; margin-top:10px; font-size: 20px; color: #3d75a6; font-weight: bold;">
+      ${cmtData.organization_name || "Screeningstar Solutions Pvt Ltd"}
+    </div>` : ''}
 
-
-
-                 <div class="sspltd" style="text-align: left; margin-top:10px; font-size: 20px; color: #3d75a6; font-weight: bold;">Screeningstar Solutions Pvt Ltd</div>
-                 <div class="address" style="text-align: left;margin-top: 5px; font-size: 18px;  font-weight: light;">No 93/9, Varthur Main Road, Marathahalli, Bangalore, Karnataka</div>
-                 <div class="address"  style="text-align: left;margin-top: 5px; font-size: 18px;  font-weight: light;margin-bottom: 50px;">India, Pin Code - 560037</div>
-                
+    <div class="address-section  "
+    style="text-align: left; font-size: 20px ; margin-bottom:10px;" 
+    >
+        ${getAddressHTML(customerInfo)}
+    </div>
                  <div class="header" >END OF DETAIL REPORT</div>
 
 
@@ -1282,7 +1653,7 @@ const checkColorInStatus = (status) => {
                             .field-label { font-weight: 500; color: #4a4a4a; font-size: 15px; text-transform: capitalize; margin-right: 15px; }
                             .field-value { font-size: 14px; color: #7f8c8d; padding: 5px 10px; border-radius: 5px; background-color: #f8f8f8; width: 60%; word-wrap: break-word; }
                              .field-image { max-width: 150px; max-height: 150px; border-radius: 5px; object-fit: cover; }
-                             .headerImage { max-width: 100%; max-height: 5rem; border-radius: 5px; object-fit: cover; }
+                             .headerImage { max-width: 100%; max-height: 8rem; border-radius: 5px; object-fit: cover; }
                             .footer { text-align: center; font-size: 12px; margin-top: 20px; color: #7f8c8d; }
                              .report-container {width: 100%; border-collapse: collapse;  margin: 20px 0;font-size: 16px; text-align: left; }
         .report-container th, .report-container td {
@@ -1327,23 +1698,40 @@ const checkColorInStatus = (status) => {
             `);
             previewWindow.document.close();
         } else {
-            console.log("Validation failed");
+            // console.log("Validation failed");
         }
     }, [isNotMandatory, validate, servicesDataInfo, branchid, branchInfo, applicationId, formData, selectedStatuses, files]);
 
     const handleBlur = useCallback((e, label, inputColumn) => {
-        const { value, name } = e.target; // Get the value and name of the input field
+        const { value, name } = e.target;
         console.log('--- Blur Event Triggered ---');
         console.log('Input Value:', value);
         console.log('Input Name:', name);
         console.log('Label:', label);
         console.log('Input Column:', inputColumn);
 
-        // Convert the label to snake_case and trim unnecessary characters
+        // Only proceed if label is in the allowed list
+        const normalize = (str) =>
+            str.trim().replace(/:/g, '').toLowerCase();
+
+        const allowedLabels = [
+            "name of the applicant",
+            "father name",
+            "date of birth",
+            "address"
+        ];
+
+        const normalizedLabel = normalize(label);
+
+        if (!allowedLabels.includes(normalizedLabel)) {
+            console.log(`Label "${label}" is not in the allowed list. Skipping update.`);
+            return;
+        }
+
         const trimmedLabel = label
-            .replace(/:/g, '') // Remove colons
-            .replace(/\s+/g, '_') // Replace spaces with underscores
-            .toLowerCase(); // Convert to lowercase
+            .replace(/:/g, '')
+            .replace(/\s+/g, '_')
+            .toLowerCase();
         console.log('Trimmed Label (Snake Case):', trimmedLabel);
 
         setServicesDataInfo((prev) => {
@@ -1355,54 +1743,32 @@ const checkColorInStatus = (status) => {
                 console.log(`Processing item at index ${index}:`, item);
 
                 if (item.reportFormJson && item.reportFormJson.json) {
-                    console.log('Item has reportFormJson:', item.reportFormJson.json);
-
                     const formJson = JSON.parse(item.reportFormJson.json);
-                    console.log('Parsed JSON:', formJson);
 
                     formJson.rows.forEach((row) => {
-                        console.log(`Checking row label: "${row.label}"`);
                         if (row.label.trim().toLowerCase() === label.trim().toLowerCase()) {
-
-                            console.log(`Found matching label: "${row.label}"`);
-                            console.log('Current annexureData:', item.annexureData || {});
-
                             row.inputs.forEach((input, inputIndex) => {
+                                if (inputIndex !== inputColumn) return;
+
                                 const inputName = input.name;
-                                console.log(`Checking row label: "${row.label}"`);
-                                console.log(`Input Index: ${inputIndex}, Input Name: "${inputName}"`);
-
-                                if (inputIndex !== inputColumn) {
-                                    return;
+                                if (item.annexureData && item.annexureData[inputName]) {
+                                    const inputCurrentValue = item.annexureData[inputName];
+                                    if (inputCurrentValue) return;
                                 }
-                                if (row.label.trim().toLowerCase() === label.trim().toLowerCase()) {
 
-                                    console.log(`Found matching label: "${row.label}"`);
-                                    console.log('Current annexureData:', item.annexureData || {});
-                                    if (item.annexureData && item.annexureData[inputName]) {
-                                        const inputCurrentValue = item.annexureData[inputName];
-                                        console.log(`MAIN VALUE - ${item.annexureData[inputName]}`);
-                                        if (inputCurrentValue) {
-                                            return;
-                                        }
-                                    }
-
-
-                                    if (!item.annexureData) {
-                                        console.log('Initializing annexureData as empty object.');
-                                        item.annexureData = {};
-                                    }
-
-                                    updatedServicesDataInfo[index] = {
-                                        ...updatedServicesDataInfo[index],
-                                        annexureData: {
-                                            ...updatedServicesDataInfo[index].annexureData,
-                                            [inputName]: value || '',
-                                        },
-                                    };
-
-                                    console.log('Updated annexureData:', updatedServicesDataInfo[index].annexureData);
+                                if (!item.annexureData) {
+                                    item.annexureData = {};
                                 }
+
+                                updatedServicesDataInfo[index] = {
+                                    ...updatedServicesDataInfo[index],
+                                    annexureData: {
+                                        ...updatedServicesDataInfo[index].annexureData,
+                                        [inputName]: value || '',
+                                    },
+                                };
+
+                                console.log('Updated annexureData:', updatedServicesDataInfo[index].annexureData);
                             });
                         }
                     });
@@ -1420,10 +1786,25 @@ const checkColorInStatus = (status) => {
 
 
 
-
+    // console.log('select-jkdgfhsdf', selectedCheckbox)
     const handleInputChange = useCallback((e, index) => {
-        const { name, value } = e.target;
+        let { name, type, value, checked } = e.target;
 
+        // Log the initial values of the inputs
+        // console.log("Initial values: ", { name, type, value, checked });
+
+        // Check if the name starts with "checkbox_"
+        if (name.startsWith("checkbox_")) {
+            value = checked;
+            // console.log("Checkbox value updated: ", value);
+        }
+
+        // Update the selectedCheckbox array with the new value
+        const updatedStatuses = [...selectedCheckbox];
+        updatedStatuses[index] = value; // Use `value` instead of `e.target.value` directly, since `value` might be updated for checkboxes
+        // console.log("Updated selectedCheckbox array: ", updatedStatuses);
+
+        // Update the services data with the new value
         setServicesDataInfo((prev) => {
             const updatedServicesDataInfo = [...prev];
 
@@ -1431,32 +1812,80 @@ const checkColorInStatus = (status) => {
                 ...updatedServicesDataInfo[index],
                 annexureData: {
                     ...updatedServicesDataInfo[index].annexureData,
-                    [name]: value || '',
+                    // Log before setting the updated values
+                    [name]: type === "checkbox" ? checked : value || "",
+                    [`${name}`]: type === "checkbox" ? checked : value || "", // Ensure checkbox is stored properly
                 },
             };
 
+            // console.log("Updated services data: ", updatedServicesDataInfo);
+
             return updatedServicesDataInfo;
         });
-    }, []);
 
+        // Log after the state update
+        // console.log("State after update: ", selectedCheckbox);
+    }, []);
 
 
     const renderInput = (index, dbTable, input, annexureImagesSplitArr, label, inputColumn) => {
         const isRequired = !isNotMandatory && (input.type === 'file' && annexureImagesSplitArr.length === 0 || (input.type === 'annexure' && annexureImagesSplitArr.length === 0));
-
         function convertLabelToSnakeCase(label) {
             return label
-                .replace(/:/g, '')  // Remove any colons
+                .replace(/:/g, '')  // Remove colons
                 .replace(/\s+/g, '_') // Replace spaces with underscores
-                .toLowerCase(); // Convert the entire string to lowercase
+                .toLowerCase(); // Convert to lowercase
         }
 
         const snakeCaseLabel = convertLabelToSnakeCase(label) + `_class` + inputColumn;
 
+
+
         let inputValue = '';
-        if (servicesDataInfo[index]?.annexureData?.hasOwnProperty(input.name)) {
-            inputValue = servicesDataInfo[index].annexureData[input.name] || '';
+
+        const inputName = input.name.toLowerCase();
+        if (
+            servicesDataInfo[index]?.annexureData?.hasOwnProperty(input.name) &&
+            servicesDataInfo[index].annexureData[input.name] !== ''
+        ) {
+            // User-entered value
+            inputValue = servicesDataInfo[index].annexureData[input.name];
+        } else if (
+            inputName.includes('name_of_the_applicant') &&
+            cmtData?.applicant_name
+        ) {
+            // Prefill with applicant_name
+            inputValue = cmtData.applicant_name;
+
+            // ✅ Prefill servicesDataInfo as well
+            setServicesDataInfo((prev) => {
+                const updated = [...prev];
+                if (!updated[index]) updated[index] = { annexureData: {} };
+                if (!updated[index].annexureData) updated[index].annexureData = {};
+                updated[index].annexureData[input.name] = cmtData.applicant_name;
+                return updated;
+            });
+        } else if (
+            inputName.includes('date_of_birth') &&
+            cmtData?.dob
+        ) {
+            // Prefill with date_of_birth
+            inputValue = cmtData.dob;
+
+            // ✅ Prefill servicesDataInfo as well
+            setServicesDataInfo((prev) => {
+                const updated = [...prev];
+                if (!updated[index]) updated[index] = { annexureData: {} };
+                if (!updated[index].annexureData) updated[index].annexureData = {};
+                updated[index].annexureData[input.name] = cmtData.dob;
+                return updated;
+            });
         }
+        const parseAndValidateDate = (value) => {
+            if (!value) return null;
+            const parsed = parse(value, "yyyy-MM-dd", new Date());
+            return isNaN(parsed) ? null : parsed;
+        };
 
         switch (input.type) {
             case "text":
@@ -1466,30 +1895,87 @@ const checkColorInStatus = (status) => {
                     <input
                         type="text"
                         name={input.name}
-                        value={inputValue} // Use inputValue from state
+                        value={inputValue}
                         className={`w-full p-2 border border-gray-300 ${snakeCaseLabel} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                        onChange={(e) => handleInputChange(e, index, snakeCaseLabel)} // Pass the snakeCaseLabel for state update
+                        onChange={(e) => handleInputChange(e, index, snakeCaseLabel)}
                         onBlur={(e) => handleBlur(e, label, inputColumn)}
                     />
+                    // Date Of Exit:
                 );
-            case "datepicker":
-                return (
-                    <input
-                        type="date"
-                        name={input.name}
-                        value={inputValue} // Use inputValue from state
-                        className="w-full p-2 border border-gray-300 rounded-lg  focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        onChange={(e) => handleInputChange(e, index, snakeCaseLabel)} // Pass the snakeCaseLabel for state update
-                        onBlur={(e) => handleBlur(e, label, inputColumn)}
-                    />
-                );
-            case "dropdown":
+                case "datepicker": {
+                    const isDateOfExit = label === "Date Of Exit:";
+                
+                    if (isDateOfExit) {
+                        const CustomInput = forwardRef(({ value, onClick, onChange }, ref) => (
+                            <input
+                                type="text"
+                                ref={ref}
+                                value={value}
+                                onClick={onClick} // opens calendar on click
+                                onChange={(e) => {
+                                    handleInputChange(
+                                        { target: { name: input.name, value: e.target.value, type: "text" } },
+                                        index,
+                                        snakeCaseLabel
+                                    );
+                                }}
+                                placeholder="Type text or pick a date"
+                                className={`w-full p-2 border border-gray-300 ${snakeCaseLabel} rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                                onBlur={(e) => handleBlur(e, label, inputColumn)}
+                            />
+                        ));
+                
+                        return (
+                            <DatePicker
+                                selected={parseAndValidateDate(inputValue)}
+                                onChange={(date) => {
+                                    const formatted = date ? format(date, "yyyy-MM-dd") : "";
+                                    handleInputChange(
+                                        { target: { name: input.name, value: formatted, type: "date" } },
+                                        index,
+                                        snakeCaseLabel
+                                    );
+                                }}
+                                customInput={<CustomInput value={inputValue} />}
+                                placeholderText="Type text or pick a date"
+                                dateFormat="dd-MM-yyyy"
+                                isClearable
+                            />
+                        );
+                    }
+                
+                    // Normal datepickers (not "Date Of Exit")
+                    return (
+                        <DatePicker
+                            selected={parseAndValidateDate(inputValue)}
+                            onChange={(date) => {
+                                const formatted = date ? format(date, "yyyy-MM-dd") : "";
+                                handleInputChange(
+                                    { target: { name: input.name, value: formatted, type: "date" } },
+                                    index,
+                                    snakeCaseLabel
+                                );
+                            }}
+                            onChangeRaw={(e) => {
+                                const rawValue = e.target.value;
+                                handleInputChange(
+                                    { target: { name: input.name, value: rawValue, type: "text" } },
+                                    index,
+                                    snakeCaseLabel
+                                );
+                            }}
+                            className="w-full p-2 border border-gray-300 uppercase rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            dateFormat="dd-MM-yyyy"
+                            placeholderText="Select a date"
+                        />
+                    );
+                }     case "dropdown":
                 return (
                     <select
                         name={input.name}
-                        value={inputValue} // Use inputValue from state
+                        value={inputValue}
                         className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        onChange={(e) => handleInputChange(e, index, snakeCaseLabel)} // Pass the snakeCaseLabel for state update
+                        onChange={(e) => handleInputChange(e, index, snakeCaseLabel)}
                         onBlur={(e) => handleBlur(e, label, inputColumn)}
                     >
                         {input.options?.map((option) => (
@@ -1500,8 +1986,30 @@ const checkColorInStatus = (status) => {
                     </select>
                 );
             case "file":
+                let inputCheckboxValue = false;
+                // console.log("Initial inputCheckboxValue:", inputCheckboxValue);
+
+                if (servicesDataInfo[index]?.annexureData?.hasOwnProperty(`checkbox_${input.name}`)) {
+                    let value = servicesDataInfo[index].annexureData[`checkbox_${input.name}`];
+                    // console.log("Retrieved value:", value, "Type:", typeof value);
+
+                    // Convert string/number values to boolean
+                    if (value === true || value === "1" || value === 1) {
+                        inputCheckboxValue = true; // "1" -> true (ON)
+                        // console.log("Value is TRUE or '1' or 1, setting inputCheckboxValue to:", inputCheckboxValue);
+                    } else {
+                        inputCheckboxValue = false; // "0" -> false (OFF)
+                        // console.log("Value is not '1' or 1, setting inputCheckboxValue to:", inputCheckboxValue);
+                    }
+                } else {
+                    // console.log(`Property checkbox_${input.name} not found in annexureData`);
+                }
+
+                // console.log("Final inputCheckboxValue:", inputCheckboxValue);
+
+
                 return (
-                    <>
+                    <div className="flex flex-wrap items-center gap-4">
                         <input
                             type="file"
                             name={input.name}
@@ -1511,6 +2019,18 @@ const checkColorInStatus = (status) => {
                             required={isRequired}
                             onChange={(e) => handleFileChange(index, dbTable, input.name, e)}
                         />
+                        <div className='flex items-center gap-2'>
+                            <input
+                                type="checkbox"
+                                name={`checkbox_${input.name}`}
+                                className="w-5 h-5"
+                                onChange={(e) => handleInputChange(e, index, `checkbox_${snakeCaseLabel}`)}
+                                checked={inputCheckboxValue}
+                            />
+                            <span className='font-bold'>Show In Full Page</span>
+                        </div>
+
+
                         {annexureImagesSplitArr.length > 0 && (
                             <Swiper
                                 onSwiper={setThumbsSwiper}
@@ -1527,27 +2047,28 @@ const checkColorInStatus = (status) => {
                                             src={`${image.trim()}`}
                                             alt={`Thumbnail ${index + 1}`}
                                             className="cursor-pointer"
-                                            onClick={() => openModal(image)} // Open modal on click
+                                            onClick={() => openModal(image)}
                                         />
                                     </SwiperSlide>
                                 ))}
                             </Swiper>
                         )}
-                    </>
+                    </div>
                 );
             default:
                 return (
                     <input
                         type="text"
                         name={input.name}
-                        value={inputValue} // Use inputValue from state
+                        value={inputValue}
                         className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        onChange={(e) => handleInputChange(e, index, snakeCaseLabel)} // Pass the snakeCaseLabel for state update
+                        onChange={(e) => handleInputChange(e, index, snakeCaseLabel)}
                         onBlur={(e) => handleBlur(e, label, inputColumn)}
                     />
                 );
         }
     };
+
 
 
 
@@ -1801,6 +2322,18 @@ const checkColorInStatus = (status) => {
 
 
     ];
+    const handleMultiSelectChange = (field, values) => {
+        setFormData((prev) => ({
+            ...prev,
+            updated_json: {
+                ...prev.updated_json,
+                insuffDetails: {
+                    ...prev.updated_json.insuffDetails,
+                    [field]: values,
+                },
+            },
+        }));
+    };
 
     return (
         <div className="bg-[#c1dff2] border border-black">
@@ -1813,98 +2346,114 @@ const checkColorInStatus = (status) => {
                     <FaChevronLeft className="text-xl text-white" />
                     <span className="font-semibold text-lg">Go Back</span>
                 </div>
-                <div className=" p-12">
+                <div className=" md:p-12 p-0 my-2 ">
 
                     {loading ? (
-                        <div className="flex w-full justify-center items-center h-20">
-                            <div className="loader border-t-4 border-[#2c81ba] rounded-full w-10 h-10 animate-spin"></div>
-                        </div>
+                        <>
+                            <div className="flex w-full justify-center items-center h-20">
+                                <div className="loader border-t-4 border-[#2c81ba] rounded-full w-10 h-10 animate-spin"></div>
+                            </div>
+                            <div className="flex justify-center items-center h-20">
+                                {submitLoading ? <p className="text-lg font-semibold text-[#2c81ba]">Please wait while report is getting generated</p> : null}
+                            </div>
+                        </>
                     ) : (
                         <form className="space-y-4" autoComplete="off" onSubmit={handleSubmit}>
-                            {visibleFeilds.includes("client_reference_id") && (
-                                <div>
-                                    <label htmlFor="apid" className="block text-gray-700">Reference ID</label>
-                                    <input
-                                        type="text"
-                                        name="application_id"
-                                        id="apidoo"
-                                        value={applicationRefID}
-                                        readOnly
-                                        className="w-full p-3 mb-4 border border-gray-300 rounded-md"
-                                    />
-                                    <input type="hidden" name="apid" id="apid" value={referenceId} />
-                                </div>
-                            )}
 
-                            <div className=" form start space-y-4 py-[30px]  bg-white rounded-md" id="client-spoc">
+                            <div>
+                                <label htmlFor="apid" className="block text-gray-700">Reference ID</label>
+                                <input
+                                    type="text"
+                                    name="application_id"
+                                    id="apidoo"
+                                    value={applicationRefID}
+                                    readOnly
+                                    className="w-full p-3 mb-4 border border-gray-300 rounded-md"
+                                />
+                                <input type="hidden" name="apid" id="apid" value={referenceId} />
+                            </div>
+                            <div className=" form start space-y-4 md:py-[30px]  bg-white rounded-md" id="client-spoc">
                                 <div>
-                                    <div className="grid grid-cols-2 gap-3">
+                                    <div className="grid md:grid-cols-2 gap-3">
                                         <div className="mb-4">
                                             <label htmlFor="month_year">Month - Year<span className="text-red-500 text-xl" >*</span></label>
                                             <input
-                                                type="text"
-                                                name="month_year"
+                                                type="month"
+                                                name="updated_json.month_year"
                                                 id="month_year"
                                                 className="border w-full rounded-md p-2 mt-2 capitalize"
-                                                value={cmtData.month_year}
-                                                // onChange={handleChange}
-                                                readOnly
+                                                value={formData.updated_json.month_year || ''}
+                                                onChange={handleChange}
                                             />
+
+
                                         </div>
 
                                         <div className="mb-4">
                                             <label htmlFor="initiation_date">Initiation Date</label>
-                                            <input
-                                                type="date"
-                                                name="initiation_date"
+                                            <DatePicker
                                                 id="initiation_date"
-                                                className="w-full border p-2 outline-none rounded-md mt-2"
-                                                value={cmdDates.initiationDate}
-                                                // onChange={handleChange}
-                                                readOnly
+                                                selected={parseDate(formData.updated_json.initiation_date)}
+                                                onChange={(date) => {
+                                                    const formattedDate = date ? format(date, "yyyy-MM-dd") : ""; // ✅ prevents crash
+                                                    handleChange({
+                                                        target: {
+                                                            name: "updated_json.initiation_date",
+                                                            value: formattedDate,
+                                                            type: "date"
+                                                        }
+                                                    });
+                                                }}
+                                                
+                                                dateFormat="dd-MM-yyyy"
+                                                className="w-full border p-2 outline-none uppercase rounded-md mt-2"
                                             />
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-3">
+                                    <div className="grid md:grid-cols-2 gap-3">
                                         <div className="mb-4">
                                             <label htmlFor="organization_name">Name of the Client Organization</label>
                                             <input
                                                 type="text"
-                                                name="organization_name"
+                                                name="client_organization_name"
                                                 id="organization_name"
                                                 className="border w-full rounded-md p-2 mt-2 capitalize"
-                                                value={cmtData.organization_name}
-                                                // onChange={handleChange}
-                                                readOnly
+                                                value={formData.client_organization_name}
+                                                // disabled={formData.client_organization_name}
+                                                onChange={handleChange}
                                             />
                                         </div>
 
                                         <div className="mb-4">
                                             <label htmlFor="verification_purpose">Verification Purpose<span className="text-red-500 text-xl" >*</span></label>
-                                            <input
-                                                type="text"
-                                                name="verification_purpose"
+                                            <select
+                                                name="updated_json.verification_purpose"
                                                 id="verification_purpose"
                                                 className="border w-full rounded-md p-2 mt-2 capitalize"
-                                                value={cmtData.verification_purpose}
-                                                readOnly
-                                            // onChange={handleChange}
-                                            />
+                                                value={formData.updated_json.verification_purpose}
+                                                onChange={handleChange}
+                                            >
+                                                <option value="">Select Verification Purpose</option>
+                                                <option value="Employment">Employment</option>
+                                                <option value="Discreet">Discreet</option>
+                                                <option value="Vendor/Company Screening">Vendor/Company Screening</option>
+                                                <option value="Personal">Personal</option>
+                                                <option value="Official">Official</option>
+                                            </select>
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-3">
+                                    <div className="grid md:grid-cols-2 gap-3">
                                         <div className="mb-4">
                                             <label htmlFor="employee_id">Applicant Employee ID</label>
                                             <input
                                                 type="text"
-                                                name="employee_id"
+                                                name="updated_json.employee_id"
                                                 id="employee_id"
                                                 className="border w-full rounded-md p-2 mt-2 capitalize"
-                                                value={cmtData.employee_id}
-                                                // onChange={handleChange}
-                                                readOnly
+                                                value={formData.updated_json.employee_id}
+                                                onChange={handleChange}
                                             />
                                         </div>
 
@@ -1912,28 +2461,28 @@ const checkColorInStatus = (status) => {
                                             <label htmlFor="client_code">Client Code</label>
                                             <input
                                                 type="text"
-                                                name="client_code"
+                                                name="client_organization_code"
                                                 id="client_code"
                                                 className="border w-full rounded-md p-2 mt-2 capitalize"
-                                                value={cmtData.client_code}
-                                                readOnly
-                                            // onChange={handleChange}
+                                                value={formData.client_organization_code}
+                                                // disabled={formData.client_organization_code}
+                                                onChange={handleChange}
                                             />
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-3">
+                                    <div className="grid md:grid-cols-2 gap-3">
                                         <div className="mb-4">
                                             <label htmlFor="applicant_name">Name of the Applicant<span className="text-red-500 text-xl" >*</span></label>
                                             <input
-                                                ref={(el) => (inputRefs.current['applicant_name'] = el)} // Add ref
+                                                // ref={(el) => (inputRefs.current['applicant_name'] = el)} // Add ref
                                                 type="text"
-                                                name="applicant_name"
+                                                name="client_applicant_name"
                                                 id="applicant_name"
                                                 className="border w-full rounded-md p-2 mt-2 capitalize"
-                                                value={cmtData.applicant_name}
-                                                readOnly
-                                            // onChange={handleChange}
+                                                value={formData.client_applicant_name}
+                                                // disabled={formData.client_applicant_name}
+                                                onChange={handleChange}
                                             />
                                             {errors.applicant_name && (
                                                 <p className="text-red-500 text-sm">{errors.applicant_name}</p>
@@ -1944,12 +2493,12 @@ const checkColorInStatus = (status) => {
                                             <label htmlFor="contact_number">Contact Number</label>
                                             <input
                                                 type="tel"
-                                                name="contact_number"
+                                                name="updated_json.contact_number"
                                                 id="contact_number"
                                                 className="border w-full rounded-md p-2 mt-2 capitalize"
-                                                value={cmtData.contact_number}
-                                                readOnly
-                                            // onChange={handleChange}
+                                                value={formData.updated_json.contact_number}
+
+                                                onChange={handleChange}
                                             />
                                             {errors.contact_number && (
                                                 <p className="text-red-500 text-sm">{errors.contact_number}</p>
@@ -1957,17 +2506,17 @@ const checkColorInStatus = (status) => {
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-3">
+                                    <div className="grid md:grid-cols-3 gap-3">
                                         <div className="mb-4">
                                             <label htmlFor="contact_number2">Contact Number 2:</label>
                                             <input
                                                 type="tel"
-                                                name="contact_number2"
+                                                name="updated_json.contact_number2"
                                                 id="contact_number2"
                                                 className="border w-full rounded-md p-2 mt-2 capitalize"
-                                                value={cmtData.contact_number2}
-                                                readOnly
-                                            // onChange={handleChange}
+                                                value={formData.updated_json.contact_number2}
+
+                                                onChange={handleChange}
                                             />
                                         </div>
 
@@ -1975,49 +2524,69 @@ const checkColorInStatus = (status) => {
                                             <label htmlFor="father_name">Father's Name:</label>
                                             <input
                                                 type="text"
-                                                name="father_name"
+                                                name="updated_json.father_name"
                                                 id="father_name"
                                                 className="border w-full rounded-md p-2 mt-2 capitalize"
-                                                value={cmtData.father_name}
-                                                readOnly
-                                            // onChange={handleChange}
+                                                value={formData.updated_json.father_name}
+
+                                                onChange={handleChange}
                                             />
+                                        </div>
+                                        <div className="mb-4">
+                                            <label htmlFor="contact_number2">Spouse Name</label>
+                                            <input
+                                                type="test"
+                                                name="updated_json.spouse_name"
+                                                id="spouse_name"
+                                                className="border w-full rounded-md p-2 mt-2 capitalize"
+                                                value={formData.updated_json.spouse_name}
+
+                                                onChange={handleChange}
+                                            />
+                                            {errors.spouse_name && (
+                                                <p className="text-red-500 text-sm">{errors.spouse_name}</p>
+                                            )}
                                         </div>
                                     </div>
 
-                                    <div className={`grid ${visibleFeilds.includes("gender") ? "grid-cols-3" : "grid-cols-2"} gap-3`}>
+                                    <div className={`grid md:grid-cols-3 gap-3`}>
+                                        <div className="mb-4">
+                                            <label htmlFor="gender">Gender</label>
+                                            <select
+                                                name="client_applicant_gender"
+                                                id="gender"
+                                                className="border w-full rounded-md p-2 mt-2"
+                                                value={formData.client_applicant_gender}
 
-                                        {visibleFeilds.includes("gender") && (
-                                            <div className="mb-4">
-                                                <label htmlFor="gender">Gender</label>
-                                                <select
-                                                    name="gender"
-                                                    id="gender"
-                                                    className="border w-full rounded-md p-2 mt-2"
-                                                    value={cmtData.gender}
-                                                    readOnly
-                                                // onChange={handleChange}
-                                                >
-                                                    <option value="">Select Gender</option>
-                                                    <option value="Male">Male</option>
-                                                    <option value="Female">Female</option>
-                                                    <option value="Transgender">Trans Gender</option>
-                                                </select>
-                                                {errors.gender && (
-                                                    <p className="text-red-500 text-sm">{errors.gender}</p>
-                                                )}
-                                            </div>
-                                        )}
+                                                onChange={handleChange}
+                                            >
+                                                <option value="">Select Gender</option>
+                                                <option value="Male">Male</option>
+                                                <option value="Female">Female</option>
+                                                <option value="Transgender">Transgender</option>
+
+                                            </select>
+                                            {errors.gender && (
+                                                <p className="text-red-500 text-sm">{errors.gender}</p>
+                                            )}
+                                        </div>
                                         <div className="mb-4">
                                             <label htmlFor="dob">Date Of Birth</label>
-                                            <input
-                                                type="date"
-                                                name="dob"
+                                            <DatePicker
                                                 id="dob"
-                                                className="w-full border p-2 outline-none rounded-md mt-2"
-                                                value={cmdDates.dob}
-                                                // onChange={handleChange}
-                                                readOnly
+                                                selected={parseDate(formData.updated_json.dob)}
+                                                onChange={(date) => {
+                                                    const formattedDate = date ? format(date, "yyyy-MM-dd") : "";
+                                                    handleChange({
+                                                        target: {
+                                                            name: "updated_json.dob",
+                                                            value: formattedDate,
+                                                            type: "date"
+                                                        }
+                                                    });
+                                                }}
+                                                dateFormat="dd-MM-yyyy"
+                                                className="w-full border uppercase p-2 outline-none rounded-md mt-2"
                                             />
                                             {errors.dob && (
                                                 <p className="text-red-500 text-sm">{errors.dob}</p>
@@ -2026,12 +2595,12 @@ const checkColorInStatus = (status) => {
                                         <div className="mb-4">
                                             <label htmlFor="marital_status">Marital Status</label>
                                             <select
-                                                name="marital_status"
+                                                name="updated_json.marital_status"
                                                 id="marital_status"
                                                 className="border w-full rounded-md p-2 mt-2"
-                                                value={cmtData.marital_status}
-                                                readOnly
-                                            // onChange={handleChange}
+                                                value={formData.updated_json.marital_status}
+
+                                                onChange={handleChange}
                                             >
                                                 <option value="">Select Marital Status</option>
                                                 <option value="Single">Single</option>
@@ -2039,7 +2608,53 @@ const checkColorInStatus = (status) => {
                                             </select>
                                         </div>
                                     </div>
+                                    <div className="grid md:grid-cols-3 gap-3">
+                                        <div className="mb-4">
+                                            <label htmlFor="nationality">Nationality</label>
+                                            <input
+                                                type="text"
+                                                name="updated_json.nationality"
+                                                id="nationality"
+                                                className="border w-full rounded-md p-2 mt-2 capitalize"
+                                                value={formData.updated_json.nationality}
 
+                                                onChange={handleChange}
+                                            />
+                                        </div>
+                                        <div className="mb-4">
+                                            <label htmlFor="date_of_data ">Date of Data Entry </label>
+                                            <DatePicker
+                                                id="date_of_data"
+                                                selected={parseDate(formData.updated_json.date_of_data)}
+                                                onChange={(date) => {
+                                                    const formattedDate = date ? format(date, "yyyy-MM-dd") : "";
+                                                    handleChange({
+                                                        target: {
+                                                            name: "updated_json.date_of_data",
+                                                            value: formattedDate,
+                                                            type: "date"
+                                                        }
+                                                    });
+                                                }}
+                                                dateFormat="dd-MM-yyyy"
+                                                className="border w-full rounded-md p-2 mt-2 uppercase"
+                                            />
+                                        </div>
+                                        <div className="mb-4">
+                                            <label htmlFor="data_entry_analyst_name">Data Entry Analyst Name</label>
+
+                                            <select name="updated_json.data_entry_analyst_name"
+                                                value={formData.updated_json.data_entry_analyst_name}
+                                                onChange={handleChange}
+                                                id="" className="border w-full rounded-md p-2 mt-2 uppercase">
+                                                <option value="">Select NAME </option>
+                                                {adminNamesNew.map((spoc) => (
+                                                    <option value={spoc}>{spoc}</option>
+                                                ))}
+
+                                            </select>
+                                        </div>
+                                    </div>
 
                                 </div>
 
@@ -2047,34 +2662,22 @@ const checkColorInStatus = (status) => {
                                     <div className='my-4 font-semibold text-xl '>Permanent Address</div>
                                     <div className="form-group border border-black p-3 rounded-md">
                                         <div className="mb-4">
-                                            <label htmlFor="full_address">Full Address:</label>
-                                            <div
-                                                id="full_address"
+                                            <label htmlFor="permanent_address">Full Address:</label>
+                                            <input
+                                                type="text"
+                                                name="updated_json.permanent_address.permanent_address"
+                                                id="permanent_address"
                                                 className="border w-full rounded-md p-2 mt-2 capitalize overflow-x-auto whitespace-nowrap"
-                                            >
-                                                {`
-    ${cmtData.permanent_address_house_no || ''}
-    ${cmtData.permanent_address_floor || ''}
-    ${cmtData.permanent_address_cross || ''}
-    ${cmtData.permanent_address_street || ''}
-    ${cmtData.permanent_address_main || ''}
-    ${cmtData.permanent_address_area || ''}
-    ${cmtData.permanent_address_locality || ''}
-    ${cmtData.permanent_address_city || ''}
-    ${cmtData.permanent_address_landmark || ''}
-    ${cmtData.permanent_address_taluk || ''}
-    ${cmtData.permanent_address_district || ''}
-    ${cmtData.permanent_address_state || ''}
-    ${cmtData.permanent_address_pin_code || ''}
-  `.replace(/\s+/g, ' ').trim()}
-                                            </div>
+                                                value={formData.updated_json.permanent_address.permanent_address || ''}
+                                                onChange={handleChange}
+                                            />
 
 
                                         </div>
 
                                         <div className="form-group">
                                             <h3 className="font-medium text-lg mb-3">Period of Stay</h3>
-                                            <div className="grid grid-cols-2 gap-3">
+                                            <div className="grid md:grid-cols-2 gap-3">
                                                 <div className="mb-4">
                                                     <label htmlFor="permanent_sender_name">From:</label>
                                                     <input
@@ -2082,9 +2685,8 @@ const checkColorInStatus = (status) => {
                                                         name="updated_json.permanent_address.permanent_sender_name"
                                                         id="permanent_sender_name"
                                                         className="border w-full rounded-md p-2 mt-2 capitalize"
-                                                        value={cmtData.permanent_sender_name}
-                                                        // onChange={handleChange}
-                                                        readOnly
+                                                        value={formData.updated_json.permanent_address.permanent_sender_name}
+                                                        onChange={handleChange}
                                                     />
                                                 </div>
 
@@ -2095,50 +2697,49 @@ const checkColorInStatus = (status) => {
                                                         name="updated_json.permanent_address.permanent_receiver_name"
                                                         id="permanent_receiver_name"
                                                         className="w-full border p-2 outline-none rounded-md mt-2 capitalize"
-                                                        value={cmtData.permanent_receiver_name}
-                                                        // onChange={handleChange}
-                                                        readOnly
+                                                        value={formData.updated_json.permanent_address.permanent_receiver_name}
+                                                        onChange={handleChange}
                                                     />
                                                 </div>
                                             </div>
 
-                                            <div className="grid grid-cols-2 gap-3">
+                                            <div className="grid md:grid-cols-2 gap-3">
                                                 <div className="mb-4">
-                                                    <label htmlFor="permanent_landmark">Landmark:</label>
+                                                    <label htmlFor="permanent_address_landmark">Landmark:</label>
                                                     <input
                                                         type="text"
-                                                        name="updated_json.permanent_address.permanent_landmark"
-                                                        id="permanent_landmark"
+                                                        name="updated_json.permanent_address.permanent_address_landmark"
+                                                        id="permanent_address_landmark"
                                                         className="border w-full rounded-md p-2 mt-2 capitalize"
-                                                        value={cmtData.permanent_address_landmark}
-                                                        // onChange={handleChange}
-                                                        readOnly
+                                                        value={formData.updated_json.permanent_address.permanent_address_landmark}
+                                                        onChange={handleChange}
                                                     />
                                                 </div>
 
                                                 <div className="mb-4">
-                                                    <label htmlFor="permanent_pin_code">Pin Code:</label>
+                                                    <label htmlFor="permanent_address_pin_code">Pin Code:</label>
                                                     <input
                                                         type="text" // Keep as text to handle leading zeros
-                                                        name="updated_json.permanent_address.permanent_pin_code"
-                                                        id="permanent_pin_code"
+                                                        name="updated_json.permanent_address.permanent_address_pin_code"
+                                                        id="permanent_address_pin_code"
                                                         className="w-full border p-2 outline-none rounded-md mt-2 capitalize"
-                                                        value={cmtData.permanent_address_pin_code}
-                                                        readOnly
+                                                        value={formData.updated_json.permanent_address.permanent_address_pin_code}
+                                                        onChange={handleChange}
+
                                                     />
                                                 </div>
                                             </div>
 
                                             <div className="mb-4">
-                                                <label htmlFor="permanent_state">State:</label>
+                                                <label htmlFor="permanent_address_state">State:</label>
                                                 <input
                                                     type="text"
-                                                    name="updated_json.permanent_address.permanent_state"
-                                                    id="permanent_state"
+                                                    name="updated_json.permanent_address.permanent_address_state"
+                                                    id="permanent_address_state"
                                                     className="w-full border p-2 outline-none rounded-md mt-2 capitalize"
-                                                    value={cmtData.permanent_address_state}
-                                                    // onChange={handleChange}
-                                                    readOnly
+                                                    value={formData.updated_json.permanent_address.permanent_address_state}
+                                                    onChange={handleChange}
+
                                                 />
                                             </div>
                                         </div>
@@ -2148,38 +2749,27 @@ const checkColorInStatus = (status) => {
                                     <div className='my-4 font-semibold text-xl'>Current Address </div>
                                     <div className="form-group border border-black rounded-md p-3">
                                         <div className="mb-4">
-                                            <label htmlFor="full_address">Full Address:</label>
-                                            <div
-                                                id="full_address"
-                                                className="border w-full rounded-md p-2 mt-2 capitalize overflow-x-auto whitespace-nowrap"
-                                            >
-                                                {`
-    ${cmtData.address_house_no || ''}
-    ${cmtData.address_floor || ''}
-    ${cmtData.address_cross || ''}
-    ${cmtData.address_street || ''}
-    ${cmtData.address_main || ''}
-    ${cmtData.address_area || ''}
-    ${cmtData.address_locality || ''}
-    ${cmtData.address_city || ''}
-    ${cmtData.address_landmark || ''}
-    ${cmtData.address_taluk || ''}
-    ${cmtData.address_district || ''}
-    ${cmtData.address_state || ''}
-    ${cmtData.address_pin_code || ''}
-  `.replace(/\s+/g, ' ').trim()}
-                                            </div>
-                                        </div>
-                                        <div className="mb-4">
-                                            <label htmlFor="Landmark">Landmark:</label>
+                                            <label htmlFor="address">Full Address:</label>
                                             <input
                                                 type="text"
-                                                name="updated_json.address.landmark"
-                                                id="landmark"
+                                                name="updated_json.address.address"
+                                                id="address"
+                                                className="border w-full rounded-md p-2 mt-2 capitalize overflow-x-auto whitespace-nowrap"
+                                                value={formData.updated_json.address.address || ''}
+                                                onChange={handleChange}
+                                            />
+
+                                        </div>
+                                        <div className="mb-4">
+                                            <label htmlFor="address_landmark">Landmark:</label>
+                                            <input
+                                                type="text"
+                                                name="updated_json.address.address_landmark"
+                                                id="address_landmark"
                                                 className="border w-full rounded-md p-2 mt-2 capitalize"
-                                                value={cmtData.address_landmark}
-                                                // onChange={handleChange}
-                                                readOnly
+                                                value={formData.updated_json.address.address_landmark}
+                                                onChange={handleChange}
+
                                             />
                                         </div>
                                         <div className="mb-4">
@@ -2189,21 +2779,21 @@ const checkColorInStatus = (status) => {
                                                 name="updated_json.address.residence_mobile_number"
                                                 id="residence_mobile_number"
                                                 className="border w-full rounded-md p-2 mt-2 capitalize"
-                                                value={cmtData.residence_mobile_number}
-                                                // onChange={handleChange}
-                                                readOnly
+                                                value={formData.updated_json.address.residence_mobile_number}
+                                                onChange={handleChange}
+
                                             />
                                         </div>
                                         <div className="mb-4">
-                                            <label htmlFor="state">State</label>
+                                            <label htmlFor="address_state">State</label>
                                             <input
                                                 type="text"
-                                                name="updated_json.address.state"
-                                                id="state"
+                                                name="updated_json.address.address_state"
+                                                id="address_state"
                                                 className="w-full border p-2 outline-none rounded-md mt-2 capitalize"
-                                                value={cmtData.address_state}
-                                                // onChange={handleChange}
-                                                readOnly
+                                                value={formData.updated_json.address.address_state}
+                                                onChange={handleChange}
+
                                             />
                                         </div>
                                     </div>
@@ -2218,19 +2808,31 @@ const checkColorInStatus = (status) => {
                                     <div className='p-5 border '>
                                         {servicesDataInfo && servicesDataInfo.map((serviceData, index) => {
                                             if (serviceData.serviceStatus) {
-                                                const formJson = JSON.parse(serviceData.reportFormJson.json);
-                                                const dbTableHeading = formJson.heading;
-                                                const dbTable = formJson.db_table;
+                                                // Check if reportFormJson and its json exist before attempting to parse
+                                                if (!serviceData?.serviceStatus || !serviceData?.reportFormJson || !serviceData?.reportFormJson?.json) {
+                                                    return null; // Skip this entry
+                                                }
+
+                                                let formJson;
+                                                try {
+                                                    formJson = JSON.parse(serviceData.reportFormJson.json);
+                                                } catch (e) {
+                                                    console.error(`Error parsing reportFormJson.json for service ID ${serviceData?.service_id}:`, e);
+                                                    return null; // Skip this entry if JSON is invalid
+                                                }
+
+                                                const dbTableHeading = formJson?.heading || '';
+                                                const dbTable = formJson?.db_table || '';
                                                 let status = serviceData?.annexureData?.status || '';
                                                 let preselectedStatus = selectedStatuses[index] || status;
 
                                                 return (
-                                                    <div key={index} className="mb-6 flex justify-between mt-5">
+                                                    <div key={index} className="mb-6 md:flex justify-between mt-5">
                                                         {formJson.heading && (
                                                             <>
                                                                 <span>{formJson.heading}</span>
                                                                 <select
-                                                                    className="border p-2 w-7/12 rounded-md"
+                                                                    className="border border-black p-2 md:w-7/12 w-full rounded-md"
                                                                     value={preselectedStatus}
                                                                     onChange={(e) => handleStatusChange(e, index)}
                                                                 >
@@ -2246,7 +2848,6 @@ const checkColorInStatus = (status) => {
                                                                     <option value="completed_orange">COMPLETED ORANGE</option>
                                                                     <option value="completed_red">COMPLETED RED</option>
                                                                     <option value="completed_yellow">COMPLETED YELLOW</option>
-                                                                    <option value="completed_pink">COMPLETED PINK</option>
                                                                     <option value="stopcheck">STOPCHECK</option>
                                                                     <option value="active_employment">ACTIVE EMPLOYMENT</option>
                                                                     <option value="not_doable">NOT DOABLE</option>
@@ -2267,81 +2868,111 @@ const checkColorInStatus = (status) => {
                                 </div>
 
                                 <div className="container mx-auto mt-5 py-2">
-                                    {servicesDataInfo && servicesDataInfo.map((serviceData, index) => {
-                                        if (serviceData.serviceStatus) {
-                                            const formJson = JSON.parse(serviceData.reportFormJson.json);
-                                            const dbTableHeading = formJson.heading;
-                                            const dbTable = formJson.db_table;
-                                            let annexureData = serviceData?.annexureData || {};
-                                            let annexureImagesSplitArr = [];
-
-                                            if (annexureData) {
-                                                const annexureImagesKey = Object.keys(annexureData).find(key =>
-                                                    key.toLowerCase().startsWith('annexure') &&
-                                                    !key.includes('[') &&
-                                                    !key.includes(']')
-                                                );
-                                                if (annexureImagesKey) {
-                                                    const annexureImagesStr = annexureData[annexureImagesKey];
-                                                    annexureImagesSplitArr = annexureImagesStr ? annexureImagesStr.split(',') : [];
+                                    {servicesDataInfo &&
+                                        servicesDataInfo.map((serviceData, index) => {
+                                            if (serviceData.serviceStatus) {
+                                                // Check if reportFormJson and its json exist before attempting to parse
+                                                if (!serviceData?.reportFormJson || !serviceData?.reportFormJson?.json) {
+                                                    return null; // Skip this entry
                                                 }
-                                            }
 
-                                            return (
-                                                <div key={index} className="mb-6">
-                                                    {/* Only render form if the selected status is not "nil" */}
-                                                    {selectedStatuses[index] !== "nil" && (
-                                                        <>
-                                                            <div className='border mt-12 rounded-t-md'>
-                                                                {dbTableHeading && (
-                                                                    <div className='bg-[#c1dff2] border border-black rounded-t-md p-4'>
-                                                                        <h3 className="text-center text-2xl font-semibold ">{dbTableHeading}</h3>
-                                                                    </div>
-                                                                )}
-                                                                <div className='border-[#c1dff2] border border-t-0 rounded-md'>
-                                                                    <table className="w-full table-auto">
-                                                                        <thead>
-                                                                            <tr className="bg-gray-100">
-                                                                                {formJson.headers.map((header, idx) => (
-                                                                                    <th key={idx} className="py-2 px-4 border border-gray-300 text-left">{header}</th>
-                                                                                ))}
-                                                                            </tr>
-                                                                        </thead>
-                                                                        <tbody>
-                                                                            {formJson.rows.map((row, idx) => (
-                                                                                <tr key={idx} className="odd:bg-gray-50">
-                                                                                    <td className="py-2 px-4 border {row.label} border-gray-300"
-                                                                                        ref={(el) => (inputRefs.current['annexure'] = el)}
-                                                                                    >{row.label}</td>
+                                                let formJson;
+                                                try {
+                                                    formJson = JSON.parse(serviceData.reportFormJson.json);
+                                                } catch (e) {
+                                                    console.error(`Error parsing reportFormJson.json for service ID ${serviceData?.service_id}:`, e);
+                                                    return null; // Skip this entry if JSON is invalid
+                                                }
 
-                                                                                    {row.inputs.length === 1 ? (
-                                                                                        <td colSpan={formJson.headers.length - 1} className="py-2 px-4 border border-gray-300">
-                                                                                            {renderInput(index, dbTable, row.inputs[0], annexureImagesSplitArr, row.label, 0)}
-                                                                                        </td>
-                                                                                    ) : (
-                                                                                        row.inputs.map((input, i) => (
-                                                                                            <td key={i} className="py-2 px-4 border border-gray-300">
-                                                                                                {renderInput(index, dbTable, input, annexureImagesSplitArr, row.label, i)}
-                                                                                            </td>
-                                                                                        ))
-                                                                                    )}
-                                                                                </tr>
-                                                                            ))}
-                                                                        </tbody>
-                                                                    </table>
-                                                                    {errors[`annexure_${index}`] && (
-                                                                        <p className="text-red-500 text-sm">{errors[`annexure_${index}`]}</p>
+                                                const dbTableHeading = formJson?.heading || '';
+                                                const dbTable = formJson?.db_table || '';
+                                                let annexureData = serviceData?.annexureData || {};
+                                                let annexureImagesSplitArr = [];
+
+                                                if (annexureData) {
+                                                    const annexureImagesKey = Object.keys(annexureData).find(
+                                                        (key) =>
+                                                            key.toLowerCase().startsWith("annexure") &&
+                                                            !key.includes("[") &&
+                                                            !key.includes("]")
+                                                    );
+                                                    if (annexureImagesKey) {
+                                                        const annexureImagesStr = annexureData[annexureImagesKey];
+                                                        annexureImagesSplitArr = annexureImagesStr ? annexureImagesStr.split(",") : [];
+                                                    }
+                                                }
+
+                                                return (
+                                                    <div key={index} className="mb-6">
+                                                        {selectedStatuses[index] !== "nil" && (
+                                                            <>
+                                                                <div className="border mt-12 rounded-t-md">
+                                                                    {dbTableHeading && (
+                                                                        <div className="bg-[#c1dff2] border border-black rounded-t-md p-4">
+                                                                            <h3 className="text-center text-2xl font-semibold ">
+                                                                                {dbTableHeading}
+                                                                            </h3>
+                                                                        </div>
                                                                     )}
-                                                                </div>
-                                                            </div>
-                                                        </>
-                                                    )}
-                                                </div>
-                                            );
-                                        }
-                                        return null;
-                                    })}
+                                                                    <div className="border-[#c1dff2] border overflow-scroll border-t-0 rounded-md">
+                                                                        <table className="w-full table-auto">
+                                                                            <thead>
+                                                                                <tr className="bg-gray-100 whitespace-nowrap">
+                                                                                    {formJson.headers.map((header, idx) => (
+                                                                                        <th
+                                                                                            key={idx}
+                                                                                            className="py-2 px-4 border  border-gray-300 text-left"
+                                                                                        >
+                                                                                            {header}
+                                                                                        </th>
+                                                                                    ))}
+                                                                                </tr>
+                                                                            </thead>
+                                                                            <tbody>
+                                                                                {formJson.rows.map((row, idx) => (
+                                                                                    <tr key={idx} className="odd:bg-gray-50 w-full">
+                                                                                        <td
+                                                                                            className="py-2 px-4  border md:w-1/3 whitespace-nowrap border-gray-300"
+                                                                                            ref={(el) => (inputRefs.current["annexure"] = el)}
+                                                                                        >
+                                                                                            {row.label}
+                                                                                        </td>
 
+                                                                                        {row.inputs.length === 1 ? (
+
+                                                                                            <td
+                                                                                                colSpan={formJson.headers.length - 1}
+                                                                                                className="py-2 px-4 border md:w-1/3 border-gray-300"
+                                                                                            >
+
+
+                                                                                                {renderInput(index, dbTable, row.inputs[0], annexureImagesSplitArr, row.label, 0)}
+
+
+                                                                                            </td>
+                                                                                        ) : (
+                                                                                            row.inputs.map((input, i) => (
+                                                                                                <td key={i} className="py-2 px-4 md:w-1/3 border border-gray-300">
+                                                                                                    {renderInput(index, dbTable, input, annexureImagesSplitArr, row.label, i)}
+                                                                                                </td>
+                                                                                            ))
+                                                                                        )}
+                                                                                    </tr>
+                                                                                ))}
+                                                                            </tbody>
+                                                                        </table>
+                                                                        {errors[`annexure_${index}`] && (
+                                                                            <p className="text-red-500 text-sm">{errors[`annexure_${index}`]}</p>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                );
+                                            }
+                                            return null;
+                                        })}
                                 </div>
 
 
@@ -2373,7 +3004,7 @@ const checkColorInStatus = (status) => {
                             </div>
 
                             <div className="form-group border rounded-md p-3">
-                                {/* <div className="gap-3">
+                                <div className="gap-3">
                                     <div className="mb-4">
                                         <label htmlFor="myData_qc">Data QC</label><span className="text-red-500 text-xl">*</span>
                                         <select
@@ -2394,345 +3025,296 @@ const checkColorInStatus = (status) => {
                                             <p className="text-red-500 text-sm">{errors.myData_qc}</p>
                                         )}
                                     </div>
-                                </div> */}
-                                {visibleFeilds.includes("batch_no") && (
-                                    <div className="mb-4">
-                                        <label className="capitalize text-gray-500" htmlFor="batch_no">
-                                            Batch No
-                                        </label>
-                                        <input
-                                            type="text"
-                                            name="updated_json.insuffDetails.batch_no"
-                                            id="batch_no"
-                                            className="border w-full rounded-md p-2 mt-2 capitalize"
-                                            value={formData.updated_json.insuffDetails.batch_no}
-                                            onChange={handleChange}
-                                        />
-                                    </div>
-                                )}
-                                {
-                                    visibleFeilds.includes("case_id") && (
-                                        <div className="mb-4">
-                                            <label className="capitalize text-gray-500" htmlFor="case_id">
-                                                Case ID
-                                            </label>
-                                            <input
-                                                type="text"
-                                                name="updated_json.insuffDetails.case_id"
-                                                id="case_id"
-                                                className="border w-full rounded-md p-2 mt-2 capitalize"
-                                                value={formData.updated_json.insuffDetails.case_id}
-                                                onChange={handleChange}
-                                            />
-                                        </div>
-                                    )
-                                }
-                                {
-                                    visibleFeilds.includes("check_id") && (
-                                        <div className="mb-4">
-                                            <label className="capitalize text-gray-500" htmlFor="check_id">
-                                                Check ID
-                                            </label>
-                                            <input
-                                                type="text"
-                                                name="updated_json.insuffDetails.check_id"
-                                                id="check_id"
-                                                className="border w-full rounded-md p-2 mt-2 capitalize"
-                                                value={formData.updated_json.insuffDetails.check_id}
-                                                onChange={handleChange}
-                                            />
-                                        </div>
-                                    )
-                                }
-                                {
-                                    visibleFeilds.includes("ticket_id") && (
-                                        <div className="mb-4">
-                                            <label className="capitalize text-gray-500" htmlFor="ticket_id">
-                                                Ticket ID
-                                            </label>
-                                            <input
-                                                type="text"
-                                                name="updated_json.insuffDetails.ticket_id"
-                                                id="ticket_id"
-                                                className="border w-full rounded-md p-2 mt-2 capitalize"
-                                                value={formData.updated_json.insuffDetails.ticket_id}
-                                                onChange={handleChange}
-                                            />
-                                        </div>
-                                    )
-                                }
-                                {
-                                    visibleFeilds.includes("sub_client") && (
-                                        <div className="mb-4">
-                                            <label className="capitalize text-gray-500" htmlFor="sub_client">
-                                                Sub Client
-                                            </label>
-                                            <input
-                                                type="text"
-                                                name="updated_json.insuffDetails.sub_client"
-                                                id="sub_client"
-                                                className="border w-full rounded-md p-2 mt-2 capitalize"
-                                                value={formData.updated_json.insuffDetails.sub_client}
-                                                onChange={handleChange}
-                                            />
-                                        </div>
-                                    )
-                                }
-                                {
-                                    visibleFeilds.includes("photo") && (
-                                        <div className="mb-4">
-                                            <label className="capitalize text-gray-500" htmlFor="photo">
-                                                Photo
-                                            </label>
-                                            <input
-                                                type="file"
-                                                name="updated_json.insuffDetails.photo"
-                                                id="photo"
-                                                accept="image/*"
-                                                className="border w-full rounded-md p-2 mt-2"
-                                                onChange={handleChange}
-                                            />
-                                        </div>
-                                    )
-                                }
-                                {
-                                    visibleFeilds.includes("location") && (
-                                        <div className="mb-4">
-                                            <label className="capitalize text-gray-500" htmlFor="location">
-                                                Location
-                                            </label>
-                                            <input
-                                                type="text"
-                                                name="updated_json.insuffDetails.location"
-                                                id="location"
-                                                className="border w-full rounded-md p-2 mt-2 capitalize"
-                                                value={formData.updated_json.insuffDetails.location}
-                                                onChange={handleChange}
-                                            />
-                                        </div>
-                                    )
-                                }
+                                </div>
 
                                 <div className="mb-4">
                                     <label className='capitalize text-gray-500' htmlFor="first_insufficiency_marks">First Level Insufficiency Remarks</label>
-                                    <select
-                                        multiple
+                                     <MultiSelect
                                         id="first_insufficiency_marks"
-                                        name="updated_json.insuffDetails.first_insufficiency_marks"
-                                        value={
-                                            Array.isArray(formData.updated_json?.insuffDetails?.first_insufficiency_marks)
-                                                ? formData.updated_json.insuffDetails.first_insufficiency_marks
-                                                : formData.updated_json.insuffDetails.first_insufficiency_marks &&
-                                                    formData.updated_json.insuffDetails.first_insufficiency_marks.trim() !== ""
-                                                    ? JSON.parse(formData.updated_json.insuffDetails.first_insufficiency_marks)
-                                                    : []
+                                        name="first_insufficiency_marks"
+                                        className="text-xl"
+                                        value={formData.updated_json?.insuffDetails?.first_insufficiency_marks || []}
+                                        onChange={handleMultiSelectChange}
+                                        options={optionsData}
+                                       isDisabled={true}
+                                    /> 
+                                    {/* <input
+                                        type="text"
+                                        id="first_insufficiency_marks"
+                                        name="first_insufficiency_marks"
+                                        className="w-full p-3 mb-4 border border-gray-300 rounded-md"
+                                        value={formData.updated_json?.insuffDetails?.first_insufficiency_marks || ''}
+                                        onChange={(e) =>
+                                            setFormData((prev) => ({
+                                                ...prev,
+                                                updated_json: {
+                                                    ...prev.updated_json,
+                                                    insuffDetails: {
+                                                        ...prev.updated_json?.insuffDetails,
+                                                        first_insufficiency_marks: e.target.value,
+                                                    },
+                                                },
+                                            }))
                                         }
-                                        onChange={handleChange}
-                                        className="border border-gray-300 rounded-md p-2 mt-2 w-full focus:outline-none focus:ring-4 focus:ring-blue-500 focus:ring-opacity-50 hover:h-42 focus:h-42 transition-all duration-300 ease-in-out capitalize text-gray-700 h-40"
-                                    >
-                                        {optionsData.map((group) => (
-                                            <optgroup key={group.label} label={group.label} className="text-sm font-bold text-gray-700">
-                                                {group.options.map((option) => (
-                                                    <option
-                                                        key={option.value}
-                                                        value={option.value}
-                                                        className="hover:bg-gray-200 focus:bg-blue-100 transition-all duration-300 ease-in-out p-2"
-                                                    >
-                                                        {option.text}
-                                                    </option>
-                                                ))}
-                                            </optgroup>
-                                        ))}
-                                    </select>
-
-
-
-
-
+                                    /> */}
                                 </div>
                                 <div className="mb-4">
                                     <label className='capitalize text-gray-500' htmlFor="first_insuff_date">First Insuff Raised Date:</label>
-                                    <input
-                                        type="date"
-                                        name="updated_json.insuffDetails.first_insuff_date"
-                                        id="first_insuff_date"
-                                        className="border w-full rounded-md p-2 mt-2 "
-                                        value={formData.updated_json.insuffDetails.first_insuff_date}
-                                        onChange={handleChange}
-                                    />
+                                    {/* <DatePicker
+                                        selected={parseDate(formData.updated_json.insuffDetails.first_insuff_date)}
+                                        onChange={(date) =>
+                                            handleChange({
+                                                target: {
+                                                    name: 'updated_json.insuffDetails.first_insuff_date',
+                                                    value: date ? format(date, 'yyyy-MM-dd') : '',
+                                                },
+                                            })
+                                        }
+                                        dateFormat="dd-MM-yyyy"
+                                        className="uppercase border w-full rounded-md p-2 mt-2"
+                                    /> */}
+                                     <input
+                                        type="text"
+                                        name="first_insuff_date"
+                                        className="w-full p-3 mb-4 border border-gray-300 rounded-md"
+                                        value={formatDateDDMMYY(formData.updated_json.insuffDetails.first_insuff_date) || ''}
+                                    disabled
+                                    /> 
                                 </div>
                                 <div className="mb-4">
-                                    <label className='capitalize text-gray-500' htmlFor="first_insuff_reopened_date">First Insuff Cleared Date / Re-Opened date<span className="text-red-500 text-xl" >*</span></label>
+                                    <label className='capitalize text-gray-500' htmlFor="first_insuff_reopened_date">First Insuff Cleared Date / Re-Opened date</label>
+                                    {/* <DatePicker
+                                        selected={parseDate(formData.updated_json.insuffDetails.first_insuff_reopened_date)}
+                                        onChange={(date) =>
+                                            handleChange({
+                                                target: {
+                                                    name: 'updated_json.insuffDetails.first_insuff_reopened_date',
+                                                    value: date ? format(date, 'yyyy-MM-dd') : '',
+                                                },
+                                            })
+                                        }
+                                        dateFormat="dd-MM-yyyy"
+                                        className="uppercase border w-full rounded-md p-2 mt-2"
+                                        ref={(el) => (inputRefs.current['first_insuff_reopened_date'] = el)}
+                                    /> */}
                                     <input
-                                        ref={(el) => (inputRefs.current['first_insuff_reopened_date'] = el)} // Add ref
-                                        type="date"
-                                        name="updated_json.insuffDetails.first_insuff_reopened_date"
-                                        id="first_insuff_reopened_date"
-                                        className="border w-full rounded-md p-2 mt-2 "
-                                        value={formData.updated_json.insuffDetails.first_insuff_reopened_date}
-                                        onChange={handleChange}
-                                    />
+                                        type="text"
+                                        name="first_insuff_date"
+                                        className="w-full p-3 mb-4 border border-gray-300 rounded-md"
+                                        value={formatDateDDMMYY(formData.updated_json.insuffDetails.first_insuff_reopened_date) || ''}
+                                    disabled
+                                    /> 
                                     {errors.first_insuff_reopened_date && (
                                         <p className="text-red-500 text-sm">{errors.first_insuff_reopened_date}</p>
                                     )}
                                 </div>
                                 <div className="mb-4">
                                     <label className='capitalize text-gray-500' htmlFor="second Level Insufficiency Remarks">Second Level Insufficiency Remarks</label>
-                                    <select
-                                        multiple
+                                    <MultiSelect
                                         id="second_insufficiency_marks"
-                                        name="updated_json.insuffDetails.second_insufficiency_marks"
-                                        value={
-                                            Array.isArray(formData.updated_json?.insuffDetails?.second_insufficiency_marks)
-                                                ? formData.updated_json.insuffDetails.second_insufficiency_marks
-                                                : formData.updated_json.insuffDetails.second_insufficiency_marks &&
-                                                    formData.updated_json.insuffDetails.second_insufficiency_marks.trim() !== ""
-                                                    ? JSON.parse(formData.updated_json.insuffDetails.second_insufficiency_marks)
-                                                    : []
+                                        name="second_insufficiency_marks"
+                                        value={formData.updated_json?.insuffDetails?.second_insufficiency_marks || []}
+                                        onChange={handleMultiSelectChange}
+                                        options={optionsData}
+                                         isDisabled={true}
+                                    />
+                                    {/* <input
+                                        type="text"
+                                        id="second_insufficiency_marks"
+                                        name="second_insufficiency_marks"
+                                        className="w-full p-3 mb-4 border border-gray-300 rounded-md"
+                                        value={formData.updated_json?.insuffDetails?.second_insufficiency_marks || ''}
+                                        onChange={(e) =>
+                                            setFormData((prev) => ({
+                                                ...prev,
+                                                updated_json: {
+                                                    ...prev.updated_json,
+                                                    insuffDetails: {
+                                                        ...prev.updated_json?.insuffDetails,
+                                                        second_insufficiency_marks: e.target.value,
+                                                    },
+                                                },
+                                            }))
                                         }
-                                        onChange={handleChange}
-                                        className="border border-gray-300 rounded-md p-2 mt-2 w-full focus:outline-none focus:ring-4 focus:ring-blue-500 focus:ring-opacity-50 hover:h-42 focus:h-42 transition-all duration-300 ease-in-out capitalize text-gray-700 h-40"
-                                    >
-                                        {optionsData.map((group) => (
-                                            <optgroup key={group.label} label={group.label} className="text-sm font-bold text-gray-700">
-                                                {group.options.map((option) => (
-                                                    <option
-                                                        key={option.value}
-                                                        value={option.value}
-                                                        className="hover:bg-gray-200 focus:bg-blue-100 transition-all duration-300 ease-in-out p-2"
-                                                    >
-                                                        {option.text}
-                                                    </option>
-                                                ))}
-                                            </optgroup>
-                                        ))}
-                                    </select>
-
+                                    /> */}
 
 
                                 </div>
                                 <div className="mb-4">
                                     <label className='capitalize text-gray-500' htmlFor="second Insuff Raised Date:">Second Insuff Raised Date:</label>
-                                    <input
-                                        type="date"
-                                        name="updated_json.insuffDetails.second_insuff_date"
-                                        id="second_insuff_date"
-                                        value={formData.updated_json.insuffDetails.second_insuff_date}
-                                        onChange={handleChange}
-                                        className="border w-full rounded-md p-2 mt-2 "
-                                    />
+                                    {/* <DatePicker
+                                        selected={parseDate(formData.updated_json.insuffDetails.second_insuff_date)}
+                                        onChange={(date) =>
+                                            handleChange({
+                                                target: {
+                                                    name: 'updated_json.insuffDetails.second_insuff_date',
+                                                    value: date ? format(date, 'yyyy-MM-dd') : '',
+                                                },
+                                            })
+                                        }
+                                        dateFormat="dd-MM-yyyy"
+                                        className="uppercase border w-full rounded-md p-2 mt-2"
+                                    /> */}
+                                      <input
+                                        type="text"
+                                        name="second_insuff_date"
+                                        className="w-full p-3 mb-4 border border-gray-300 rounded-md"
+                                        value={formatDateDDMMYY(formData.updated_json.insuffDetails.second_insuff_date) || ''}
+                                    disabled
+                                    /> 
                                 </div>
                                 <div className="mb-4">
                                     <label className='capitalize text-gray-500' htmlFor="second Insuff Cleared Date / Re-Opened date">Second Insuff Cleared Date / Re-Opened date</label>
-                                    <input
-                                        type="date"
-                                        name="updated_json.insuffDetails.second_insuff_reopened_date"
-                                        id="second_insuff_reopened_date"
-                                        className="border w-full rounded-md p-2 mt-2 "
-                                        value={formData.updated_json.insuffDetails.second_insuff_reopened_date}
-                                        onChange={handleChange}
-                                    />
-
+                                    {/* <DatePicker
+                                        selected={parseDate(formData.updated_json.insuffDetails.second_insuff_reopened_date)}
+                                        onChange={(date) =>
+                                            handleChange({
+                                                target: {
+                                                    name: 'updated_json.insuffDetails.second_insuff_reopened_date',
+                                                    value: date ? format(date, 'yyyy-MM-dd') : '',
+                                                },
+                                            })
+                                        }
+                                        dateFormat="dd-MM-yyyy"
+                                        className="uppercase border w-full rounded-md p-2 mt-2"
+                                    /> */}
+        <input
+                                        type="text"
+                                        name="second_insuff_reopened_date"
+                                        className="w-full p-3 mb-4 border border-gray-300 rounded-md"
+                                        value={formatDateDDMMYY(formData.updated_json.insuffDetails.second_insuff_reopened_date) || ''}
+                                    disabled
+                                    /> 
                                 </div>
                                 <div className="mb-4">
                                     <label className='capitalize text-gray-500' htmlFor="third Level Insufficiency Remarks">third Level Insufficiency Remarks</label>
-                                    <select
-                                        multiple
+                                    <MultiSelect
                                         id="third_insufficiency_marks"
-                                        name="updated_json.insuffDetails.third_insufficiency_marks"
-                                        value={
-                                            Array.isArray(formData.updated_json?.insuffDetails?.third_insufficiency_marks)
-                                                ? formData.updated_json.insuffDetails.third_insufficiency_marks
-                                                : formData.updated_json.insuffDetails.third_insufficiency_marks &&
-                                                    formData.updated_json.insuffDetails.third_insufficiency_marks.trim() !== ""
-                                                    ? JSON.parse(formData.updated_json.insuffDetails.third_insufficiency_marks)
-                                                    : []
+                                        name="third_insufficiency_marks"
+                                        value={formData.updated_json?.insuffDetails?.third_insufficiency_marks || []}
+                                        onChange={handleMultiSelectChange}
+                                        options={optionsData}
+                                        isDisabled={true}
+                                    />
+                                    {/* <input
+                                        type="text"
+                                        id="third_insufficiency_marks"
+                                        name="third_insufficiency_marks"
+                                        className="w-full p-3 mb-4 border border-gray-300 rounded-md"
+                                        value={formData.updated_json?.insuffDetails?.third_insufficiency_marks || ''}
+                                        onChange={(e) =>
+                                            setFormData((prev) => ({
+                                                ...prev,
+                                                updated_json: {
+                                                    ...prev.updated_json,
+                                                    insuffDetails: {
+                                                        ...prev.updated_json?.insuffDetails,
+                                                        third_insufficiency_marks: e.target.value,
+                                                    },
+                                                },
+                                            }))
                                         }
-                                        onChange={handleChange}
-                                        className="border border-gray-300 rounded-md p-2 mt-2 w-full focus:outline-none focus:ring-4 focus:ring-blue-500 focus:ring-opacity-50 hover:h-42 focus:h-42 transition-all duration-300 ease-in-out capitalize text-gray-700 h-40"
-                                    >
-                                        {optionsData.map((group) => (
-                                            <optgroup key={group.label} label={group.label} className="text-sm font-bold text-gray-700">
-                                                {group.options.map((option) => (
-                                                    <option
-                                                        key={option.value}
-                                                        value={option.value}
-                                                        className="hover:bg-gray-200 focus:bg-blue-100 transition-all duration-300 ease-in-out p-2"
-                                                    >
-                                                        {option.text}
-                                                    </option>
-                                                ))}
-                                            </optgroup>
-                                        ))}
-                                    </select>
-
+                                    /> */}
 
                                 </div>
-                                <div className="mb-4">
-                                    <label className='capitalize text-gray-500' htmlFor="third Insuff Raised Date:">third Insuff Raised Date:</label>
-                                    <input
-                                        type="date"
-                                        name="updated_json.insuffDetails.third_insuff_date"
-                                        id="third_insuff_date"
-                                        className="border w-full rounded-md p-2 mt-2 "
-                                        value={formData.updated_json.insuffDetails.third_insuff_date}
-                                        onChange={handleChange}
-                                    />
-
-                                </div>
-                                <div className="mb-4">
-                                    <label className='capitalize text-gray-500' htmlFor="third Insuff Cleared Date / Re-Opened date">third Insuff Cleared Date / Re-Opened date</label>
-                                    <input
-                                        type="date"
-                                        name="updated_json.insuffDetails.third_insuff_reopened_date"
-                                        id="third_insuff_reopened_date"
-                                        className="border w-full rounded-md p-2 mt-2 "
-                                        value={formData.updated_json.insuffDetails.third_insuff_reopened_date}
-                                        onChange={handleChange}
-                                    />
-
+                                <div className='flex grid md:grid-cols-2  gap-2'>
+                                    <div className="mb-4">
+                                        <label className='capitalize text-gray-500' htmlFor="third Insuff Raised Date:">third Insuff Raised Date:</label>
+                                        {/* <DatePicker
+                                            selected={parseDate(formData.updated_json.insuffDetails.third_insuff_date)}
+                                            onChange={(date) =>
+                                                handleChange({
+                                                    target: {
+                                                        name: 'updated_json.insuffDetails.third_insuff_date',
+                                                        value: date ? format(date, 'yyyy-MM-dd') : '',
+                                                    },
+                                                })
+                                            }
+                                            dateFormat="dd-MM-yyyy"
+                                            className="uppercase border w-full rounded-md p-2 mt-2"
+                                        /> */}
+   <input
+                                        type="text"
+                                        name="third_insuff_date"
+                                        className="w-full p-3 mb-4 border border-gray-300 rounded-md"
+                                        value={formatDateDDMMYY(formData.updated_json.insuffDetails.third_insuff_date) || ''}
+                                    disabled
+                                    /> 
+                                    </div>
+                                    <div className="mb-4">
+                                        <label className='capitalize text-gray-500' htmlFor="third Insuff Cleared Date / Re-Opened date">third Insuff Cleared Date / Re-Opened date</label>
+                                        {/* <DatePicker
+                                            selected={parseDate(formData.updated_json.insuffDetails.third_insuff_reopened_date)}
+                                            onChange={(date) =>
+                                                handleChange({
+                                                    target: {
+                                                        name: 'updated_json.insuffDetails.third_insuff_reopened_date',
+                                                        value: date ? format(date, 'yyyy-MM-dd') : '',
+                                                    },
+                                                })
+                                            }
+                                            dateFormat="dd-MM-yyyy"
+                                            className="uppercase border w-full rounded-md p-2 mt-2"
+                                        /> */}
+                                          <input
+                                        type="text"
+                                        name="third_insuff_reopened_date"
+                                        className="w-full p-3 mb-4 border border-gray-300 rounded-md"
+                                        value={formatDateDDMMYY(formData.updated_json.insuffDetails.third_insuff_reopened_date) || ''}
+                                    disabled
+                                    /> 
+                                    </div>
                                 </div>
                                 <div className="mb-4 ">
                                     <label className='capitalize text-gray-500' htmlFor="overall_status">overall status</label>
                                     <select
                                         id='overall_status'
+                                        required
                                         ref={(el) => (inputRefs.current['overall_status'] = el)} // Add ref
                                         name="updated_json.insuffDetails.overall_status"
-                                        value={formData.updated_json.insuffDetails.overall_status}
+                                        value={
+                                            !isAllCompleted && formData.updated_json.insuffDetails.overall_status === 'completed'
+                                                ? '' // Reset to default if "COMPLETED" is selected but it's now disabled
+                                                : formData.updated_json.insuffDetails.overall_status
+                                        }
                                         onChange={handleChange}
                                         className="border rounded-md p-2 mt-2 uppercase w-full"
                                     >
-                                        <option value="">Select Overall Status </option>
+                                        <option value="">Select Overall Status</option>
                                         <option value="initiated">INITIATED</option>
                                         <option value="hold">HOLD</option>
-                                        <option value="closure advice">CLOSURE
-                                            ADVICE</option>
+                                        <option value="closure_advice">CLOSURE ADVICE</option>
                                         <option value="wip">WIP</option>
                                         <option value="insuff">INSUFF</option>
                                         <option value="stopcheck">STOPCHECK</option>
-                                        <option value="active employment">
-                                            ACTIVE EMPLOYMENT</option>
+                                        <option value="active_employment">ACTIVE EMPLOYMENT</option>
                                         <option value="nil">NIL</option>
-                                        <option value="not doable">NOT DOABLE</option>
-                                        <option value="candidate denied">
-                                            CANDIDATE DENIED</option>
-                                        <option value="completed" disabled={!allCompleted} >COMPLETED</option>
-
+                                        <option value="not_doable">NOT DOABLE</option>
+                                        <option value="candidate_denied">CANDIDATE DENIED</option>
+                                        {isAllCompleted && (
+                                            <option value="completed">COMPLETED</option>
+                                        )}
                                     </select>
+
                                     {errors.overall_status && (
                                         <p className="text-red-500 text-sm">{errors.overall_status}</p>
                                     )}
                                 </div>
-                                <div className="grid grid-cols-2 gap-3">
+                                <div className="grid md:grid-cols-2 gap-3">
                                     <div className="mb-4">
                                         <label className='capitalize text-gray-500' htmlFor="report date">report date</label>
-                                        <input
-                                            type="date"
-                                            name="updated_json.insuffDetails.report_date"
-                                            id="report_date"
-                                            className="border rounded-md p-2 w-full mt-2 "
-                                            value={formData.updated_json.insuffDetails.report_date}
-                                            onChange={handleChange}
+                                        <DatePicker
+                                            selected={parseDate(formData.updated_json.insuffDetails.report_date)}
+                                            onChange={(date) =>
+                                                handleChange({
+                                                    target: {
+                                                        name: 'updated_json.insuffDetails.report_date',
+                                                        value: date ? format(date, 'yyyy-MM-dd') : '',
+                                                    },
+                                                })
+                                            }
+                                            dateFormat="dd-MM-yyyy"
+                                            className="uppercase border w-full rounded-md p-2 mt-2"
                                         />
 
                                     </div>
@@ -2748,7 +3330,7 @@ const checkColorInStatus = (status) => {
 
                                     </div>
                                 </div>
-                                <div className="grid grid-cols-3 gap-3">
+                                <div className="grid md:grid-cols-3 gap-3">
                                     <div className="mb-4">
                                         <label className='capitalize text-gray-500' htmlFor="report status">Report Type:</label>
                                         <select name="updated_json.insuffDetails.report_type" id=""
@@ -2770,7 +3352,6 @@ const checkColorInStatus = (status) => {
                                             <option value="red">Red</option>
                                             <option value="yellow" >Yellow</option>
                                             <option value="orange">Orange</option>
-                                            <option value="pink">Pink</option>
                                         </select>
 
 
@@ -2778,80 +3359,90 @@ const checkColorInStatus = (status) => {
                                     </div>
                                     <div className="mb-4">
                                         <label className='capitalize text-gray-500 ' htmlFor="deadline date">deadline date</label>
-                                        <input
-                                            type="date"
-                                            name="updated_json.insuffDetails.deadline_date"
-                                            id="deadline_date"
-                                            className="border w-full rounded-md p-2 mt-2 "
-                                            value={formData.updated_json.insuffDetails.deadline_date}
-                                            onChange={handleChange}
+                                        <DatePicker
+                                            selected={parseDate(formData.updated_json.insuffDetails.deadline_date)}
+                                            onChange={(date) =>
+                                                handleChange({
+                                                    target: {
+                                                        name: 'updated_json.insuffDetails.deadline_date',
+                                                        value: date ? format(date, 'yyyy-MM-dd') : '',
+                                                    },
+                                                })
+                                            }
+                                            dateFormat="dd-MM-yyyy"
+                                            className="uppercase border w-full rounded-md p-2 mt-2"
                                         />
 
                                     </div>
                                 </div>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="mb-4">
-                                        <label className='capitalize text-gray-500 ' htmlFor="Address">Address</label>
-                                        <select name="updated_json.insuffDetails.insuff_address"
-                                            value={formData.updated_json.insuffDetails.insuff_address}
-                                            onChange={handleChange}
-                                            id="" className="border w-full rounded-md p-2 mt-2 uppercase">
-                                            {adminNames.map((spoc, index) => (
-                                                <option key={index} value={spoc.id}>{spoc.name}</option>
-                                            ))}
+                                <div className="mb-4">
+                                    <label className='capitalize text-gray-500 ' htmlFor="Address">Address</label>
+                                    <select name="updated_json.insuffDetails.insuff_address"
+                                        value={formData.updated_json.insuffDetails.insuff_address}
+                                        onChange={handleChange}
+                                        id="" className="border w-full rounded-md p-2 mt-2 uppercase">
+                                        <option value="">Select Spoc</option>
+                                        {adminNames.map((spoc, index) => (
+                                            <option key={index} value={spoc.id}>{spoc.name}</option>
+                                        ))}
 
-                                        </select>
+                                    </select>
 
-                                    </div>
-                                    <div className="mb-4 ">
-                                        <label className='capitalize text-gray-500' htmlFor="basic entry">basic entry</label>
-                                        <select name="updated_json.insuffDetails.basic_entry"
-                                            value={formData.updated_json.insuffDetails.basic_entry}
-                                            onChange={handleChange}
-                                            id="" className="border w-full rounded-md p-2 mt-2 uppercase">
-                                            {adminNames.map((spoc, index) => (
-                                                <option key={index} value={spoc.id}>{spoc.name}</option>
-                                            ))}
-
-                                        </select>
-
-                                    </div>
                                 </div>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="mb-4 ">
-                                        <label className='capitalize text-gray-500 ' htmlFor="education">education</label>
-                                        <select name="updated_json.insuffDetails.education" id=""
-                                            value={formData.updated_json.insuffDetails.education}
-                                            onChange={handleChange}
-                                            className="border w-full rounded-md p-2 mt-2 uppercase">
-                                            {adminNames.map((spoc, index) => (
-                                                <option key={index} value={spoc.id}>{spoc.name}</option>
-                                            ))}
+                                <div className="mb-4 ">
+                                    <label className='capitalize text-gray-500' htmlFor="basic entry">basic entry</label>
+                                    <select name="updated_json.insuffDetails.basic_entry"
+                                        value={formData.updated_json.insuffDetails.basic_entry}
+                                        onChange={handleChange}
+                                        id="" className="border w-full rounded-md p-2 mt-2 uppercase">
+                                        <option value="">Select Spoc</option>
 
-                                        </select>
+                                        {adminNames.map((spoc, index) => (
+                                            <option key={index} value={spoc.id}>{spoc.name}</option>
+                                        ))}
 
-                                    </div>
+                                    </select>
 
+                                </div>
+
+                                <div className="mb-4 ">
+                                    <label className='capitalize text-gray-500 ' htmlFor="education">education</label>
+                                    <select name="updated_json.insuffDetails.education" id=""
+                                        value={formData.updated_json.insuffDetails.education}
+                                        onChange={handleChange}
+                                        className="border w-full rounded-md p-2 mt-2 uppercase">
+                                        <option value="">Select Spoc</option>
+                                        {adminNames.map((spoc, index) => (
+                                            <option key={index} value={spoc.id}>{spoc.name}</option>
+                                        ))}
+
+                                    </select>
+
+                                </div>
+
+                                <div className="mb-4 ">
+                                    <label className='capitalize text-gray-500 block' htmlFor="Employment Spoc:">Employment Spoc:</label>
+                                    <select name="updated_json.insuffDetails.emp_spoc" id=""
+                                        value={formData.updated_json.insuffDetails.emp_spoc}
+                                        onChange={handleChange}
+                                        className="border w-full rounded-md p-2 mt-2 uppercase">
+                                        <option value="">Select Spoc</option>
+                                        {adminNames.map((spoc, index) => (
+                                            <option key={index} value={spoc.id}>{spoc.name}</option>
+                                        ))}
+
+                                    </select>
+
+                                </div>
+                                <div className="grid md:grid-cols-2 gap-3">
                                     <div className="mb-4">
                                         <label className='capitalize text-gray-500' htmlFor="case upload">case upload</label>
-                                        <input
-                                            type="text"
-                                            name="updated_json.insuffDetails.case_upload"
-                                            id="case_upload"
-                                            className="border w-full rounded-md p-2 mt-2 capitalize"
+
+                                        <select name="updated_json.insuffDetails.case_upload" id=""
                                             value={formData.updated_json.insuffDetails.case_upload}
                                             onChange={handleChange}
-                                        />
-
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="mb-4 ">
-                                        <label className='capitalize text-gray-500 block' htmlFor="Employment Spoc:">Employment Spoc:</label>
-                                        <select name="updated_json.insuffDetails.emp_spoc" id=""
-                                            value={formData.updated_json.insuffDetails.emp_spoc}
-                                            onChange={handleChange}
                                             className="border w-full rounded-md p-2 mt-2 uppercase">
+                                            <option value="">Select Spoc</option>
                                             {adminNames.map((spoc, index) => (
                                                 <option key={index} value={spoc.id}>{spoc.name}</option>
                                             ))}
@@ -2859,6 +3450,7 @@ const checkColorInStatus = (status) => {
                                         </select>
 
                                     </div>
+
                                     <div className="mb-4 ">
                                         <label className='capitalize text-gray-500' htmlFor="Report Generated By:">Report Generated By:</label>
                                         <select name="updated_json.insuffDetails.report_generate_by"
@@ -2875,7 +3467,7 @@ const checkColorInStatus = (status) => {
 
                                     </div>
                                 </div>
-                                <div className="grid grid-cols-2 gap-3">
+                                <div className="grid md:grid-cols-2 gap-3">
                                     <div className="mb-4 ">
                                         <label className='capitalize block text-gray-500' htmlFor="QC Done By:">QC Done By:</label>
 
@@ -2893,50 +3485,33 @@ const checkColorInStatus = (status) => {
                                     </div>
                                     <div className="mb-4 ">
                                         <label className='capitalize block text-gray-500' htmlFor="qc_date">QC Date:</label>
-                                        <input
-                                            type="date"
-                                            name="updated_json.insuffDetails.qc_date"
-                                            id="qc_date"
-                                            className="w-full border p-2 outline-none rounded-md mt-2"
-                                            value={formData.updated_json.insuffDetails.qc_date}
-                                            onChange={handleChange}
+                                        <DatePicker
+                                            selected={parseDate(formData.updated_json.insuffDetails.qc_date)}
+                                            onChange={(date) =>
+                                                handleChange({
+                                                    target: {
+                                                        name: 'updated_json.insuffDetails.qc_date',
+                                                        value: date ? format(date, 'yyyy-MM-dd') : '',
+                                                    },
+                                                })
+                                            }
+                                            dateFormat="dd-MM-yyyy"
+                                            className="uppercase border w-full rounded-md p-2 mt-2"
                                         />
                                     </div>
                                 </div>
                                 <div className="mb-4">
                                     <label className='capitalize text-gray-500' htmlFor="Remarks & reason for Delay:">Remarks & reason for Delay:</label>
-                                    <select
-                                        multiple
+                                    <MultiSelect
                                         id="delay_reason"
-                                        name="updated_json.insuffDetails.delay_reason"
-                                        value={
-                                            Array.isArray(formData.updated_json?.insuffDetails?.delay_reason)
-                                                ? formData.updated_json.insuffDetails.delay_reason
-                                                : formData.updated_json.insuffDetails.delay_reason &&
-                                                    formData.updated_json.insuffDetails.delay_reason.length > 0
-                                                    ? formData.updated_json.insuffDetails.delay_reason
-                                                    : []
-                                        }
-                                        onChange={handleChange}
-                                        className="border border-gray-300 rounded-md p-2 mt-2 w-full focus:outline-none focus:ring-4 focus:ring-blue-500 focus:ring-opacity-50 hover:h-42 focus:h-42 transition-all duration-300 ease-in-out capitalize text-gray-700 h-40"
-                                    >
-                                        {optionsData.map((group) => (
-                                            <optgroup key={group.label} label={group.label} className="text-sm font-bold text-gray-700">
-                                                {group.options.map((option) => (
-                                                    <option
-                                                        key={option.value}
-                                                        value={option.value}
-                                                        className="hover:bg-gray-200 focus:bg-blue-100 transition-all duration-300 ease-in-out p-2"
-                                                    >
-                                                        {option.text}
-                                                    </option>
-                                                ))}
-                                            </optgroup>
-                                        ))}
-                                    </select>
+                                        name="delay_reason"
+                                        value={formData.updated_json?.insuffDetails?.delay_reason || []}
+                                        onChange={handleMultiSelectChange}
+                                        options={optionsData}
+                                    />
 
                                 </div>
-                                <div className="grid grid-cols-2 gap-3">
+                                <div className="grid md:grid-cols-2 gap-3">
                                     <div className="mb-4">
                                         <label className="capitalize text-gray-500" htmlFor="is_verified_by_quality_team">
                                             Is verified by quality team
@@ -2977,41 +3552,16 @@ const checkColorInStatus = (status) => {
                                         </div>
                                     </div>
 
-                                    <div className="mb-4">
-                                        <label className="capitalize text-gray-500" htmlFor="component_status">
-                                            COMPONENT STATUS
-                                            <span className="text-red-500 text-xl">*</span>
-                                        </label>
-                                        <div className="flex items-center mt-2">
-                                            <input
-                                                type="checkbox"
-                                                name="updated_json.insuffDetails.component_status"
-                                                id="component_status"
-                                                checked={formData.updated_json.insuffDetails.component_status === 1}
-                                                onChange={(e) => handleChange({
-                                                    target: {
-                                                        name: "updated_json.insuffDetails.component_status",
-                                                        value: e.target.checked ? 1 : 0 // Toggle between 1 (selected) and 0 (deselected)
-                                                    }
-                                                })}
-                                                className="w-4 h-4 border rounded-md mr-2"
-                                            />
-                                            <label htmlFor="component_status" className="text-gray-700">
-                                                Yes / No
-                                            </label>
-                                        </div>
-                                    </div>
-
                                 </div>
                             </div>
 
                             <div className="text-left mt-4">
-                                <div className='notmandatory mb-4 items-baseline flex gap-2'>
+                                <div className='notmandatory mb-4 items-center flex gap-2'>
                                     <input
                                         type="checkbox"
                                         name="notMandatory"
                                         id="notMandatory"
-                                        className="border rounded-md p-2 mt-2 capitalize"
+                                        className="border rounded-md p-2 w-5 h-5  capitalize"
                                         onChange={(e) => setIsNotMandatory(e.target.checked)}
                                     />
                                     <label className='capitalize text-gray-500'>Not Mandatory Fields</label>

@@ -251,7 +251,7 @@ const AdminLogin = () => {
           }}
 
         >
-          <div className="absolute inset-0 backdrop-blur-[4px] rounded-[18px] bg-white bg-opacity-50"></div>
+          <div className="absolute inset-0 backdrop-blur-[4px] rounded-[18px] bg-gray-300 bg-opacity-50"></div>
 
           <div className="max-w-[700px] mx-auto relative z-999 md:pb-5 md:pt-5">
             <img
@@ -357,9 +357,9 @@ const OtpModal = ({ show, onHide, onSubmit, error }) => {
         await onSubmit(otp); // Assuming onSubmit is a promise-based function
         setOtp(''); // Clear the input field if successful
       } catch (err) {
-        // Handle submission error (optional)
         console.error('Submission error:', err);
       } finally {
+        localStorage.setItem('inHome', 'yes');
         setLoading(false); // Reset loading state regardless of success or error
       }
     } else {

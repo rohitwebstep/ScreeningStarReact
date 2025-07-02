@@ -6,9 +6,9 @@ import Swal from 'sweetalert2';
 
 const TATReminder = () => {
   const navigate = useNavigate();
-       const {validateAdminLogin,setApiLoading,apiLoading} = useApiLoading();
+  const { validateAdminLogin, setApiLoading, apiLoading } = useApiLoading();
+  const [responseError, setResponseError] = useState(null);
 
-  
   const [showAllFields, setShowAllFields] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [tableData, setTableData] = useState([]);
@@ -45,16 +45,19 @@ const TATReminder = () => {
           headers: { 'Authorization': `Bearer ${storedToken}` },
         }
       );
-      const newToken = response.token || response._token || storedToken ;
+      const newToken = response.token || response._token || storedToken;
       if (newToken) {
-        console.log("token is saerd" ,newToken)
-          localStorage.setItem("_token", newToken);
+        console.log("token is saerd", newToken)
+        localStorage.setItem("_token", newToken);
       }
+      const result = await response.json();
+
       if (!response.ok) {
+        Swal.fire('Error!', `${result.message}`, 'error');
+        setResponseError(result.message);
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
 
-      const result = await response.json();
       setTableData(result.tatDelays.holidays || []);
       setApplicationHierarchy(result.tatDelays.applicationHierarchy || []);
 
@@ -71,10 +74,10 @@ const TATReminder = () => {
   // Initialize component
   useEffect(() => {
     const initialize = async () => {
-      try { 
+      try {
         if (apiLoading == false) {
-        await validateAdminLogin();
-        await fetchData();
+          await validateAdminLogin();
+          await fetchData();
         }
       } catch (error) {
         console.error(error.message);
@@ -107,7 +110,7 @@ const TATReminder = () => {
 
   // Export table to Excel
   const exportToExcel = () => {
-    const ws = XLSX.utils.json_to_sheet(tableData);
+    const ws = XLSX.utils.json_to_sheet(paginatedData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'TAT Reminder');
     XLSX.writeFile(wb, 'TAT_Reminder.xlsx');
@@ -126,8 +129,8 @@ const TATReminder = () => {
   };
 
 
-  const rowsPerPage = 10; // Number of rows per page
-
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const optionsPerPage = [10, 50, 100, 200];
   const totalPages = Math.ceil(filteredData.length / rowsPerPage);
 
   const paginatedData = filteredData.slice(
@@ -214,33 +217,80 @@ const TATReminder = () => {
       navigate(`/admin-DataGenerateReport?applicationId=${ClientId}&branchid=${BranchId}&from-tat=1`);
     }
   };
+  function formatStatus(status) {
+    if (!status) return "";
+
+    // Add a comma after every double quote
+    status = status.replace(/"+/g, '",');
+
+    // Remove excessive backslashes
+    status = status.replace(/\\+/g, '');
+
+    // Step 1: Replace all special characters (except slashes and commas) with a space
+    let formatted = status.replace(/[^a-zA-Z0-9, /]/g, ' ');
+
+    // Step 2: Trim extra spaces from start and end
+    formatted = formatted.trim().replace(/\s+/g, ' ');
+
+    // Step 3: Remove unnecessary commas (multiple commas or commas at start/end)
+    formatted = formatted.replace(/(,\s*)+/g, ', '); // Remove consecutive commas
+    formatted = formatted.replace(/^,|,$/g, ''); // Remove leading/trailing commas
+
+    // Step 4: Capitalize based on length
+    return formatted.length < 6
+      ? formatted.toUpperCase()
+      : formatted.replace(/\b\w/g, (char) => char.toUpperCase());
+  }
 
 
+   const handleSearch = (e) => {
+        setSearchTerm(e.target.value);
+        setCurrentPage(1)
+    };
   return (
 
     <div className="bg-[#c1dff2]">
-      <div className="bg-white border border-black p-12 w-full mx-auto" id={``}>
+      <div className="bg-white border border-black md:p-12 p-6 w-full mx-auto" id={``}>
         <div className="mb-4 text-center">
         </div>
 
-        <div className="mb-4 flex justify-between">
-          <button
-            onClick={exportToExcel}
-            className="bg-green-500 text-white rounded px-4 py-2 hover:scale-105 hover:bg-green-600 border"
-          >
-            Export to Excel
-          </button>
+        <div className="mb-4 md:flex justify-between items-center">
+          <div className='block'>
+            <div>
+              <button
+                onClick={exportToExcel}
+                className="bg-green-500 text-white mb-2 rounded px-4 py-2 hover:scale-105 hover:bg-green-600 border"
+              >
+                Export to Excel
+              </button>
+            </div>
+            <select
+              value={rowsPerPage}
+              onChange={(e) => {
+                setRowsPerPage(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="border rounded-lg px-3 py-1 text-gray-700 bg-white mb-2 shadow-sm focus:ring-2 focus:ring-blue-400"
+            >
+              {optionsPerPage.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </div>
           <input
             type="text"
             placeholder="Search.."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="border p-2 rounded w-1/3"
+                                        onChange={handleSearch}
+
+          
+            className="border p-2 rounded md:w-1/3 w-full"
           />
         </div>
 
         <div className="overflow-x-auto">
-
           <table className="min-w-full border-collapse border border-black rounded-lg overflow-scroll whitespace-nowrap">
             <thead className="rounded-lg">
               <tr className="bg-[#c1dff2] text-[#4d606b] rounded-lg uppercase">
@@ -250,16 +300,16 @@ const TATReminder = () => {
                 <th className="border border-black px-4 py-2">Reference Id</th>
                 <th className="border border-black px-4 py-2">Name of the Employee</th>
                 <th className="border border-black px-4 py-2">Exceeded Days</th>
-                <th className="border border-black px-4 py-2">First Level Insufficiency Remarks</th>
+                <th className="border border-black px-4 py-2 ">First Level Insufficiency Remarks</th>
                 <th className="border border-black px-4 py-2">First Insuff Date</th>
                 <th className="border border-black px-4 py-2">First Insuff Cleared</th>
-                <th className="border border-black px-4 py-2">Second Level Insufficiency Remarks</th>
+                <th className="border border-black px-4 py-2 ">Second Level Insufficiency Remarks</th>
                 <th className="border border-black px-4 py-2">Second Insuff Date</th>
                 <th className="border border-black px-4 py-2">Second Insuff Cleared</th>
-                <th className="border border-black px-4 py-2">Third Level Insufficiency Remarks</th>
+                <th className="border border-black px-4 py-2 ">Third Level Insufficiency Remarks</th>
                 <th className="border border-black px-4 py-2">Third Insuff Date</th>
                 <th className="border border-black px-4 py-2">Third Insuff Cleared</th>
-                <th className="border border-black px-4 py-2">Remarks & Reason for Delay</th>
+                <th className="border border-black px-4 py-2  ">Remarks & Reason for Delay</th>
 
               </tr>
             </thead>
@@ -272,33 +322,33 @@ const TATReminder = () => {
                 </tr>
               ) : paginatedData.length > 0 ? (
                 paginatedData.map((application, index) => (
-                  <tr key={`${application.client_application_id}-${index}`} className="text-center">
+                  <tr key={`${application.client_application_id}-${index}`} >
 
-                    <td className="border border-black px-4 py-2">{index + 1}</td>
-                    <td className="border border-black px-4 py-2">{application.days_out_of_tat}</td>
-                    <td className="border border-black px-4 py-2">
+                    <td className="border border-black px-4 py-2 text-center">{(currentPage - 1) * rowsPerPage + index + 1}</td>
+                    <td className="border border-black px-4 py-2 text-center">{application.days_out_of_tat}</td>
+                    <td className="border border-black px-4 py-2 text-center">
                       {application.application_created_at
                         ? new Date(application.application_created_at).toLocaleDateString('en-GB').replace(/\//g, '-')
                         : 'NIL'}
                     </td>
                     <td className="border border-black px-4 py-2">{application.application_id}</td>
                     <td className="border border-black px-4 py-2">{application.application_name}</td>
-                    <td className="border border-black px-4 py-2">
+                    <td className="border border-black px-4 py-2 text-center">
                       {application.days_out_of_tat
                         ? new Date(application.days_out_of_tat).toLocaleDateString('en-GB').replace(/\//g, '-')
                         : 'NIL'}
                     </td>
-                        <td className="border border-black px-4 py-2">{formatDate(application.first_insufficiency_marks)}</td>
-                        <td className="border border-black px-4 py-2">{formatDate(application.first_insuff_date)}</td>
-                        <td className="border border-black px-4 py-2">{formatDate(application.first_insuff_reopened_date)}</td>
-                        <td className="border border-black px-4 py-2">{formatDate(application.second_insufficiency_marks)}</td>
-                        <td className="border border-black px-4 py-2">{formatDate(application.second_insuff_date)}</td>
-                        <td className="border border-black px-4 py-2">{formatDate(application.second_insuff_reopened_date)}</td>
-                        <td className="border border-black px-4 py-2">{formatDate(application.third_insufficiency_marks)}</td>
-                        <td className="border border-black px-4 py-2">{formatDate(application.third_insuff_date)}</td>
-                        <td className="border border-black px-4 py-2">{formatDate(application.third_insuff_reopened_date)}</td>
-                        <td className="border border-black px-4 py-2">{formatDate(application.delay_reason)}</td>
-                        {/* <td className="border border-black px-4 py-2">
+                    <td className="border border-black px-4 py-2 ">{formatStatus(application.first_insufficiency_marks) || 'null'}</td>
+                    <td className="border border-black px-4 py-2">{formatDate(application.first_insuff_date)}</td>
+                    <td className="border border-black px-4 py-2">{formatDate(application.first_insuff_reopened_date)}</td>
+                    <td className="border border-black px-4 py-2 ">{formatStatus(application.second_insufficiency_marks) || 'null'}</td>
+                    <td className="border border-black px-4 py-2">{formatDate(application.second_insuff_date)}</td>
+                    <td className="border border-black px-4 py-2">{formatDate(application.second_insuff_reopened_date)}</td>
+                    <td className="border border-black px-4 py-2 ">{formatStatus(application.third_insufficiency_marks) || 'null'}</td>
+                    <td className="border border-black px-4 py-2">{formatDate(application.third_insuff_date)}</td>
+                    <td className="border border-black px-4 py-2 ">{formatDate(application.third_insuff_reopened_date)}</td>
+                    <td className="border border-black px-4 py-2 ">{formatStatus(application.delay_reason) || 'null'}</td>
+                    {/* <td className="border border-black px-4 py-2">
                           <button
                             className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md hover:scale-105"
                             onClick={() =>
@@ -308,7 +358,7 @@ const TATReminder = () => {
                             Master Tracker
                           </button>
                         </td> */}
-                        {/* <td className="border border-black px-4 py-2">
+                    {/* <td className="border border-black px-4 py-2">
                           <button
                             className={`bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md ${deleteLoading && activeId === application.client_application_id
                               ? "opacity-50 cursor-not-allowed"
@@ -323,37 +373,38 @@ const TATReminder = () => {
                           >
                             {deleteLoading && activeId === application.client_application_id ? "Deleting..." : "Delete"}
                           </button>
-                        </td> */} 
+                        </td> */}
                   </tr>
                 ))) : (
                 <tr>
-                  <td colSpan={20} className="border border-black px-4 py-2 text-center">
-                    No data available
+                  <td colSpan="10" className="text-center text-red-500 p-4">
+                    {responseError && responseError !== "" ? responseError : "No data available in table"}
                   </td>
                 </tr>
               )}
             </tbody>
 
           </table>
-          <div className="flex justify-between items-center mt-4">
-            <button
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="px-4 py-2 bg-gray-300 text-gray-600 rounded hover:bg-gray-400"
-            >
-              Previous
-            </button>
-            <span className="text-gray-700">
-              Page {currentPage} of {totalPages}
-            </span>
-            <button
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className="px-4 py-2 bg-gray-300 text-gray-600 rounded hover:bg-gray-400"
-            >
-              Next
-            </button>
-          </div>
+
+        </div>
+        <div className="flex justify-between items-center mt-4">
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className="px-4 py-2 bg-gray-300 text-gray-600 rounded hover:bg-gray-400"
+          >
+            Previous
+          </button>
+          <span className="text-gray-700">
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className="px-4 py-2 bg-gray-300 text-gray-600 rounded hover:bg-gray-400"
+          >
+            Next
+          </button>
         </div>
 
       </div>

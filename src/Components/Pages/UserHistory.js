@@ -3,19 +3,24 @@ import Swal from "sweetalert2";
 import * as XLSX from "xlsx";
 import { useNavigate } from "react-router-dom";
 import { useApiLoading } from '../ApiLoadingContext';
-
+import Default from "../../imgs/default.png"
+import DatePicker from "react-datepicker";
+import { format, parseISO } from "date-fns";
+import "react-datepicker/dist/react-datepicker.css";
 const UserHistory = () => {
-        const {validateAdminLogin,setApiLoading,apiLoading} = useApiLoading();
+    const { validateAdminLogin, setApiLoading, apiLoading } = useApiLoading();
+    const [responseError, setResponseError] = useState(null);
 
-    
+
     const [searchTerm, setSearchTerm] = useState("");
-    const [startDate, setStartDate] = useState(""); // Start date filter
-    const [endDate, setEndDate] = useState(""); // End date filter
+    const [startDate, setStartDate] = useState("");
+    const [endDate, setEndDate] = useState("");
+
     const [loading, setLoading] = useState(true);
     const [tableData, setTableData] = useState([]);
     const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 10; // Adjust as needed
-
+    const [itemsPerPage, setItemsPerPage] = useState(10);
+    const optionsPerPage = [10, 50, 100, 200];
     const navigate = useNavigate();
 
     const fetchData = useCallback(() => {
@@ -38,10 +43,19 @@ const UserHistory = () => {
             redirect: "follow",
         })
             .then((response) => {
-                if (!response.ok) {
-                    throw new Error("Network response was not ok");
-                }
-                return response.json();
+                return response.json().then((result) => {
+                    // Check if the API response status is false
+                    if (result.status === false) {
+                        // Log the message from the API response
+                        console.error('API Error:', result.message);
+                        Swal.fire('Error!', `${result.message}`, 'error');
+                        setResponseError(result.message);
+
+                        // Optionally, you can throw an error here if you want to halt the further execution
+                        throw new Error(result.message);
+                    }
+                    return result;
+                });
             })
             .then((result) => {
                 const newToken = result.token || result._token || storedToken || "";
@@ -64,8 +78,8 @@ const UserHistory = () => {
         const initialize = async () => {
             try {
                 if (apiLoading == false) {
-                await validateAdminLogin();
-                await fetchData();
+                    await validateAdminLogin();
+                    await fetchData();
                 }
             } catch (error) {
                 console.error(error.message);
@@ -76,19 +90,89 @@ const UserHistory = () => {
         initialize();
     }, [navigate, fetchData]);
 
-    // Filtered and paginated data
+    const handleSearchChange = (e) => {
+        setSearchTerm(e.target.value);
+        setCurrentPage(1)
+    };
+
+    const handleStartDateChange = (e) => {
+        setStartDate(e.target.value);
+    };
+
+    const handleEndDateChange = (e) => {
+        setEndDate(e.target.value);
+    };
+
+    const formatDate = (date) => {
+        if (!date) return 'null'; // Return null if date is empty, null, or undefined
+
+        const dateObj = new Date(date);
+        if (isNaN(dateObj.getTime())) return null; // Return null if the date is invalid
+
+        // Convert to IST (UTC+5:30)
+        const utcOffset = 5.5 * 60 * 60 * 1000; // 5 hours 30 minutes in milliseconds
+        const istDateObj = new Date(dateObj.getTime() + utcOffset);
+
+        // Extract IST date components
+        const day = String(istDateObj.getUTCDate()).padStart(2, '0');
+        const month = String(istDateObj.getUTCMonth() + 1).padStart(2, '0');
+        const year = istDateObj.getUTCFullYear();
+        let hours = istDateObj.getUTCHours();
+        const minutes = String(istDateObj.getUTCMinutes()).padStart(2, '0');
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12 || 12; // Convert 24-hour to 12-hour format
+
+        return `${day}-${month}-${year} ${hours}:${minutes} ${ampm}`;
+    };
+    const formatDate2 = (date) => {
+        const dateObj = new Date(date);
+
+        // Convert to IST (UTC+5:30)
+        const utcOffset = 5.5 * 60 * 60 * 1000; // 5 hours 30 minutes in milliseconds
+        const istDateObj = new Date(dateObj.getTime() + utcOffset);
+
+        // Extract IST date components
+        const year = istDateObj.getUTCFullYear();
+        const month = String(istDateObj.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(istDateObj.getUTCDate()).padStart(2, '0');
+
+        return `${year}-${month}-${day}`;
+    };
+
+    const formatToYYYYMMDD = (date) => {
+        const dateObj = new Date(date);
+        const year = dateObj.getFullYear();
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`; // Output: YYYY-MM-DD
+    };
+
     const filteredData = (Array.isArray(tableData) ? tableData : []).filter((row) => {
+        const normalizeString = (str) => {
+            const normalized = str?.toLowerCase().replace(/\s+/g, ' ').trim() || '';
+            console.log('Normalized String:', normalized);
+            return normalized;
+        };
+
+        const searchTermNormalized = normalizeString(searchTerm);
+        const adminNameNormalized = normalizeString(row?.admin_name);
+
+        const adminEmailNormalized = normalizeString(row?.admin_email);
+
+        const adminMobileNormalized = normalizeString(row?.admin_mobile?.toString());
+
         const matchesSearchTerm =
-            row?.action?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            row?.admin_id?.toString().includes(searchTerm.toLowerCase());
+            adminNameNormalized.includes(searchTermNormalized) ||
+            adminEmailNormalized.includes(searchTermNormalized) ||
+            adminMobileNormalized.includes(searchTermNormalized);
 
-        const matchesDateRange =
-            (!startDate || new Date(row.created_at) >= new Date(startDate)) &&
-            (!endDate || new Date(row.created_at) <= new Date(endDate));
+        const matchesStartDate = !startDate || formatToYYYYMMDD(row.first_login_time) === startDate;
+        console.log('Matches Start Date:', startDate);
+        console.log('Matches first login Date:', formatDate(row.first_login_time));
 
-        return matchesSearchTerm && matchesDateRange;
+        const result = matchesSearchTerm && matchesStartDate;
+        return result;
     });
-
 
     const totalPages = Math.ceil(filteredData.length / itemsPerPage);
     const paginatedData = filteredData.slice(
@@ -111,7 +195,7 @@ const UserHistory = () => {
 
     const Loader = () => (
         <tr>
-            <td colSpan="6">
+            <td colSpan="100">
                 <div className="flex w-full justify-center items-center h-20">
                     <div className="loader border-t-4 border-[#2c81ba] rounded-full w-10 h-10 animate-spin"></div>
                 </div>
@@ -122,18 +206,59 @@ const UserHistory = () => {
     const handleView = (adminId, id) => {
         navigate(`/admin-ViewUser?log_admin_id=${adminId}&log_id=${id}`);
     };
+    // Function to format the date and time to "Day-Month-Year Hours:Minutes:Seconds" format
+    // Function to format the date and time to "Day-Month-Year Hours:Minutes AM/PM" format
+
+
+
+
+
 
     return (
         <div className="bg-[#c1dff2] border border-black">
             <div className="bg-white p-12 w-full mx-auto">
-                <div className="flex space-x-4 mb-4">
-                    <input
-                        type="text"
-                        placeholder="Search by Admin ID or Action"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="border p-2 rounded w-1/3"
-                    />
+                <div className="flex justify-between items-center space-x-4 mb-4">
+                    <div className="w-1/3">
+                        <div>
+
+                            <input
+                                type="text"
+                                placeholder="Search by Name, Email or Mobile"
+                                value={searchTerm}
+                                onChange={handleSearchChange}
+                                className="border p-2 rounded w-full mb-2"
+                            />
+                            <DatePicker
+                                selected={startDate ? parseISO(startDate) : null}
+                                onChange={(date) => {
+                                    if (!date) {
+                                        setStartDate("");
+                                        return;
+                                    }
+                                    const formatted = format(date, "yyyy-MM-dd"); // Save format
+                                    setStartDate(formatted);
+                                }}
+                                dateFormat="dd-MM-yyyy"
+                                placeholderText="DD-MM-YYYY"
+                                className="border uppercase p-2 rounded w-full mb-2"
+                            />
+                        </div>
+                        <select
+                            value={itemsPerPage}
+                            onChange={(e) => {
+                                setItemsPerPage(Number(e.target.value));
+                                setCurrentPage(1);
+                            }}
+                            className="border rounded-lg px-3 py-1 text-gray-700 bg-white mt-4 shadow-sm focus:ring-2 focus:ring-blue-400"
+                        >
+                            {optionsPerPage.map((option) => (
+                                <option key={option} value={option}>
+                                    {option}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
                     {/* <input
                         type="date"
                         value={startDate}
@@ -158,12 +283,13 @@ const UserHistory = () => {
                         <thead>
                             <tr className="bg-[#c1dff2] text-[#4d606b]">
                                 <th className="border border-black uppercase px-4 py-2">SL</th>
-                                <th className="border border-black uppercase px-4 py-2">Photo</th>
                                 <th className="border border-black uppercase px-4 py-2">Admin Name</th>
+                                <th className="border border-black uppercase px-4 py-2">Employee Id</th>
+                                <th className="border border-black uppercase px-4 py-2">Ip Address</th>
                                 <th className="border border-black uppercase px-4 py-2">Email</th>
-                                <th className="border border-black uppercase px-4 py-2">Mobile Number</th>
-                                <th className="border border-black uppercase px-4 py-2">Action</th>
-                                <th className="border border-black uppercase px-4 py-2">Result</th>
+                                {/* <th className="border border-black uppercase px-4 py-2">Mobile Number</th> */}
+                                {/* <th className="border border-black uppercase px-4 py-2">First Login Time</th>
+                                <th className="border border-black uppercase px-4 py-2">Last Logout Time</th> */}
                                 <th className="border border-black uppercase px-4 py-2">Created At</th>
                                 <th className="border border-black uppercase px-4 py-2">View</th>
                             </tr>
@@ -177,40 +303,41 @@ const UserHistory = () => {
                                         <td className="border border-black px-4 py-2">
                                             {index + 1 + (currentPage - 1) * itemsPerPage}
                                         </td>
-                                        <td className="border border-black text-center capitalize px-4 py-2">
+                                        {/* <td className="border border-black text-center capitalize px-4 py-2">
                                             <div className="flex justify-center items-center">
-                                                <img src={`${row.profile_picture}`} alt={row.admin_name} className="w-10 h-10 rounded-full" />
+                                                <img src={row.profile_picture ? row.profile_picture : `${Default}`} alt={row.admin_name} className="w-10 h-10 rounded-full" />
                                             </div>
-                                        </td>
+                                        </td> */}
                                         <td className="border border-black capitalize px-4 py-2">{row.admin_name}</td>
-                                        <td className="border border-black  px-4 py-2">{row.admin_email}</td>
-                                        <td className="border border-black capitalize px-4 py-2">{row.admin_mobile}</td>
-
-                                        <td className="border border-black capitalize px-4 py-2">{row.action}</td>
+                                        <td className="border border-black capitalize px-4 py-2">{row.emp_id}</td>
                                         <td className="border border-black capitalize px-4 py-2">
-                                            {row.result === "1" ? (
-                                                <span className="text-green-500">Success</span>
-                                            ) : (
-                                                <span className="text-red-500">Failed</span>
-                                            )}
+                                            {row.client_ip || "No Ip Found"}
                                         </td>
+                                        <td className="border border-black  px-4 py-2">{row.admin_email}</td>
+                                        {/* <td className="border border-black capitalize px-4 py-2">{row.admin_mobile}</td> */}
+
+                                        {/* <td className="border border-black capitalize px-4 py-2">{formatDate(row.first_login_time)}</td>
+                                        <td className="border border-black capitalize px-4 py-2">
+                                            {formatDate(row.last_logout_time)}
+                                        </td> */}
                                         <td className="border border-black px-4 py-2">
-                                            {new Date(row.created_at).toLocaleString().replace(/\//g, '-')}
+                                            {formatDate(row.created_at)}
                                         </td>
                                         <td className="border border-black px-4 py-2">
                                             <button
-                                                onClick={() => handleView(row.admin_id, row.id)}
-                                                className="bg-green-500 text-white hover:scale-105 font-bold  transition duration-200 px-4 py-2 rounded hover:bg-green-700"
+                                                onClick={() => handleView(row.admin_id, formatDate2(row.created_at))}
+                                                className="bg-green-500 text-white hover:scale-105 font-bold transition duration-200 px-4 py-2 rounded hover:bg-green-700"
                                             >
                                                 View
                                             </button>
+
                                         </td>
                                     </tr>
                                 ))
                             ) : (
                                 <tr>
-                                    <td className="text-center border border-black px-4 py-2" colSpan="6">
-                                        No data available
+                                    <td className="text-center text-red-500 border border-black px-4 py-2" colSpan="10">
+                                        {responseError && responseError !== "" ? responseError : "No data available in table"}
                                     </td>
                                 </tr>
                             )}

@@ -9,10 +9,9 @@ import swal from "sweetalert";
 import { useApiLoading } from '../ApiLoadingContext';
 
 const ServiceManagement = () => {
- const {validateAdminLogin,setApiLoading,apiLoading} = useApiLoading();
-
-  
- const [deletingId, setDeletingId] = useState(null);
+  const { validateAdminLogin, setApiLoading, apiLoading } = useApiLoading();
+  const [responseError, setResponseError] = useState(null)
+  const [deletingId, setDeletingId] = useState(null);
   const [group_name, setGroup_name] = useState();
   const [groupId, setGroupId] = useState("");
   const [serviceGroups, setServiceGroups] = useState([]);
@@ -26,7 +25,8 @@ const ServiceManagement = () => {
   const [services, setServices] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [servicesPerPage] = useState(5);
+  const [servicesPerPage, setServicesPerPage] = useState(10);
+  const optionsPerPage = [10, 50, 100, 200];
   const [editingServiceId, setEditingServiceId] = useState(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -40,8 +40,8 @@ const ServiceManagement = () => {
 
     if (!storedToken) {
       console.error("No token found. Please log in.");
-    setApiLoading(false);
-    setLoading(false);
+      setApiLoading(false);
+      setLoading(false);
       return;
     }
 
@@ -51,7 +51,7 @@ const ServiceManagement = () => {
       );
 
       const result = response.data;
-      const newToken = result.token || result._token || storedToken ;
+      const newToken = result.token || result._token || storedToken;
 
       if (newToken) {
         localStorage.setItem("_token", newToken);
@@ -78,10 +78,15 @@ const ServiceManagement = () => {
         console.error("Failed to fetch packages. Status:", result.status);
       }
     } catch (error) {
-      console.error("Error fetching services:", error);
+      if (error.response) {
+        Swal.fire('Error!', `${error.response.data.message}`, 'error');
+        setResponseError(error.response.data.message);
+      } else {
+        Swal.fire('Error!', 'An unknown error occurred.', 'error');
+      }
     } finally {
-    setApiLoading(false);
-    setLoading(false);
+      setApiLoading(false);
+      setLoading(false);
     }
   }, []);
 
@@ -114,6 +119,7 @@ const ServiceManagement = () => {
         }
       );
 
+
       const data = await response.json();
 
       if (!response.ok) {
@@ -124,7 +130,7 @@ const ServiceManagement = () => {
         return;
       }
 
-      const newToken = data.token || data._token || storedToken ;
+      const newToken = data.token || data._token || storedToken;
       if (newToken) {
         localStorage.setItem("_token", newToken);
       }
@@ -151,9 +157,9 @@ const ServiceManagement = () => {
     const initialize = async () => {
       try {
         if (apiLoading == false) {
-        await validateAdminLogin(); // Verify admin first
-        await fetchGroups();
-        await fetchServices(); 
+          await validateAdminLogin(); // Verify admin first
+          await fetchGroups();
+          await fetchServices();
         }
       } catch (error) {
         console.error(error.message);
@@ -168,10 +174,12 @@ const ServiceManagement = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setApiLoading(true);
 
     // Check if the form is ready to submit and show an error if needed
     if (!isFormReady) {
       swal("Error!", "ServiceCode is already in use.", "error");
+      setApiLoading(false);
       setLoading(false); // Reset loading state early if form is not ready
       return; // Exit early if form is not ready
     }
@@ -182,6 +190,7 @@ const ServiceManagement = () => {
     if (!storedToken) {
       swal("Error!", "No token found. Please log in.", "error");
       navigate("/admin-login");
+      setApiLoading(false);
       setLoading(false); // Reset loading state if no token
       return;
     }
@@ -224,14 +233,14 @@ const ServiceManagement = () => {
         fetchServices();
 
         // Handle potential token update from response
-        const newToken = result.token || result._token || storedToken  || "";
+        const newToken = result.token || result._token || storedToken || "";
         if (newToken) {
           localStorage.setItem("_token", newToken);
         }
-console.log('result -- ',result)
+        console.log('result -- ', result)
         Swal.fire(
           "Success!",
-          editingServiceId ?  result.message || "Form updated successfully." :  result.message || "Service Created successfully.",
+          editingServiceId ? result.message || "Form updated successfully." : result.message || "Service Created successfully.",
           "success"
         );
         setEditingServiceId(null);
@@ -241,7 +250,7 @@ console.log('result -- ',result)
         swal("Error!", errorMessage, "error");
 
         // Optionally handle token refresh if necessary
-        const newToken = result?.token || result?._token || storedToken  || "";
+        const newToken = result?.token || result?._token || storedToken || "";
         if (newToken) {
           localStorage.setItem("_token", newToken);
         }
@@ -251,6 +260,7 @@ console.log('result -- ',result)
       swal("Error!", "There was an issue with the request.", "error");
       console.error(error);
     } finally {
+      setApiLoading(false);
       setLoading(false); // Always reset loading state, regardless of success or failure
     }
   };
@@ -279,7 +289,7 @@ console.log('result -- ',result)
           );
 
           // If the response includes a new token, update it in localStorage
-          const newToken = response.data?.token || response.data?._token || storedToken  || "";
+          const newToken = response.data?.token || response.data?._token || storedToken || "";
           if (newToken) {
             localStorage.setItem("_token", newToken);
           }
@@ -333,7 +343,7 @@ console.log('result -- ',result)
       .then((response) => {
         // Parse the response JSON to extract token, even if it's an error
         return response.json().then((result) => {
-          const newToken = result.data?.token || result.data?._token || storedToken  || "";
+          const newToken = result.data?.token || result.data?._token || storedToken || "";
           if (newToken) {
             localStorage.setItem("_token", newToken); // Save the token immediately
           }
@@ -397,17 +407,37 @@ console.log('result -- ',result)
       <div className="loader border-t-4 border-[#2c81ba] rounded-full w-10 h-10 animate-spin"></div>
     </div>
   );
+
+  const totalPages = Math.ceil(filteredServices.length / servicesPerPage);
+  const [startPage, setStartPage] = useState(1);
+  const maxVisiblePages = 3;
+
+  const handleForward = () => {
+    if (startPage + maxVisiblePages < totalPages) {
+      setStartPage(startPage + maxVisiblePages);
+    }
+  };
+
+  const handleBackward = () => {
+    if (startPage > 1) {
+      setStartPage(startPage - maxVisiblePages);
+    }
+  };
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+    setCurrentPage(1)
+  };
   return (
     <div className="">
 
-      <div className="bg-white border-black border  p-12 w-full mx-auto">
-        <div className="flex flex-wrap">
-          <div className="w-2/5">
+      <div className="bg-white border-black border  p-6 md:p-12 w-full mx-auto">
+        <div className="md:flex flex-wrap">
+          <div className="md:w-2/5">
             <form
               onSubmit={handleSubmit}
-              className="space-y-4 ps-0 pb-[30px] px-[51px] bg-white rounded-md"
+              className="space-y-4 ps-0 md:pr-[30px] pb-[30px] bg-white rounded-md"
             >
-              <div className="grid grid-cols-1 gap-4">
+              <div className="grid grid-cols-1  gap-4">
                 <SelectSearch
                   options={serviceTitlesAndIds.map((service) => ({
                     value: service.id,
@@ -415,6 +445,7 @@ console.log('result -- ',result)
                   }))}
                   value={groupId} // Assuming groupId is the state variable for the selected value
                   name="group_id"
+                  required
                   placeholder="Choose Service Group"
                   onChange={(value) => setGroupId(value)}
                   search
@@ -424,6 +455,7 @@ console.log('result -- ',result)
                 <input
                   type="text"
                   name="serviceName"
+                  required
                   value={serviceName}
                   onChange={(e) => setServiceName(e.target.value)}
                   placeholder="Service Name"
@@ -434,6 +466,7 @@ console.log('result -- ',result)
                 <input
                   type="text"
                   name="description"
+                  required
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Description"
@@ -445,6 +478,7 @@ console.log('result -- ',result)
                   type="text"
                   name="service_code"
                   value={service_code}
+                  required
                   onChange={handleServiceCodeChange}
                   placeholder="Service Code"
                   className="w-full rounded-md p-2.5 border bg-[#f7f6fb] border-gray-300"
@@ -460,6 +494,7 @@ console.log('result -- ',result)
                 <input
                   type="text"
                   name="hsn_code"
+                  required
                   value={hsn_code}
                   onChange={(e) => setHSNCode(e.target.value)}
                   placeholder="HSN Code"
@@ -470,7 +505,7 @@ console.log('result -- ',result)
                 <button
                   type="submit"
                   disabled={loading}
-                  className={`bg-[#2c81ba] hover:scale-105 hover:bg-[#0f5381] text-white  py-2.5 px-[30px] text-[18px] border rounded-md ${loading ? "opacity-50 cursor-not-allowed" : ""
+                  className={`flex justify-center text-center align-middle items-center w-full bg-[#2c81ba] hover:scale-105 hover:bg-[#0f5381] text-white  py-2.5 px-[30px] text-[18px] border rounded-md ${loading ? "opacity-50 cursor-not-allowed" : ""
                     }`}
                 >
                   {editingServiceId ? "Update" : "Submit"}
@@ -478,18 +513,36 @@ console.log('result -- ',result)
               </div>
             </form>
           </div>
-          <div className="w-3/5">
-            <div className="flex justify-between mb-4">
-              <input
-                type="text"
-                placeholder="Search by Service Name"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-[450px] rounded-md p-2.5 border border-gray-300"
-              />
+          <div className="md:w-3/5">
+            <div className="md:flex justify-between items-center mb-4">
+              <div>
+                <div>
+                  <input
+                    type="text"
+                    placeholder="Search by Service Name"
+                    value={searchTerm}
+                    onChange={handleSearchChange}
+                    className="md:w-[450px] w-full rounded-md p-2.5 border border-gray-300 mb-4"
+                  />
+                </div>
+                <select
+                  value={servicesPerPage}
+                  onChange={(e) => {
+                    setServicesPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="border rounded-lg px-3 py-1 text-gray-700 bg-white  shadow-sm focus:ring-2 focus:ring-blue-400"
+                >
+                  {optionsPerPage.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <button
                 onClick={exportToExcel}
-                className="bg-green-500 hover:scale-105 hover:bg-green-600 text-white px-4 py-2 rounded text-[18px]"
+                className="bg-green-500  mb-4 hover:scale-105 hover:bg-green-600 text-white px-4 py-2 rounded text-[18px]"
               >
                 Export to Excel
               </button>
@@ -526,6 +579,14 @@ console.log('result -- ',result)
                         <Loader className="text-center" />
                       </td>
                     </tr>
+                  ) : currentServices.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-4 text-center text-red-500">
+                        {responseError && responseError !== ""
+                          ? responseError
+                          : "No data available in table"}
+                      </td>
+                    </tr>
                   ) : (
                     <>
                       {currentServices.map((service, index) => (
@@ -558,7 +619,7 @@ console.log('result -- ',result)
                               Edit
                             </button>
                             <button
-                            disabled={deletingId === service.id} 
+                              disabled={deletingId === service.id}
                               onClick={() => handleDelete(service.id)}
                               className={`bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md  ${deletingId === service.id ? "opacity-50 cursor-not-allowed" : " hover:scale-105"} `}
                             >
@@ -575,22 +636,48 @@ console.log('result -- ',result)
 
             {/* Pagination */}
             <div className="mt-4 text-center">
-              {Array.from(
-                {
-                  length: Math.ceil(filteredServices.length / servicesPerPage),
-                },
-                (_, index) => (
-                  <button
-                    key={index}
-                    onClick={() => paginate(index + 1)}
-                    className={`mx-1 px-3 py-1 rounded-md ${currentPage === index + 1
-                      ? "bg-[#2c81ba] hover:bg-[#0f5381] text-white"
-                      : "bg-gray-200"
-                      }`}
-                  >
-                    {index + 1}
-                  </button>
-                )
+              {/* First Page */}
+
+
+              {/* Backward Ellipsis */}
+              {startPage > 2 && (
+                <button onClick={handleBackward} className="mx-1 px-3 py-1 rounded-md bg-gray-200">
+                  ...
+                </button>
+              )}
+
+              {/* Middle Pages */}
+              {Array.from({ length: Math.min(maxVisiblePages, totalPages - 2) }, (_, index) => {
+                const pageNumber = startPage + index;
+                return (
+                  pageNumber < totalPages && (
+                    <button
+                      key={pageNumber}
+                      onClick={() => paginate(pageNumber)}
+                      className={`mx-1 px-3 py-1 rounded-md ${currentPage === pageNumber ? "bg-[#2c81ba] text-white" : "bg-gray-200"
+                        }`}
+                    >
+                      {pageNumber}
+                    </button>
+                  )
+                );
+              })}
+
+              {/* Forward Ellipsis */}
+              {startPage + maxVisiblePages < totalPages && (
+                <button onClick={handleForward} className="mx-1 px-3 py-1 rounded-md bg-gray-200">
+                  ...
+                </button>
+              )}
+
+              {/* Last Page */}
+              {totalPages > 1 && (
+                <button
+                  onClick={() => paginate(totalPages)}
+                  className={`mx-1 px-3 py-1 rounded-md ${currentPage === totalPages ? "bg-[#2c81ba] text-white" : "bg-gray-200"}`}
+                >
+                  {totalPages}
+                </button>
               )}
             </div>
           </div>

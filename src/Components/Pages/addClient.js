@@ -7,9 +7,12 @@ import { State } from "country-state-city";
 import SelectSearch from "react-select-search";
 import { useApiLoading } from '../ApiLoadingContext';
 import "react-select-search/style.css";
-
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 import Swal from "sweetalert2";
 import axios from "axios";
+import { format } from "date-fns";
+
 import { useClientContext } from "./ClientContext";
 const states = State.getStatesOfCountry("IN");
 const option = states.map((state) => ({
@@ -19,6 +22,8 @@ const option = states.map((state) => ({
 const storedToken = localStorage.getItem("token");
 const AddClient = () => {
     const { validateAdminLogin, setApiLoading, apiLoading } = useApiLoading();
+    const [emailsInput, setEmailsInput] = useState("");
+    const [emailError, setEmailError] = useState("");
 
 
     const navigate = useNavigate();
@@ -32,7 +37,28 @@ const AddClient = () => {
         escalation_manager_id,
         billing_spoc_id,
         billing_escalation_id,
-        authorized_detail_id, finalLoading
+        esc_manager_name,
+        esc_manager_email,
+        esc_manager_mobile,
+        esc_manager_desgn,
+        client_spoc_name,
+        client_spoc_email,
+        client_spoc_mobile,
+        client_spoc_desgn,
+        billing_spoc_name,
+        billing_spoc_email,
+        billing_spoc_mobile,
+        billing_spoc_desgn,
+        billing_escalation_name,
+        billing_escalation_email,
+        billing_escalation_mobile,
+        billing_escalation_desgn,
+        authorized_detail_name,
+        authorized_detail_email,
+        authorized_detail_mobile,
+        authorized_detail_desgn,
+        authorized_detail_id,
+        finalLoading
     } = useClientContext();
     const [priceData, setPriceData] = useState({});
     const [files, setFiles] = useState([]);
@@ -43,12 +69,12 @@ const AddClient = () => {
     const [loading, setLoading] = useState(false);
 
     const [selectedOption, setSelectedOption] = useState(null);
+    const [customTemplate, setCustomTemplate] = useState(null);
+
     const [selected, setSelected] = useState([]);
     const [errors, setErrors] = useState({});
-    const [branches, setBranches] = useState([
-        { branch_email: "", branch_name: "" },
-    ]);
-    const [emails, setemails] = useState([]);
+    const [branches, setBranches] = useState([]);
+    const [emails, setEmails] = useState([""]);
     const [fileName, setFileName] = useState("");
     const [apiError, setApiError] = useState("");
     const [clientData, setClientData] = useState({
@@ -61,44 +87,60 @@ const AddClient = () => {
         tat: "",
         date_agreement: "",
         agreement_period: "",
+        agr_upload: "",
         scopeOfServices: [],
         visible_fields: [],
         mobile_number: "",
-        role: "",
         dedicated_point_of_contact: "",
         first_level_matrix_name: "",
         first_level_matrix_designation: "",
         first_level_matrix_mobile: "",
+        custom_address: "",
         first_level_matrix_email: "",
         client_standard: "",
-        client_spoc_id: "",
-        escalation_manager_id: "",
-        billing_spoc_id: "",
-        billing_escalation_id: "",
-        authorized_detail_id: "",
         username: "",
+
+        esc_manager_name: "",
+        esc_manager_email: "",
+        esc_manager_mobile: "",
+        esc_manager_desgn: "",
+
+        client_spoc_name: "",
+        client_spoc_email: "",
+        client_spoc_mobile: "",
+        client_spoc_desgn: "",
+
+        billing_spoc_name: "",
+        billing_spoc_email: "",
+        billing_spoc_mobile: "",
+        billing_spoc_desgn: "",
+
+        billing_escalation_name: "",
+        billing_escalation_email: "",
+        billing_escalation_mobile: "",
+        billing_escalation_desgn: "",
+
+        authorized_detail_name: "",
+        authorized_detail_email: "",
+        authorized_detail_mobile: "",
+        authorized_detail_desgn: "",
     });
 
     const handleFileChange = (fileName, e) => {
         const selectedFiles = Array.from(e.target.files); // Convert FileList to an array
-    
-        // Allowed image types
-        const validImageTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
-    
-        // Filter valid image files
-        const filteredFiles = selectedFiles.filter(file => validImageTypes.includes(file.type));
-    
-        if (filteredFiles.length === 0) {
-            alert("Please upload only image files (JPEG, PNG, GIF, WebP).");
+
+        if (selectedFiles.length === 0) {
+            alert("No files selected.");
             return;
         }
-    
+
         setFiles((prevFiles) => ({
             ...prevFiles,
-            [fileName]: filteredFiles,
+            [fileName]: selectedFiles,
         }));
     };
-    
+
+
     const uploadCustomerLogo = async (adminId, token, customerInsertId, password) => {
 
         console.log('insustssss', customerInsertId);
@@ -402,14 +444,8 @@ const AddClient = () => {
             "tat",
             "date_agreement",
             "agreement_period",
-            "scopeOfServices",
             "mobile_number",
-            "role",
-            "dedicated_point_of_contact",
-            "first_level_matrix_name",
-            "first_level_matrix_designation",
-            "first_level_matrix_mobile",
-            "first_level_matrix_email",
+
         ];
 
         const newErrors = {};
@@ -444,13 +480,23 @@ const AddClient = () => {
         if (!emails || emails.length === 0) {
             newErrors.emails = "At least one email is required";
         } else {
-            emails.forEach((email, index) => {
-                // Check for valid email format using regex
+            emails.forEach((emailString, index) => {
+
+                // Email regex pattern
                 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                if (!emailPattern.test(email)) {
-                    newErrors[`email_${index}`] = "Invalid email format";
-                }
+                emails.forEach((email) => {
+                    if (!emailPattern.test(email)) {
+                        newErrors[`email_${index}`] = "Invalid email format";
+
+                        Swal.fire({
+                            icon: "error",
+                            title: "Submission Error",
+                            text: "Invalid Email format",
+                        });
+                    }
+                });
             });
+
         }
 
         setErrors(newErrors);
@@ -461,14 +507,31 @@ const AddClient = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault(); // Prevent form submission immediately
+        setApiLoading(true);
         setLoading(true);
         const fileCount = Object.keys(files).length;
         // Run validation and get errors
         const validationErrors = validateRequiredFields();
-
+        if (emails.length == 0) {
+            setErrors(prevErrors => ({
+                ...prevErrors,
+                duplicate_email: "Each branch email must be unique."
+            }));
+            setApiLoading(false);
+            setLoading(false);
+            Swal.fire({
+                icon: "error",
+                title: "Submission Error",
+                text:
+                    "Each branch email must be unique." ||
+                    "Branch Emails cannot be same",
+            });
+            return;
+        }
         // If there are validation errors, show an alert and stop submission
         if (Object.keys(validationErrors).length > 0) {
             setErrors(validationErrors);
+            setApiLoading(false);
             setLoading(false);
             return; // Stop submission if there are validation errors
         }
@@ -477,16 +540,22 @@ const AddClient = () => {
             // Retrieve necessary data from localStorage
             const admin_id = JSON.parse(localStorage.getItem("admin"))?.id;
             const storedToken = localStorage.getItem("_token");
-
+            const emailArray = clientData.client_spoc_email
+                .split(',')
+                .map(email => email.trim())  // remove whitespace
+                .filter(email => email !== ""); // remove empty strings
             // Prepare the payload with all necessary data
             const payload2 = JSON.stringify({
                 admin_id: admin_id,
                 _token: storedToken,
                 ...clientData,
+                client_spoc_email: emailArray,
                 visible_fields: clientData.visible_fields,// Send as an array
                 branches,
                 emails,
+                custom_template: customTemplate,
                 additional_login: selectedOption,
+                send_mail: fileCount > 0 ? 0 : 1
             });
             // Set up request headers
             const myHeaders = new Headers();
@@ -508,7 +577,6 @@ const AddClient = () => {
 
             const result = await response.json();
 
-            // Check if the response is successful
             if (!response.ok) {
                 const errorMessage = result.message || "Failed to submit the form";
                 const newToken = result.token || result._token || storedToken || '';
@@ -543,6 +611,7 @@ const AddClient = () => {
 
             }
             if (fileCount == 0) {
+                setApiLoading(false);
                 setLoading(false);
                 Swal.fire("Success", result.message || "Form submitted successfully!", "success");
 
@@ -550,6 +619,7 @@ const AddClient = () => {
             if (fileCount > 0) {
                 await uploadCustomerLogo(admin_id, storedToken, customerInsertId, password);
                 setLoading(false);
+                setApiLoading(false);
 
                 Swal.fire("Success", result.message || "Form submitted successfully!", "success");
             }
@@ -567,20 +637,47 @@ const AddClient = () => {
                 tat: "",
                 date_agreement: "",
                 agreement_period: "",
+                agr_upload: "",
                 scopeOfServices: [],
                 visible_fields: [],
                 mobile_number: "",
-                role: "",
                 dedicated_point_of_contact: "",
                 first_level_matrix_name: "",
                 first_level_matrix_designation: "",
                 first_level_matrix_mobile: "",
+                custom_template: "",
+                custom_address: "",
                 first_level_matrix_email: "",
                 client_standard: "",
                 username: "",
+
+                esc_manager_name: "",
+                esc_manager_email: "",
+                esc_manager_mobile: "",
+                esc_manager_desgn: "",
+
+                client_spoc_name: "",
+                client_spoc_email: "",
+                client_spoc_mobile: "",
+                client_spoc_desgn: "",
+
+                billing_spoc_name: "",
+                billing_spoc_email: "",
+                billing_spoc_mobile: "",
+                billing_spoc_desgn: "",
+
+                billing_escalation_name: "",
+                billing_escalation_email: "",
+                billing_escalation_mobile: "",
+                billing_escalation_desgn: "",
+
+                authorized_detail_name: "",
+                authorized_detail_email: "",
+                authorized_detail_mobile: "",
+                authorized_detail_desgn: "",
             });
             setFiles([]);
-            setemails([])
+            setEmails([])
             setSelected([]); // Clear selected package options
             setBranches([{ branch_email: "", branch_name: "" }]); // Reset branches
             setDate(null); // Reset service agreement date
@@ -591,6 +688,7 @@ const AddClient = () => {
             setSelectedPackages([])
             navigate('/admin-active-account');
         } catch (error) {
+            setApiLoading(false);
             setLoading(false);
             console.error("Submission error:", error);
 
@@ -617,6 +715,33 @@ const AddClient = () => {
             <div className="loader border-t-4 border-[#2c81ba] rounded-full w-10 h-10 animate-spin"></div>
         </div>
     );
+    const handleEmailInputChange = (value) => {
+        setEmailsInput(value);
+        console.log('value---', value)
+        // Convert to array & trim spaces
+        const emailArray = value.split(",").map(email => email.trim());
+
+        // Optional: Basic email validation
+        const invalidEmails = emailArray.filter(email => email && !/^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/.test(email));
+
+        if (invalidEmails.length > 0) {
+            // setEmailError("One or more emails are invalid.");
+        } else {
+            setEmailError("");
+        }
+
+        // Update emails array
+        setEmails(emailArray.filter(email => email !== ""));
+    };
+    const addEmailField = () => {
+        setEmails([...emails, ""]); // Add new empty email field
+    };
+
+    const removeEmailField = (index) => {
+        const updatedEmails = emails.filter((_, i) => i !== index);
+        setEmails(updatedEmails);
+    };
+    console.log('customTemplate', customTemplate);
     return (
         <div
             className="w-full   border-black border  overflow-hidden"
@@ -638,6 +763,7 @@ const AddClient = () => {
                         <input
                             type="text"
                             name="company_name"
+                            required
                             placeholder="Enter Organization Name"
                             value={clientData.company_name}
                             onChange={handleChange}
@@ -653,6 +779,7 @@ const AddClient = () => {
                         <input
                             type="text"
                             name="client_code"
+                            required
                             placeholder="Enter Client Unique ID"
                             value={clientData.client_code}
                             onChange={handleChange}
@@ -674,6 +801,7 @@ const AddClient = () => {
                         <input
                             type="text"
                             name="address"
+                            required
                             placeholder="Enter Registered Address"
                             value={clientData.address}
                             onChange={handleChange}
@@ -689,6 +817,7 @@ const AddClient = () => {
                         <div className="relative">
                             <select
                                 name="state"
+                                required
                                 value={clientData.state || ""}
                                 onChange={handleChange}
                                 className={`w-full rounded-md p-2.5 mb-[20px] border ${errors.state ? "border-red-500" : "border-gray-300"
@@ -719,8 +848,9 @@ const AddClient = () => {
                     <div>
                         <label className="block mb-1 font-medium">State Code<span className="text-red-500 text-xl" >*</span></label>
                         <input
-                            type="text"
+                            type="number"
                             name="state_code"
+                            required
                             placeholder="Enter State Code"
                             value={clientData.state_code}
                             onChange={handleChange}
@@ -733,6 +863,7 @@ const AddClient = () => {
                         <input
                             type="text"
                             name="gstin"
+                            required
                             placeholder="Enter GST Number"
                             value={clientData.gstin}
                             onChange={handleChange}
@@ -752,8 +883,9 @@ const AddClient = () => {
                             TAT (Turnaround Time)<span className="text-red-500 text-xl" >*</span>
                         </label>
                         <input
-                            type="text"
+                            type="number"
                             name="tat"
+                            required
                             placeholder="Enter TAT"
                             value={clientData.tat}
                             onChange={handleChange}
@@ -766,94 +898,26 @@ const AddClient = () => {
                         <label className="block mb-1 font-medium">
                             Date Of Service Agreement{" "}<span className="text-red-500 text-xl" >*</span>
                         </label>
-                        <input
-                            type="date"
-                            onChange={handleChange}
-                            value={clientData.date_agreement}
-                            name="date_agreement"
+                        <DatePicker
+                            selected={clientData.date_agreement ? new Date(clientData.date_agreement) : null}
+                            onChange={(date) => {
+                                const formattedDate = format(date, "yyyy-MM-dd");
+                                handleChange({
+                                    target: {
+                                        name: "date_agreement",
+                                        value: formattedDate
+                                    }
+                                });
+                            }}
                             placeholderText="Select Service Agreement Date"
-                            className={`w-full rounded-md p-2.5 mb-[20px] border ${errors.date_agreement ? "border-red-500" : "border-gray-300"
+                            dateFormat="dd-MM-yyyy"
+                            className={`w-full rounded-md p-2.5 mb-[20px] uppercase border ${errors.date_agreement ? "border-red-500" : "border-gray-300"
                                 } bg-[#f7f6fb]`}
+                            required
                         />
                         {errors.date_agreement && (
                             <span className="text-red-500">{errors.date_agreement}</span>
                         )}
-                    </div>
-                </div>
-
-                <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                        <label className="block mb-1 font-medium">Email<span className="text-red-500 text-xl" >*</span></label>
-                        <input
-                            type="text"
-                            name="emails"
-                            placeholder="Enter Email"
-                            value={emails.emails}
-                            onChange={(e) => setemails([e.target.value])}
-                            className={`w-full rounded-md p-2.5 mb-[20px] border ${errors.emails ? "border-red-500" : "border-gray-300"
-                                } bg-[#f7f6fb]`}
-                        />
-                        {errors.emails && (
-                            <span className="text-red-500">{errors.emails}</span>
-                        )}
-                    </div>
-                    <div>
-                        <label className="block mb-1 font-medium">
-                            Mobile Number<span className="text-red-500 text-xl" >*</span>
-                        </label>
-                        <input
-                            type="text"
-                            name="mobile_number"
-                            placeholder="Enter Mobile Number"
-                            value={clientData.mobile_number}
-                            onChange={handleChange}
-                            className={`w-full rounded-md p-2.5 mb-[20px] border ${errors.mobile_number ? "border-red-500" : "border-gray-300"
-                                } bg-[#f7f6fb]`}
-                        />
-                        {errors.mobile_number && (
-                            <span className="text-red-500">{errors.mobile_number}</span>
-                        )}
-                    </div>
-
-                </div>
-                <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                        <label className="block mb-1 font-medium">
-                            Standard Process
-                        </label>
-                        <input
-                            type="text"
-                            name="client_standard"
-                            placeholder="Enter Standard Process"
-                            value={clientData.client_standard}
-                            onChange={handleChange}
-                            className={`w-full rounded-md p-2.5 mb-[20px] border ${errors.client_standard ? "border-red-500" : "border-gray-300"
-                                } bg-[#f7f6fb]`}
-                        />
-                        {errors.client_standard && (
-                            <span className="text-red-500">{errors.client_standard}</span>
-                        )}
-                    </div>
-
-                    <div>
-                        <label className="block mb-1 font-medium">
-                            Agreement Period<span className="text-red-500 text-xl" >*</span>
-                        </label>
-                        <select
-                            name="agreement_period"
-                            value={clientData.agreement_period || ""}
-                            onChange={handleChange}
-                            className={`w-full rounded-md p-2.5 mb-[20px] border ${errors.agreement_period ? "border-red-500" : "border-gray-300"
-                                } bg-[#f7f6fb]`}
-                        >
-                            <option value="" className="text-[#989fb3]">
-                                Select Agreement Period
-                            </option>
-                            <option value="1 Year">1 Year</option>
-                            <option value="2 Years">2 Years</option>
-                            <option value="3 Years">3 Years</option>
-                            {/* Add more options as needed */}
-                        </select>
                     </div>
                 </div>
 
@@ -872,215 +936,249 @@ const AddClient = () => {
 
                     </div>
                     <div>
-                        <label className="block mb-1 font-medium">Role<span className="text-red-500 text-xl" >*</span></label>
-                        <input
-                            type="text"
-                            name="role"
+                        <label className="block mb-1 font-medium">
+                            Standard Process
+                        </label>
+                        <textarea
+                            required
+                            name="client_standard"
+                            placeholder="Enter Standard Process"
+                            value={clientData.client_standard}
                             onChange={handleChange}
-                            className="w-full rounded-md p-2.5 mb-[20px] border border-gray-300 bg-[#f7f6fb]"
-                        />
-                        {errors.role && <span className="text-red-500">{errors.role}</span>}
+                            className={`w-full rounded-md p-2.5 mb-[20px] border ${errors.client_standard ? "border-red-500" : "border-gray-300"
+                                } bg-[#f7f6fb]`}
+                            rows={1} // Adjust the number of rows as needed
+                        ></textarea>
+
+                        {errors.client_standard && (
+                            <span className="text-red-500">{errors.client_standard}</span>
+                        )}
                     </div>
+
+
                 </div>
-                <div className="grid md:grid-cols-3 gap-4">
+                <div className="grid md:grid-cols-2 gap-4">
                     <div>
                         <label className="block mb-1 font-medium">
-                            Dedicated Point Of Contact
+                            Agreement Period<span className="text-red-500 text-xl" >*</span>
+                        </label>
+                        <select
+                            name="agreement_period"
+                            required
+                            value={clientData.agreement_period || ""}
+                            onChange={handleChange}
+                            className={`w-full rounded-md p-2.5 mb-[20px] border ${errors.agreement_period ? "border-red-500" : "border-gray-300"
+                                } bg-[#f7f6fb]`}
+                        >
+                            <option value="" className="text-[#989fb3]">
+                                Select Agreement Period
+                            </option>
+                            <option value="1 Year">1 Year</option>
+                            <option value="2 Years">2 Years</option>
+                            <option value="3 Years">3 Years</option>
+                            {/* Add more options as needed */}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block mb-1 font-medium">
+                            Upload Agreement
                         </label>
                         <input
-                            type="text"
-                            name="dedicated_point_of_contact"
-                            placeholder="Enter Dedicated Point Of Contact"
-                            onChange={handleChange}
-                            className="w-full rounded-md p-2.5 mb-[20px] border border-gray-300 bg-[#f7f6fb]"
+                            type="file"
+                            name="agr_upload"
+                            onChange={(e) => handleFileChange("agr_upload", e)}
+                            className="w-full rounded-md p-2 border border-gray-300 bg-[#f7f6fb]"
                         />
-                        {errors.dedicated_point_of_contact && <span className="text-red-500">{errors.dedicated_point_of_contact}</span>}
                     </div>
+                </div>
+                <h2 className="text-lg font-semibold">Client Spoc</h2>
+                <div className="grid md:grid-cols-4 gap-4">
                     <div>
                         <label className="block mb-1 font-medium">
-                            First Level Matrix Name
+                            Name
                         </label>
                         <input
                             type="text"
                             name="first_level_matrix_name"
-                            placeholder="Enter First Level Matrix Name"
+                            placeholder="Enter Name of the key account"
 
                             onChange={handleChange}
                             className="w-full rounded-md p-2.5 mb-[20px] border border-gray-300 bg-[#f7f6fb]"
                         />
                         {errors.first_level_matrix_name && <span className="text-red-500">{errors.first_level_matrix_name}</span>}
                     </div>
+
                     <div>
                         <label className="block mb-1 font-medium">
-                            First Level Matrix Designation
+                            Email
                         </label>
                         <input
                             type="text"
-                            placeholder="Enter First Level Matrix Designation"
+                            name="emails"
+                            required
+                            placeholder="You can add multiple emails by comas(,)"
+                            value={emailsInput}
+                            onChange={(e) => handleEmailInputChange(e.target.value)}
+                            className={`w-full rounded-md p-2.5 border ${emailError ? "border-red-500" : "border-gray-300"} bg-[#f7f6fb]`}
+                        />
+                        {emailError && <span className="text-red-500">{emailError}</span>}
+
+                    </div>
+                    <div>
+                        <label className="block mb-1 font-medium">
+                            Mobile
+                        </label>
+
+                        <input
+                            type="number"
+                            name="mobile_number"
+                            required
+                            placeholder="Enter Mobile Number"
+                            value={clientData.mobile_number}
+                            onChange={handleChange}
+                            className={`w-full rounded-md p-2.5 mb-[20px] border ${errors.mobile_number ? "border-red-500" : "border-gray-300"
+                                } bg-[#f7f6fb]`}
+                        />
+
+                        {errors.mobile_number && <span className="text-red-500">{errors.mobile_number}</span>}
+                    </div>
+                    <div>
+                        <label className="block mb-1 font-medium">
+                            Designation
+                        </label>
+                        <input
+                            type="text"
+                            placeholder="Enter Designation"
                             name="first_level_matrix_designation"
                             onChange={handleChange}
                             className="w-full rounded-md p-2.5 mb-[20px] border border-gray-300 bg-[#f7f6fb]"
                         />
                         {errors.first_level_matrix_designation && <span className="text-red-500">{errors.first_level_matrix_designation}</span>}
                     </div>
-                </div>
-                <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                        <label className="block mb-1 font-medium">
-                            First Level Matrix Mobile
-                        </label>
-                        <input
-                            type="text"
-                            placeholder="Enter First Level Matrix Mobile"
-                            name="first_level_matrix_mobile"
-                            onChange={handleChange}
-                            className="w-full rounded-md p-2.5 mb-[20px] border border-gray-300 bg-[#f7f6fb]"
-                        />
-                        {errors.first_level_matrix_mobile && <span className="text-red-500">{errors.first_level_matrix_mobile}</span>}
-                    </div>
-                    <div>
-                        <label className="block mb-1 font-medium">
-                            First Level Matrix Email
-                        </label>
-                        <input
-                            type="text"
-                            name="first_level_matrix_email"
-                            placeholder='You can add multiple emails by (comas`,`) '
-                            onChange={handleChange}
-                            className="w-full rounded-md p-2.5 mb-[20px] border border-gray-300 bg-[#f7f6fb]"
-                        />
-                        {errors.first_level_matrix_email && <span className="text-red-500">{errors.first_level_matrix_email}</span>}
-                    </div>
-
 
                 </div>
-                <div className="grid md:grid-cols-3 gap-4 ">
-                    <div className="w-full">
-                        <label className="block mb-1 font-medium">
-                            Escalation Manager
-                        </label>
-                        <SelectSearch
-                            options={[
-                                { value: 'N/A', name: 'N/A' }, // Add "NA" as the first option
-                                ...escalation_manager_id,
-                            ]}
-                            value={clientData.escalation_manager_id}
-                            name="escalation_manager_id"
-                            placeholder="Choose your Escalation Manager"
-                            onChange={(value) =>
-                                handleChange({
-                                    target: { name: "escalation_manager_id", value },
-                                })
-                            }
-                        />
 
+                <div className="space-y-6">
+                    {/* Escalation Manager */}
+                    <h2 className="text-lg font-semibold">Escalation Manager</h2>
+                    <div className="grid md:grid-cols-4 gap-4">
+                        <div className="w-full">
+                            <label className="block mb-1 font-medium"> Name</label>
+                            <input type="text" name="esc_manager_name" placeholder="Enter Name" value={clientData.esc_manager_name || ''} onChange={handleChange} className="w-full rounded-md p-2.5 mb-[20px] border border-gray-300 bg-[#f7f6fb]" />
+                        </div>
+                        <div className="w-full">
+                            <label className="block mb-1 font-medium"> Email</label>
+                            <input type="email" name="esc_manager_email" placeholder="Enter Email" value={clientData.esc_manager_email || ''} onChange={handleChange} className="w-full rounded-md p-2.5 mb-[20px] border border-gray-300 bg-[#f7f6fb]" />
+                        </div>
+                        <div className="w-full">
+                            <label className="block mb-1 font-medium"> Mobile</label>
+                            <input type="number" name="esc_manager_mobile" placeholder="Enter Mobile" value={clientData.esc_manager_mobile || ''} onChange={handleChange} className="w-full rounded-md p-2.5 mb-[20px] border border-gray-300 bg-[#f7f6fb]" />
+                        </div>
+                        <div className="w-full">
+                            <label className="block mb-1 font-medium"> Designation</label>
+                            <input type="text" name="esc_manager_desgn" placeholder="Enter Designation" value={clientData.esc_manager_desgn || ''} onChange={handleChange} className="w-full rounded-md p-2.5 mb-[20px] border border-gray-300 bg-[#f7f6fb]" />
+                        </div>
                     </div>
 
-                    <div className="w-full">
-                        <label className="block mb-1 font-medium">
-                            Client Spoc
-                        </label>
-                        <SelectSearch
-                            options={[
-                                { value: 'N/A', name: 'N/A' }, // Add "NA" as the first option
-                                ...client_spoc_id,
-                            ]}
-                            value={clientData.client_spoc_id}
-                            name="client_spoc_id"
-                            placeholder="Choose your Client Spoc"
-                            onChange={(value) =>
-                                handleChange({ target: { name: "client_spoc_id", value } })
-                            }
-                        />
+                    {/* Client SPOC */}
 
-                        {errors.client_spoc_id && (
-                            <span className="text-red-500">{errors.client_spoc_id}</span>
-                        )}
+
+                    {/* Billing SPOC */}
+                    <h2 className="text-lg font-semibold">Billing SPOC</h2>
+                    <div className="grid md:grid-cols-4 gap-4">
+                        <div className="w-full">
+                            <label className="block mb-1 font-medium">Name</label>
+                            <input type="text" name="billing_spoc_name" placeholder="Enter Name" value={clientData.billing_spoc_name || ''} onChange={handleChange} className="w-full rounded-md p-2.5 mb-[20px] border border-gray-300 bg-[#f7f6fb]" />
+                        </div>
+                        <div className="w-full">
+                            <label className="block mb-1 font-medium">Email</label>
+                            <input type="email" name="billing_spoc_email" placeholder="Enter Email" value={clientData.billing_spoc_email || ''} onChange={handleChange} className="w-full rounded-md p-2.5 mb-[20px] border border-gray-300 bg-[#f7f6fb]" />
+                        </div>
+                        <div className="w-full">
+                            <label className="block mb-1 font-medium">Mobile</label>
+                            <input type="number" name="billing_spoc_mobile" placeholder="Enter Mobile" value={clientData.billing_spoc_mobile || ''} onChange={handleChange} className="w-full rounded-md p-2.5 mb-[20px] border border-gray-300 bg-[#f7f6fb]" />
+                        </div>
+                        <div className="w-full">
+                            <label className="block mb-1 font-medium">Designation</label>
+                            <input type="text" name="billing_spoc_desgn" placeholder="Enter Designation" value={clientData.billing_spoc_desgn || ''} onChange={handleChange} className="w-full rounded-md p-2.5 mb-[20px] border border-gray-300 bg-[#f7f6fb]" />
+                        </div>
                     </div>
-
-                    <div>
-                        <label className="block mb-1 font-medium">
-                            Billing Spoc
-                        </label>
-                        <SelectSearch
-                            options={[
-                                { value: 'N/A', name: 'N/A' }, // Add "NA" as the first option
-                                ...billing_spoc_id,
-                            ]}
-                            value={clientData.billing_spoc_id}
-                            name="billing_spoc_id"
-                            placeholder="Choose your Billing Spoc"
-                            onChange={(value) =>
-                                handleChange({ target: { name: "billing_spoc_id", value } })
-                            }
-                        />
-
-                        {errors.billing_spoc_id && (
-                            <span className="text-red-500">{errors.billing_spoc_id}</span>
-                        )}
+                    <h2 className="text-lg font-semibold">Billing Escalation</h2>
+                    <div className="grid md:grid-cols-4 gap-4">
+                        <div className="w-full">
+                            <label className="block mb-1 font-medium">Name</label>
+                            <input type="text" name="billing_escalation_name" placeholder="Enter Name" value={clientData.billing_escalation_name || ''} onChange={handleChange} className="w-full rounded-md p-2.5 border border-gray-300 bg-[#f7f6fb]" />
+                        </div>
+                        <div className="w-full">
+                            <label className="block mb-1 font-medium">Email</label>
+                            <input type="email" name="billing_escalation_email" placeholder="Enter Email" value={clientData.billing_escalation_email || ''} onChange={handleChange} className="w-full rounded-md p-2.5 border border-gray-300 bg-[#f7f6fb]" />
+                        </div>
+                        <div className="w-full">
+                            <label className="block mb-1 font-medium">Mobile</label>
+                            <input type="number" name="billing_escalation_mobile" placeholder="Enter Mobile" value={clientData.billing_escalation_mobile || ''} onChange={handleChange} className="w-full rounded-md p-2.5 border border-gray-300 bg-[#f7f6fb]" />
+                        </div>
+                        <div className="w-full">
+                            <label className="block mb-1 font-medium">Designation</label>
+                            <input type="text" name="billing_escalation_desgn" placeholder="Enter Designation" value={clientData.billing_escalation_desgn || ''} onChange={handleChange} className="w-full rounded-md p-2.5 border border-gray-300 bg-[#f7f6fb]" />
+                        </div>
                     </div>
-                </div>
+                    <h2 className="text-lg font-semibold">Authorized Details</h2>
+                    <div className="grid md:grid-cols-4 gap-4">
+                        <div className="w-full">
+                            <label className="block mb-1 font-medium">Authorized Person Name</label>
+                            <input type="text" name="authorized_detail_name" placeholder="Enter Authorized Person Name" value={clientData.authorized_detail_name || ''} onChange={handleChange} className="w-full rounded-md p-2.5 border border-gray-300 bg-[#f7f6fb]" />
+                        </div>
+                        <div className="w-full">
+                            <label className="block mb-1 font-medium">Email</label>
+                            <input type="email" name="authorized_detail_email" placeholder="Enter Email" value={clientData.authorized_detail_email || ''} onChange={handleChange} className="w-full rounded-md p-2.5 border border-gray-300 bg-[#f7f6fb]" />
+                        </div>
+                        <div className="w-full">
+                            <label className="block mb-1 font-medium">Mobile</label>
+                            <input type="number" name="authorized_detail_mobile" placeholder="Enter Mobile" value={clientData.authorized_detail_mobile || ''} onChange={handleChange} className="w-full rounded-md p-2.5 border border-gray-300 bg-[#f7f6fb]" />
+                        </div>
+                        <div className="w-full">
+                            <label className="block mb-1 font-medium">Designation</label>
+                            <input type="text" name="authorized_detail_desgn" placeholder="Enter Designation" value={clientData.authorized_detail_desgn || ''} onChange={handleChange} className="w-full rounded-md p-2.5 border border-gray-300 bg-[#f7f6fb]" />
+                        </div>
 
-                <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                        <label className="block mb-1 font-medium">
-                            Billing Escalation
-                        </label>
-                        <SelectSearch
-                            options={[
-                                { value: 'N/A', name: 'N/A' }, // Add "NA" as the first option
-                                ...billing_escalation_id,
-                            ]}
-                            value={clientData.billing_escalation_id}
-                            name="billing_escalation_id"
-                            placeholder="Choose your Billing Escalation"
-                            onChange={(value) =>
-                                handleChange({
-                                    target: { name: "billing_escalation_id", value },
-                                })
-                            }
-                        />
-
-                        {errors.billing_escalation_id && (
-                            <span className="text-red-500">
-                                {errors.billing_escalation_id}
-                            </span>
-                        )}
                     </div>
+                    <h2 className="text-lg font-semibold"> Key Account</h2>
+                    <div className="grid md:grid-cols-4 mb-4 gap-4">
+                        <div className="w-full">
+                            <label className="block mb-1 font-medium">Name</label>
 
-                    <div>
-                        <label className="block mb-1 font-medium">
-                            Authorized Details
-                        </label>
+                            <input type="text" name="client_spoc_name" placeholder="Enter Name" value={clientData.client_spoc_name || ''} onChange={handleChange} className="w-full rounded-md p-2.5 mb-[20px] border border-gray-300 bg-[#f7f6fb]" />
+                        </div>
+                        <div className="w-full">
+                            <label className="block mb-1 font-medium">Email</label>
+                            <input
+                                type="email"
 
-                        <SelectSearch
-                            options={[
-                                { value: 'N/A', name: 'N/A' }, // Add "NA" as the first option
-                                ...authorized_detail_id,
-                            ]}
-                            value={clientData.authorized_detail_id}
-                            name="authorized_detail_id"
-                            placeholder="Choose your Authorized Person"
-                            onChange={(value) =>
-                                handleChange({
-                                    target: { name: "authorized_detail_id", value },
-                                })
-                            }
-                        />
-
-                        {errors.authorized_detail_id && (
-                            <span className="text-red-500">
-                                {errors.billing_escalation_id}
-                            </span>
-                        )}
+                                name="client_spoc_email"
+                                placeholder="Enter comma-separated emails"
+                                value={clientData.client_spoc_email || ''}
+                                onChange={handleChange}
+                                className="w-full rounded-md p-2.5 mb-[20px] border border-gray-300 bg-[#f7f6fb]"
+                                multiple // Optional: allows multiple emails in some browsers
+                            />
+                        </div>
+                        <div className="w-full">
+                            <label className="block mb-1 font-medium">Mobile</label>
+                            <input type="number" name="client_spoc_mobile" placeholder="Enter Mobile" value={clientData.client_spoc_mobile || ''} onChange={handleChange} className="w-full rounded-md p-2.5 mb-[20px] border border-gray-300 bg-[#f7f6fb]" />
+                        </div>
+                        <div className="w-full">
+                            <label className="block mb-1 font-medium">Designation</label>
+                            <input type="text" name="client_spoc_desgn" placeholder="Enter Designation" value={clientData.client_spoc_desgn || ''} onChange={handleChange} className="w-full rounded-md p-2.5 mb-[20px] border border-gray-300 bg-[#f7f6fb]" />
+                        </div>
                     </div>
                 </div>
                 <div className="grid gap-4">
                     <div className="visible_feild">
                         <label className="block mb-1 font-medium">
-                            Visible Fields<span className="text-red-500 text-xl" >*</span>
+                            Visible Fields
                         </label>
                         <MultiSelect
+
                             options={[
                                 { value: "batch_no", label: "Batch No" },
                                 { value: "case_id", label: "Case ID" },
@@ -1090,22 +1188,22 @@ const AddClient = () => {
                                 { value: "gender", label: "Gender" },
                                 { value: "photo", label: "Photo" },
                                 { value: "location", label: "Location" },
-                                { value: "client_ref_id", label: "Client Ref ID" },
+                                { value: "employeeId", label: "Employee ID" },
                             ]}
                             value={clientData.visible_fields.map(value => ({
                                 value: value,
                                 label:
+
                                     [
                                         { value: "batch_No", label: "Batch No" },
                                         { value: "case_id", label: "Case ID" },
                                         { value: "check_id", label: "Check ID" },
                                         { value: "ticket_id", label: "Ticket ID" },
                                         { value: "sub_client", label: "Sub Client" },
-                                        { value: "gender_male", label: "Gender Male" },
-                                        { value: "gender_female", label: "Gender Female" },
+                                        { value: "gender", label: "Gender" },
                                         { value: "photo", label: "Photo" },
                                         { value: "location", label: "Location" },
-                                        { value: "client_ref_id", label: "Client Ref ID" },
+                                        { value: "employeeId", label: "Employee ID" },
                                     ].find(option => option.value === value)?.label || value,
                             }))} // Convert stored values back to object format
                             placeholder="Choose your fields"
@@ -1131,17 +1229,18 @@ const AddClient = () => {
                         )}
                     </div>
                 </div>
-                <div className="grid md:grid-cols-2 gap-4">
+                <div className={`grid ${selectedOption === 'yes' ? 'md:grid-cols-2' : ''} gap-4`}>
                     <div>
                         <label className="block mb-1 font-medium">
-                            Login Required Option <span className="text-red-500 text-xl" >*</span>
+                            Secondary Credentials <span className="text-red-500 text-xl" >*</span>
                         </label>
                         <select
+                            required
                             onChange={(e) => setSelectedOption(e.target.value)}
                             className={`w-full rounded-md p-2.5 mb-[20px] border ${errors.additional_login ? "border-red-500" : "border-gray-300"
                                 } bg-[#f7f6fb]`}
                         >
-                            <option value="">Login Required Option</option>
+                            <option value="">Secondary Credentials</option>
                             <option value="yes">Yes</option>
                             <option value="no">No</option>
                         </select>
@@ -1165,61 +1264,121 @@ const AddClient = () => {
                         </div>
                     )}
                 </div>
-                <div className="">
-                    {branches.map((branch, index) => (
-                        <div
-                            key={index}
-                            className="mb-4 flex items-center md:w-1/2 md:grid-cols-2 gap-4"
-                        >
-                            <div className="w-1/2">
-                                <input
-                                    type="email"
-                                    name="branch_email"
-                                    value={branch.branch_email}
-                                    onChange={(event) => handleInputChange(index, event)}
-                                    placeholder="Branch Email"
-                                    className="border w-full rounded-md p-2.5 mb-[20px]"
-                                />
-                                {errors[`branch_email_${index}`] && (
-                                    <span className="text-red-500">
-                                        {errors[`branch_email_${index}`]}
-                                    </span>
-                                )}
-                            </div>
-                            <div className="flex w-1/2 items-start gap-2">
-                                <div>
-                                    {" "}
-                                    <input
-                                        type="text"
-                                        name="branch_name"
-                                        value={branch.branch_name}
-                                        onChange={(event) => handleInputChange(index, event)}
-                                        placeholder="Branch Name"
-                                        className="border w-full rounded-md p-2.5 mb-[20px]"
-                                    />
-                                    {errors[`branch_name_${index}`] && (
-                                        <span className="text-red-500">
-                                            {errors[`branch_name_${index}`]}
-                                        </span>
-                                    )}
-                                </div>
+                <div></div>
+                <div className="grid gap-4">
+                    {/* Row with Dropdown and Custom Logo side by side */}
+                    <div className="flex flex-wrap gap-4">
+                        {/* Dropdown - left side */}
+                        <div className={`w-full ${customTemplate === "yes" ? "md:w-1/2" : ""}`}>
+                            <label className="block mb-1 font-medium">Custom - Report Template</label>
+                            <select
+                                onChange={(e) => setCustomTemplate(e.target.value)}
+                                required
+                                className={`w-full rounded-md p-3 mb-[20px] border ${errors.custom_template ? "border-red-500" : "border-gray-300"
+                                    } bg-[#f7f6fb]`}
+                            >
+                                <option value="">Custom - Report Template</option>
+                                <option value="yes">Yes</option>
+                                <option value="no">No</option>
+                            </select>
+                            {errors.custom_template && (
+                                <span className="text-red-500">{errors.custom_template}</span>
+                            )}
+                        </div>
 
-                                <button
-                                    type="button"
-                                    onClick={() => removeBranch(index)}
-                                    className="bg-red-500 hover:bg-red-600 text-white p-2.5 mb-[20px] rounded"
-                                >
-                                    Remove
-                                </button>
+
+                        {customTemplate === "yes" && (
+                            <div className="w-full md:w-[48%]">
+                                <label className="block mb-1 font-medium">Custom Logo</label>
+                                <input
+                                    type="file"
+                                    name="custom_logo"
+                                    accept="image/*"
+                                    onChange={(e) => handleFileChange("custom_logo", e)}
+                                    className="w-full rounded-md p-2 border border-gray-300 bg-[#f7f6fb]"
+                                />
+                            </div>
+                        )}
+                    </div>
+
+                    {/* PDF Footer textarea - separate full-width line */}
+                    {customTemplate === "yes" && (
+                        <div className="flex justify-center w-full">
+                            <div className="w-full">
+                                <label className="block mb-1 font-medium">PDF Footer</label>
+                                <textarea
+                                    name="custom_address"
+                                    placeholder="Enter PDF Footer"
+                                    onChange={handleChange}
+                                    className="w-full rounded-md p-2.5 mb-[20px] border border-gray-300 bg-[#f7f6fb]"
+                                    rows={2}
+                                ></textarea>
                             </div>
                         </div>
-                    ))}
+                    )}
+                </div>
+
+
+
+
+
+                <div className="">
+                    {branches.length > 0 &&
+                        branches.map((branch, index) => (
+                            <div key={index} className="mb-4 flex items-center md:w-1/2 md:grid-cols-2 gap-4">
+                                <div className="w-1/2">
+                                    <input
+                                        type="email"
+                                        name="branch_email"
+                                        value={branch.branch_email}
+                                        required={branches.length > 0} // Only required when branches exist
+                                        onChange={(event) => handleInputChange(index, event)}
+                                        placeholder="Branch Email"
+                                        className="border w-full rounded-md p-2.5 mb-[20px]"
+                                    />
+                                    {errors[`branch_email_${index}`] && (
+                                        <span className="text-red-500">{errors[`branch_email_${index}`]}</span>
+                                    )}
+                                </div>
+                                <div className="flex w-1/2 items-start gap-2">
+                                    <div>
+                                        <input
+                                            type="text"
+                                            name="branch_name"
+                                            required={branches.length > 0} // Only required when branches exist
+                                            value={branch.branch_name}
+                                            onChange={(event) => handleInputChange(index, event)}
+                                            placeholder="Branch Name"
+                                            className="border w-full rounded-md p-2.5 mb-[20px]"
+                                        />
+                                        {errors[`branch_name_${index}`] && (
+                                            <span className="text-red-500">{errors[`branch_name_${index}`]}</span>
+                                        )}
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => removeBranch(index)}
+                                        className="bg-red-500 hover:bg-red-600 text-white p-2.5 mb-[20px] rounded"
+                                    >
+                                        Remove
+                                    </button>
+                                </div>
+                            </div>
+                        ))
+                    }
+
                     <button
                         type="button"
                         onClick={addBranch}
                         className="bg-blue-500 hover:bg-blue-600 text-white p-2 px-4 rounded"
                     >
                         Add Branch
+                    </button>
+                    <button
+                        type="submit"
+                        className="bg-green-500 hover:bg-green-600 text-white p-2 px-4 rounded ml-4"
+                    >
+                        Submit
                     </button>
                 </div>
 
@@ -1305,7 +1464,7 @@ const AddClient = () => {
                                                                             [],
                                                                     })
                                                                 }
-                                                                className="mr-2"
+                                                                className="mr-2 w-5 h-5"
                                                             />
                                                             <label
                                                                 htmlFor={`scope_${service.service_id}`}

@@ -4,10 +4,12 @@ import Swal from 'sweetalert2'
 import * as XLSX from 'xlsx';
 import { useNavigate } from 'react-router-dom';
 import { useApiLoading } from '../ApiLoadingContext';
+import Default from "../../imgs/default.png"
 
 const InactiveClients = () => {
     const [isDeleteLoading, setIsDeleteLoading] = useState(false);
-     const {validateAdminLogin,setApiLoading,apiLoading} = useApiLoading();
+    const { validateAdminLogin, setApiLoading, apiLoading } = useApiLoading();
+    const [responseError, setResponseError] = useState(null);
 
 
     const [isUnblockLoading, setIsUnblockLoading] = useState(false);
@@ -21,7 +23,8 @@ const InactiveClients = () => {
     const [activeId, setActiveId] = useState(null);
 
     const [currentPage, setCurrentPage] = useState(1);
-    const entriesPerPage = 10;
+    const [entriesPerPage, setEntriesPerPage] = useState(10);
+    const optionsPerPage = [10, 50, 100, 200];
     const totalPages = Math.ceil(inactiveClients.length / entriesPerPage);
 
 
@@ -55,6 +58,8 @@ const InactiveClients = () => {
             }
 
             if (!response.ok) {
+                Swal.fire('Error!', `${result.message}`, 'error');
+                setResponseError(result.message);
                 throw new Error(`Network error: ${response.status} ${response.statusText}`);
             }
 
@@ -65,16 +70,16 @@ const InactiveClients = () => {
             console.error("Error fetching inactive accounts:", error.message);
             setError(error.message);
         } finally {
-        setApiLoading(false);
-          setLoading(false);
+            setApiLoading(false);
+            setLoading(false);
         }
     }, []); // Memoize with an empty dependency array to avoid re-creation
     useEffect(() => {
         const initialize = async () => {
             try {
                 if (apiLoading == false) {
-                await validateAdminLogin(); // Verify admin first
-                await fetchInactiveClients(); 
+                    await validateAdminLogin(); // Verify admin first
+                    await fetchInactiveClients();
                 }
             } catch (error) {
                 console.error(error.message);
@@ -108,6 +113,8 @@ const InactiveClients = () => {
 
         if (confirmation.isConfirmed) {
             setIsUnblockLoading(true);
+            setApiLoading(true);
+
             setActiveId(id); // Set loading state to true
             try {
                 const response = await fetch(
@@ -118,7 +125,7 @@ const InactiveClients = () => {
                     }
                 );
                 const result = await response.json();
-                const newToken = result.token || result._token || storedToken ;
+                const newToken = result.token || result._token || storedToken;
                 if (newToken) {
                     localStorage.setItem("_token", newToken);
                 }
@@ -134,6 +141,8 @@ const InactiveClients = () => {
                 Swal.fire("Error", "Failed to unblock the customer. Please try again.", "error");
             } finally {
                 setIsUnblockLoading(false);
+                setApiLoading(false);
+
                 setActiveId(null);
             }
         }
@@ -198,6 +207,7 @@ const InactiveClients = () => {
     // Handle the change in search input
     const handleSearchChange = (e) => {
         setSearchTerm(e.target.value);
+        setCurrentPage(1)
     };
 
     const handleDownloadExcel = () => {
@@ -295,17 +305,34 @@ const InactiveClients = () => {
 
     return (
         <div className="">
-            <div className="bg-white p-12 border border-black w-full mx-auto">
-                <div className='flex justify-between'>
-                    <div className=" text-left">
-                        <button
-                            className="bg-green-500 hover:scale-105 text-white px-6 py-2 rounded"
-                            onClick={handleDownloadExcel}
+            <div className="bg-white md:p-12 p-6 border border-black w-full mx-auto">
+                <div className='md:flex justify-between items-center'>
+                    <div className=" text-left ">
+                        <div>
+                            <button
+                                className="bg-green-500 hover:scale-105 text-white px-6 py-2 rounded"
+                                onClick={handleDownloadExcel}
+                            >
+                                Export to Excel
+                            </button>
+                        </div>
+
+                        <select
+                            value={entriesPerPage}
+                            onChange={(e) => {
+                                setEntriesPerPage(Number(e.target.value));
+                                setCurrentPage(1);
+                            }}
+                            className="border rounded-lg px-3 py-1 text-gray-700 bg-white my-4 shadow-sm focus:ring-2 focus:ring-blue-400"
                         >
-                            Export to Excel
-                        </button>
+                            {optionsPerPage.map((option) => (
+                                <option key={option} value={option}>
+                                    {option}
+                                </option>
+                            ))}
+                        </select>
                     </div>
-                    <div className="mb-4 w-1/2 text-right">
+                    <div className="mb-4 md:w-1/2 text-right">
                         <input
                             type="text"
                             placeholder="Search by Company Name"
@@ -358,8 +385,8 @@ const InactiveClients = () => {
                                 <tbody>
                                     {filteredData.length === 0 ? (
                                         <tr>
-                                            <td colSpan="21" className="text-center py-4 text-gray-500">
-                                                You have no data.
+                                            <td colSpan="21" className="text-center py-4 text-red-500">
+                                                {responseError && responseError !== "" ? responseError : "No data available in table"}
                                             </td>
                                         </tr>
                                     ) : (
@@ -393,7 +420,7 @@ const InactiveClients = () => {
                                                 <td className="border border-black px-4 uppercase py-2">{client.custom_template || 'NIL'}</td>
                                                 <td className="border border-black px-4 py-2">
                                                     <img
-                                                        src={`${client.logo}`}
+                                                        src={client.logo ? client.logo : `${Default}`}
                                                         alt="Client Logo"
                                                         className="w-10 m-auto h-10"
                                                     />

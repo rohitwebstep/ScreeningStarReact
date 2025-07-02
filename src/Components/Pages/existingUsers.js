@@ -4,17 +4,21 @@ import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import { useApiLoading } from '../ApiLoadingContext';
 import { FaChevronLeft } from 'react-icons/fa';
-
+import Default from "../../imgs/default.png"
+import DatePicker from "react-datepicker";
+import { format, parseISO } from "date-fns";
+import "react-datepicker/dist/react-datepicker.css";    
 import axios from 'axios';
 const ExistingUsers = () => {
-      const {validateAdminLogin,setApiLoading,apiLoading} = useApiLoading();
+    const { validateAdminLogin, setApiLoading, apiLoading } = useApiLoading();
 
-    
+    const [responseError, setResponseError] = useState(null);
+
     const [deleteLoadingId, setDeleteLoadingId] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [searchQuery, setSearchQuery] = useState("");
-    const itemsPerPage = 10;
-    const navigate = useNavigate();
+    const [itemsPerPage, setItemsPerPage] = useState(10);
+    const optionsPerPage = [10, 50, 100, 200]; const navigate = useNavigate();
     const [users, setUsers] = useState([]);
     const [editingUserId, setEditingUserId] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -32,7 +36,8 @@ const ExistingUsers = () => {
         email: '',
         designation: '',
         role: '',
-        services: '',
+        permissions: [],
+        services: [],
 
     });
     const storedToken = localStorage.getItem('token');
@@ -57,6 +62,8 @@ const ExistingUsers = () => {
             }
 
             if (!response.ok) {
+                Swal.fire('Error!', `${data.message}`, 'error');
+                setResponseError(data.message);
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
@@ -73,8 +80,8 @@ const ExistingUsers = () => {
         const initialize = async () => {
             try {
                 if (apiLoading == false) {
-                await validateAdminLogin(); // Verify admin first
-                await fetchUsers();
+                    await validateAdminLogin(); // Verify admin first
+                    await fetchUsers();
                 } // Fetch data after verification
             } catch (error) {
                 console.error(error.message);
@@ -119,8 +126,33 @@ const ExistingUsers = () => {
     }, []);
 
     const handleEdit = async (user) => {
-        // Ensure roles are fetched before proceeding
-        console.log("Fetched adminRoles:", adminRoles);
+        // console.log("Fetched adminRoles:", adminRoles);
+        const allPermissions = [
+            "Client Overview",
+            "Admin Manager",
+            "Acknowledgement",
+            "Tickets",
+            "Data Management",
+            "Team Management",
+            "Application Document",
+            "Candidate Manager",
+            "Tat Reminder",
+            "Report Master",
+            "Case Allocation",
+            "Human Resource",
+            "Employee Credentials",
+            "Billing Dashboard",
+            "User History",
+            "Trash",
+            "Internal Storage",
+            "Developers",
+        ];
+        const permissionObject = allPermissions.reduce((acc, permission) => {
+            acc[permission] = user.permissions?.includes(permission);
+            return acc;
+        }, {});
+        console.log('allPermissions',)
+        const userPermissions = JSON.parse(user.permissions);
 
         setEditingUserId(user.id);
         setFormData({
@@ -135,8 +167,10 @@ const ExistingUsers = () => {
             service_ids: user.service_ids,
             employeeId: user.emp_id,
             status: user.status,
+            permissions: userPermissions, // Convert to JSON string
             services: user.service_ids ? user.service_ids.split(',') : [],
         });
+        console.log('userPermissions', userPermissions)
         await fetchAdminRoleList();
     };
 
@@ -153,7 +187,8 @@ const ExistingUsers = () => {
             designation: '',
             role: '',
             dateofJoining: '',
-            status: ''
+            status: '',
+            permissions: []
         });
         fetchUsers();
     };
@@ -283,6 +318,36 @@ const ExistingUsers = () => {
         const adminId = adminData.id;
         const fileCount = Object.keys(files).length;
         const isFileUploading = fileCount > 0;
+        console.log('mypermission', formData.permissions)
+        const allPermissions = [
+            "client_overview",
+            "team_management",
+            "tickets",
+            "human_resource",
+            "application_document",
+            "tat_reminder",
+            "employee_credentials",
+            "admin_manager",
+            "candidate_manager",
+            "report_master",
+            "billing_dashboard",
+            "data_management",
+            "acknowledgement",
+            "case_allocation",
+            "user_history",
+            "trash",
+            "internal_storage",
+            "developers",
+        ];
+        const permissionsObject = typeof formData.permissions === "string"
+            ? JSON.parse(formData.permissions) // Convert string to object
+            : formData.permissions || {}; // Use existing object if already parsed
+
+        const permissionObject = allPermissions.reduce((acc, permission) => {
+            acc[permission] = !!permissionsObject[permission]; // Convert truthy/falsy values to boolean
+            return acc;
+        }, {});
+
 
         const formPayload = {
             admin_id: adminId,
@@ -292,9 +357,12 @@ const ExistingUsers = () => {
             mobile: formData.employeeMobile,
             employee_id: formData.employeeId,
             email: formData.email,
-            date_of_joining: formData.dateofJoining,
+            date_of_joining: formData.dateofJoining.includes('T')
+                ? formData.dateofJoining.split('T')[0]  // Extracting only the date part
+                : formData.dateofJoining,  // Keeping it as it is if already simple
             designation: formData.designation,
             role: formData.role,
+            permissions: JSON.stringify(permissionObject), // Convert to JSON string
             service_ids: formData.services.join(','),
             send_mail: 0,
             status: formData.status,
@@ -349,7 +417,7 @@ const ExistingUsers = () => {
                 Swal.fire({
                     icon: "error",
                     title: "Error",
-                    text: result.error || "Failed to update user.",
+                    text: result.message || result.error || "Failed to update user.",
                 });
             }
         } catch (error) {
@@ -407,7 +475,7 @@ const ExistingUsers = () => {
                 fetch(`https://api.screeningstar.co.in/admin/delete?id=${id}&admin_id=${admin_id}&_token=${storedToken}`, requestOptions)
                     .then((response) => response.json())
                     .then((result) => {
-                        const newToken = result.token || result._token || storedToken ||  '';
+                        const newToken = result.token || result._token || storedToken || '';
                         if (newToken) {
                             localStorage.setItem("_token", newToken);
                         }
@@ -457,11 +525,32 @@ const ExistingUsers = () => {
             setCurrentPage(page);
         }
     };
+    console.log('formdata', formData)
+    const handleCheckboxChange = (e) => {
+        const { value, checked } = e.target;
+        setFormData((prev) => ({
+            ...prev,
+            services: checked
+                ? [...(prev.services || []), value]
+                : prev.services.filter((id) => id !== value),
+        }));
+    };
+    const handleCheckboxChangeRole = (e) => {
+        const { value, checked } = e.target;
+
+        setFormData((prev) => ({
+            ...prev,
+            permissions: {
+                ...prev.permissions,
+                [value]: checked, // Toggle true/false
+            },
+        }));
+    };
 
     return (
 
         <div className="w-full border border-black overflow-hidden">
-            <div className="space-y-4 py-[30px] px-[51px] bg-white">
+            <div className="space-y-4 py-[30px] md:px-[51px] px-6 bg-white">
                 {editingUserId ? (
                     <>
                         <div onClick={handleCancelEdit} className="flex items-center w-36 space-x-3 p-2 rounded-lg bg-[#2c81ba] text-white hover:bg-[#1a5b8b] transition-all duration-300 ease-in-out transform hover:scale-105 shadow-md hover:shadow-lg cursor-pointer"
@@ -479,12 +568,13 @@ const ExistingUsers = () => {
                                     id="employeePhoto"
                                     type="file"
                                     name="employeePhoto"
+                                    accept="image/*"
                                     className="w-full p-3 border border-gray-300 rounded-md text-left appearance-none"
                                     onChange={handleFileChange}
                                 />
                                 {formData.employeePhoto && (
                                     <img
-                                        src={formData.employeePhoto}
+                                        src={formData.employeePhoto ? formData.employeePhoto : `${Default}`}
                                         alt={`${formData.employeeName}'s photo`}
                                         className="w-20 h-20 mt-2 rounded-full"
                                     />
@@ -573,13 +663,25 @@ const ExistingUsers = () => {
                                 <label htmlFor="dateofJoining" className="block mb-1 text-sm font-medium">
                                     Date of Joining<span className="text-red-500 text-xl">*</span>
                                 </label>
-                                <input
+                                <DatePicker
                                     id="dateofJoining"
-                                    type="date"
                                     name="dateofJoining"
-                                    className="w-full p-3 mb-[20px] border border-gray-300 rounded-md"
-                                    value={formData.dateofJoining && formData.dateofJoining.trim() !== "" ? formData.dateofJoining.split("T")[0] : ""}
-                                    onChange={handleInputChange}
+                                    selected={
+                                        formData.dateofJoining && formData.dateofJoining.trim() !== ""
+                                            ? parseISO(formData.dateofJoining)
+                                            : null
+                                    }
+                                    onChange={(date) => {
+                                        if (!date) {
+                                            setFormData({ ...formData, dateofJoining: "" });
+                                            return;
+                                        }
+                                        const formatted = format(date, "yyyy-MM-dd"); // for saving
+                                        setFormData({ ...formData, dateofJoining: formatted });
+                                    }}
+                                    dateFormat="dd-MM-yyyy" // for display
+                                    placeholderText="DD-MM-YYYY"
+                                    className="uppercase w-full p-3 mb-[20px] border border-gray-300 rounded-md"
                                     required
                                 />
                             </div>
@@ -603,45 +705,87 @@ const ExistingUsers = () => {
                                     ))}
                                 </select>
                             </div>
-                            <div>
-                                <label htmlFor="services" className="block mb-1">
-                                    Services <span className="text-red-500 text-xl">*</span>
-                                </label>
-                                {loading ? (
-                                    <select
-                                        className={`w-full p-3 mb-[20px] border rounded-md ${loading ? "opacity-50 bg-gray-200 cursor-not-allowed" : ""
-                                            }`}
-                                        name="role"
-                                    >
-                                        <option value="">
 
-                                            <div className="flex w-full justify-center items-center h-20">
-                                                <div className="loader border-t-4 border-[#2c81ba] rounded-full w-10 h-10 animate-spin"></div>
-                                            </div></option>
+                            {formData.role && formData.role !== "admin_user" && (
+                                <>
+                                    {Object.keys(formData.permissions || {}).length > 0 && (
+                                        <div className="border rounded-lg mb-4 p-2 border-black">
+                                            <label className="block text-xl font-bold mb-1">
+                                                Permissions <span className="text-red-500 text-xl">*</span>
+                                            </label>
 
-                                    </select>
-                                ) : (
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
+                                                {[
+                                                    "Client Overview",
+                                                    "Admin Manager",
+                                                    "Acknowledgement",
+                                                    "Tickets",
+                                                    "Data Management",
+                                                    "Team Management",
+                                                    "Application Document",
+                                                    "Candidate Manager",
+                                                    "Tat Reminder",
+                                                    "Report Master",
+                                                    "Case Allocation",
+                                                    "Human Resource",
+                                                    "Employee Credentials",
+                                                    "Billing Dashboard",
+                                                    "User History",
+                                                    "Trash",
+                                                    "Internal Storage",
+                                                    "Developers",
+                                                ].map((permission) => {
+                                                    const formattedValue = permission.toLowerCase().replace(/\s+/g, "_");
+                                                    const isChecked = formData.permissions?.[formattedValue] ?? false;
 
-                                    <select
-                                        className={`w-full p-3 mb-[20px] border ${errors.services ? 'border-red-500' : 'border-gray-300'
-                                            } rounded-md`}
-                                        name="services"
-                                        value={formData.services} // Ensure `formData.services` is an array
-                                        onChange={handleInputChange}
-                                        multiple // Enable multiple selection
-                                    >
-                                        <option value="" disabled>
-                                            Select Service
-                                        </option>
-                                        {services.map((service) => (
-                                            <option key={service.id} value={service.id}>
-                                                {service.title}
-                                            </option>
-                                        ))}
-                                    </select>
-                                )}
-                                {errors.services && <p className="text-red-500 text-sm">{errors.services}</p>}
-                            </div>
+                                                    return (
+                                                        <label key={formattedValue} className="flex items-center space-x-2">
+                                                            <input
+                                                                type="checkbox"
+                                                                disabled={loadingBtn}
+                                                                value={formattedValue}
+                                                                checked={isChecked}
+                                                                onChange={handleCheckboxChangeRole}
+                                                                className="w-5 h-5 rounded-full"
+                                                            />
+                                                            <span>{permission}</span>
+                                                        </label>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {services.length > 0 && (
+                                        <div className="border rounded-lg p-2 border-black">
+                                            <label className="block text-xl font-bold mb-1">
+                                                Services <span className="text-red-500 text-xl">*</span>
+                                            </label>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
+                                                {services.map((service) => (
+                                                    <label key={service.id} className="flex items-center space-x-2">
+                                                        <input
+                                                            type="checkbox"
+                                                            name="services"
+                                                            disabled={loadingBtn}
+                                                            value={service.id.toString()}
+                                                            checked={formData.services?.includes(service.id.toString())}
+                                                            onChange={handleCheckboxChange}
+                                                            className="w-5 h-5"
+
+                                                        />
+                                                        <span>{service.title}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
+
+                                            {errors.services && <p className="text-red-500 text-sm">{errors.services}</p>}
+                                        </div>
+                                    )}
+                                </>
+                            )}
+
+
                             <div>
                                 <label htmlFor="status" className="block mb-1 text-sm font-medium">
                                     Status
@@ -650,6 +794,7 @@ const ExistingUsers = () => {
                                     id="status"
                                     className="w-full p-3 mb-[20px] border border-gray-300 rounded-md"
                                     name="status"
+                                    disabled={loadingBtn}
                                     value={formData.status}
                                     onChange={handleInputChange}
                                 >
@@ -681,14 +826,30 @@ const ExistingUsers = () => {
                     </>
                 ) : (
                     <div>
-                        <div className="flex justify-between items-center mb-4">
-                            <input
-                                type="text"
-                                placeholder="Search by Name or ID"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="px-4 py-2 border border-gray-400 rounded-md w-1/3"
-                            />
+                        <div className="block items-center mb-4">
+                            <div>
+                                <input
+                                    type="text"
+                                    placeholder="Search by Name or ID"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="px-4 py-2 border border-gray-400 rounded-md md:w-1/3 w-full"
+                                />
+                            </div>
+                            <select
+                                value={itemsPerPage}
+                                onChange={(e) => {
+                                    setItemsPerPage(Number(e.target.value));
+                                    setCurrentPage(1);
+                                }}
+                                className="border rounded-lg px-3 py-1 text-gray-700 bg-white mt-4 shadow-sm focus:ring-2 focus:ring-blue-400"
+                            >
+                                {optionsPerPage.map((option) => (
+                                    <option key={option} value={option}>
+                                        {option}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
                         <div className="overflow-x-auto">
                             <table className="min-w-full border-collapse border whitespace-nowrap border-black">
@@ -747,15 +908,11 @@ const ExistingUsers = () => {
                                                         {(currentPage - 1) * itemsPerPage + index + 1}
                                                     </td>
                                                     <td className="border border-black text-center px-4 py-2">
-                                                        {user.profile_picture ? (
-                                                            <img
-                                                                src={user.profile_picture}
-                                                                alt={user.name}
-                                                                className="w-10 h-10 mx-auto rounded-full"
-                                                            />
-                                                        ) : (
-                                                            <span>No Photo</span>
-                                                        )}
+                                                        <img
+                                                            src={user.profile_picture ? user.profile_picture : `${Default}`}
+                                                            alt={user.name}
+                                                            className="w-10 h-10 mx-auto rounded-full"
+                                                        />
                                                     </td>
                                                     <td className="border border-black px-4 py-2">
                                                         {user.emp_id || "N/A"}
@@ -803,10 +960,10 @@ const ExistingUsers = () => {
                                             <tr>
                                                 <td
                                                     colSpan="11"
-                                                    className="px-4 py-2 text-center"
+                                                    className="px-4 py-2 text-center text-red-500"
                                                     style={{ height: "100px" }}
                                                 >
-                                                    No Admin Found
+                                                    {responseError || "No Admin Found"}
                                                 </td>
                                             </tr>
                                         )}

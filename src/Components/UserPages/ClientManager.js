@@ -1,17 +1,23 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import * as XLSX from 'xlsx';
 import Swal from 'sweetalert2';
-import { MultiSelect } from "react-multi-select-component";
 import axios from 'axios';
 import { useNavigate } from "react-router-dom";
 import { useApiLoadingBranch } from '../BranchApiLoadingContext';
+import Default from "../../imgs/default.png"
+import CustomMultiSelect from './CustomMultiselect';
 
 const ClientManager = () => {
-      const { validateBranchLogin, setApiLoadingBranch, apiLoadingBranch } = useApiLoadingBranch();
-    
+    const { validateBranchLogin, setApiLoadingBranch, apiLoadingBranch } = useApiLoadingBranch();
+    const [visibleFeilds, setVisibleFeilds] = useState([]);
+    const [isExist, setIsExist] = useState([])
+    const fileInputRef = useRef();
+    const attachDocsRef = useRef();
+
     const [searchTerm, setSearchTerm] = useState("");
     const [tableCurrentPage, setTableCurrentPage] = useState(1);
-    const rowsPerPage = 10;
+    const [rowsPerPage, setRowsPerPage] = useState(10);
+    const optionsPerPage = [10, 50, 100, 200];
     const navigate = useNavigate();
     const [loadingStates, setLoadingStates] = useState({});
     const clientEditRef = useRef(null);
@@ -35,9 +41,6 @@ const ClientManager = () => {
     const [tableData, setTableData] = useState([]);
     const [clientSpocName, setClientSpocName] = useState([]);
     const [applicantName, setApplicantName] = useState([]);
-
-
-
     const [organisationName, setOrganisationName] = useState('');
     const [handleEditClick, setHandleEditClick] = useState('');
     const [clientApplicationId, setClientApplicationId] = useState('');
@@ -107,7 +110,7 @@ const ClientManager = () => {
     const fetchCustomerInfo = useCallback(async () => {
         setLoading(true);
         setApiLoadingBranch(true);
-       
+
         const branchInfo = JSON.parse(localStorage.getItem("branch"));
         const { customer_id, id: branch_id } = branchInfo;
         const branch_token = localStorage.getItem("branch_token");
@@ -138,25 +141,39 @@ const ClientManager = () => {
                     ...prevFormData,
                     organizationName: customerInfo.name || '',
                 }));
-                setSpocs(customerInfo?.client_spoc_details || []);
+                setSpocs(customerInfo?.client_spoc_name || []);
+
                 setOrganisationName(customerInfo.name);
                 const spocDetails = result.data.customer.spoc_details?.map(spoc => ({
                     id: spoc.id,
                     name: spoc.name,
                 }));
-                setClientSpocName(spocDetails || []);
+                const spocDetailss = result.data.clientApplications?.map(spoc => ({
+                    employeIdExist: spoc.employee_id,
+                    locationExist: spoc.location,
+                }));
 
-                setSpocID(result.data.customer.spoc_details[0].id);
-                setSpocName(result.data.customer.spoc_details[0].name);
+                console.log('spocDetailss', spocDetailss);
+
+                const isExist = {
+                    employeIdExist: spocDetailss.some(spoc => spoc.employeIdExist && spoc.employeIdExist.trim() !== ""),
+                    locationExist: spocDetailss.some(spoc => spoc.locationExist && spoc.locationExist.trim() !== "")
+                };
+
+                setIsExist(isExist);
+                setClientSpocName(spocDetails || []);
+                setSpocName(result.data.customer.client_spoc_name);
+                const visiblefeilds = JSON.parse(customerInfo.visible_fields);
+                setVisibleFeilds(visiblefeilds);
             } else {
                 console.log('Error fetching data:', response.statusText);
             }
         } catch (error) {
             console.error('Error fetching data:', error);
         } finally {
-            setLoading(false); 
-        setApiLoadingBranch(false);
-        // Ensures loading is set to false whether the request succeeds or fails
+            setLoading(false);
+            setApiLoadingBranch(false);
+            // Ensures loading is set to false whether the request succeeds or fails
         }
     }, []);
 
@@ -165,8 +182,8 @@ const ClientManager = () => {
         const initialize = async () => {
             try {
                 if (apiLoadingBranch == false) {
-                await validateBranchLogin();
-                await fetchCustomerInfo();
+                    await validateBranchLogin();
+                    await fetchCustomerInfo();
                 }
             } catch (error) {
                 console.error(error.message);
@@ -219,7 +236,6 @@ const ClientManager = () => {
         // Log the final updated services array
         console.log("Updated Services: ", updatedServices);
         setServices(updatedServices);
-        // Update the form data with the new services
         setFormData({
             id: item.id,
             organizationName: organisationName,
@@ -227,16 +243,25 @@ const ClientManager = () => {
             photo: item.photo || '',
             employeeId: item.employee_id || '',
             location: item.location || '',
-            spocUploaded: item.client_spoc_id || '',
+            client_spoc_name: item.client_spoc_name || "",
             groupManager: item.groupManager || '',
             applicationId: item.application_id || '',
+            gender: item.gender,
+            batch_no: item.batch_no,
+            case_id: item.case_id,
+            check_id: item.check_id,
+            ticket_id: item.ticket_id,
+            sub_client: item.sub_client,
+            photo: item.photo,
+            location: item.location,
             services: updatedServices || [], // Ensure services are passed correctly
         });
         setClientApplicationId(item.id);
 
         // Log formData (Note: This might not show the updated state immediately due to setState's async nature)
-        console.log('editdata (after setFormData):', setFormData);
     };
+    console.log('editdata', formData);
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoadingbtn(true); // Start loading when the form is submitted
@@ -249,9 +274,6 @@ const ClientManager = () => {
 
         // Perform validation
         if (!formData.fullName) validationErrors.fullName = 'Full name is required.';
-        if (!formData.employeeId) validationErrors.employeeId = 'Employee ID is required.';
-        if (!formData.location) validationErrors.location = 'Location is required.';
-        if (!formData.spocUploaded) validationErrors.spocUploaded = 'Select any One Spoc.';
 
         if (Object.keys(validationErrors).length > 0) {
             setErrors(validationErrors); // Set errors state to show error messages
@@ -286,9 +308,10 @@ const ClientManager = () => {
                         customerLogoFormData.append('sub_user_id', `${branchData.id}`);
                     }
 
+                    customerLogoFormData.append('upload_category', key);
+
                     for (const file of value) {
                         customerLogoFormData.append('images', file);
-                        customerLogoFormData.append('upload_category', key);
                     }
 
                     if (fileCount === (index + 1)) {
@@ -323,15 +346,23 @@ const ClientManager = () => {
             customer_id,
             _token,
             name: formData.fullName,
-            client_spoc_id: formData.spocUploaded,
+            client_spoc_name: formData.client_spoc_name || "",
             employee_id: formData.employeeId,
-            spoc: formData.spoc,
+            spoc: formData.client_spoc_name,
             location: formData.location,
             batch_number: formData.batchNumber,
             sub_client: formData.subClient,
             photo: formData.photo, // Ensure photo is passed for update
             services: selectedServiceIds,
             package: formData.package,
+            gender: formData.gender,
+            batch_no: formData.batch_no,
+            case_id: formData.case_id,
+            check_id: formData.check_id,
+            ticket_id: formData.ticket_id,
+            sub_client: formData.sub_client,
+            photo: formData.photo,
+            location: formData.location,
             send_mail: fileCount === 0 ? 1 : 0,
         };
 
@@ -364,7 +395,7 @@ const ClientManager = () => {
 
                 if (handleEditClick) {
                     setHandleEditClick(null);
-                    
+
                     insertedId = formData.id;
                     new_application_id = formData.applicationId;
                 } else {
@@ -388,17 +419,30 @@ const ClientManager = () => {
 
                 await fetchCustomerInfo();
                 await setSpocs();
+                if (fileInputRef.current) {
+                    fileInputRef.current.value = '';
+                } 
+                if (attachDocsRef.current) attachDocsRef.current.value = '';
                 setFiles({});
+                
                 setSubmitMessage('Form submitted successfully!');
                 setFormData({
                     fullName: '',
                     employeeId: '',
                     location: '',
-                    spocUploaded: '',
+                    client_spoc_name: '',
                     groupManager: '',
                     package: [],
                     services: '',
                     photo: '',
+                    gender: '',
+                    batch_no: '',
+                    case_id: '',
+                    check_id: '',
+                    ticket_id: '',
+                    sub_client: '',
+                    photo: '',
+                    location: '',
                 });
             } else {
                 const errorData = await response.json();
@@ -501,28 +545,82 @@ const ClientManager = () => {
     };
 
     const handlePackageChange = (selectedOptions) => {
-        const selectedPackageIds = selectedOptions.map(option => option.value); // Get selected package IDs
-
-        if (selectedPackageIds.length === 0) {
-            // If no packages are selected, deselect all services
+        console.log("handlePackageChange triggered");
+        console.log("Selected Options:", selectedOptions);
+    
+        const selectedPackageIds = selectedOptions?.map(option => option.value) || [];
+        console.log("Mapped Selected Package IDs:", selectedPackageIds);
+    
+        const isSelectAllSelected = selectedPackageIds.includes("select_all");
+        const isCurrentlyAllSelected = formData?.package?.includes("select_all");
+    
+        if (isSelectAllSelected && !isCurrentlyAllSelected) {
+            console.log('"select_all" selected. Selecting all services...');
+    
+            // Select all services
+            services.forEach(group => {
+                group.services.forEach(service => {
+                    service.isSelected = true;
+                    console.log(`Service ${service.name} selected`);
+                });
+            });
+    
+            const updatedFormData = {
+                ...formData,
+                package: ["select_all"]
+            };
+            setFormData(updatedFormData);
+            console.log("FormData updated with select_all");
+            return;
+        }
+    
+        if (isSelectAllSelected && isCurrentlyAllSelected) {
+            console.log('"select_all" clicked again. Deselecting all services...');
+    
+            // Deselect all services
             services.forEach(group => {
                 group.services.forEach(service => {
                     service.isSelected = false;
+                    console.log(`Service ${service.name} deselected`);
                 });
             });
-            console.log("All services have been deselected");
-        } else {
-            // Otherwise, select services that match the selected package IDs
-            selectPackageById(selectedPackageIds);
-            console.log(`Selected Package IDs: `, selectedPackageIds);
+    
+            const updatedFormData = {
+                ...formData,
+                package: []
+            };
+            setFormData(updatedFormData);
+            console.log("FormData cleared");
+            return;
         }
-
-        // Update the form data with the selected package IDs
-        setFormData({
+    
+        if (selectedPackageIds.length === 0) {
+            console.log("No packages selected. Deselecting all services...");
+    
+            services.forEach(group => {
+                group.services.forEach(service => {
+                    service.isSelected = false;
+                    console.log(`Service ${service.name} deselected`);
+                });
+            });
+    
+            setFormData({ ...formData, package: [] });
+            return;
+        }
+    
+        console.log("Specific packages selected. Matching services...");
+        selectPackageById(selectedPackageIds);
+    
+        const updatedFormData = {
             ...formData,
             package: selectedPackageIds
-        });
+        };
+        setFormData(updatedFormData);
+        console.log("FormData updated with specific packages");
     };
+    
+
+
 
     const handleCheckboxChange = (serviceIndex, groupIndex) => {
         // Create 
@@ -558,37 +656,50 @@ const ClientManager = () => {
         setIsModalOpen(false);
         setModalServices([]);
     };
-    console.log('Client Spoc  data is -', clientSpocName);
+    console.log('visibleFeilds', visibleFeilds)
+    // console.log('Client Spoc  data is -', clientSpocName);
     const Loader = () => (
         <div className="flex w-full justify-center items-center h-20">
             <div className="loader border-t-4 border-[#2c81ba] rounded-full w-10 h-10 animate-spin"></div>
         </div>
     );
-    const filteredData = tableData.filter(
-        (item) =>
-            item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            item.application_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            item.employee_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            item.location.toLowerCase().includes(searchTerm.toLowerCase())
+    const filteredData = tableData.filter((item) =>
+        (item.name?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+        (item.application_id?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+        (item.employee_id?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+        (item.location?.toLowerCase() || "").includes(searchTerm.toLowerCase())
     );
+
     const totalTablePages = Math.ceil(filteredData.length / rowsPerPage);
     const paginatedData = filteredData.slice(
         (tableCurrentPage - 1) * rowsPerPage,
         tableCurrentPage * rowsPerPage
+        
     );
     const handleTablePageChange = (page) => {
         if (page >= 1 && page <= totalTablePages) {
             setTableCurrentPage(page);
         }
     };
+    const getOptions = () =>
+        Array.from(new Set(uniquePackages.map(pkg => pkg.name)))
+            .map(name => ({ label: name, value: name }));
 
+  const handleSearch = (e) => {
+    setSearchTerm(e.target.value);
+    setTableCurrentPage(1); 
+  };
+    const getValue = () =>
+        Array.isArray(formData.package)
+            ? formData.package.map(pkg => ({ label: pkg, value: pkg }))
+            : [];
     console.log('myipadress is', ipAddress);
     return (
         <div className="bg-[#c1dff2]  border border-black " ref={clientEditRef} id="clientedit">
-            <div className="bg-white p-12 w-full mx-auto">
+            <div className="bg-white md:p-12 p-6 w-full mx-auto">
                 <form className="space-y-4 w-full pb-16 text-center" onSubmit={handleSubmit}>
-                    <div className='flex space-x-4'>
-                        <div className="w-2/5">
+                    <div className='md:flex space-x-4'>
+                        <div className="md:w-2/5">
                             <div className="w-full">
                                 <label htmlFor="organizationName" className="block text-left w-full  m-auto mb-2 text-gray-700">Name of the Organization</label>
                                 <input
@@ -616,68 +727,202 @@ const ClientManager = () => {
                                 />
                                 {errors.fullName && <p className="text-red-500 text-sm">{errors.fullName}</p>}
                             </div>
-
-                            {/* Photo */}
                             <div className="w-full">
-                                <label htmlFor="photo" className="block text-left w-full  m-auto mb-2 text-gray-700">Upload Photo</label>
+                                <label htmlFor="attach_documents" className="block text-left w-full m-auto mb-2 text-gray-700">Attach documents</label>
                                 <input
                                     type="file"
-                                    name="photo"
-                                    onChange={(e) => handleFileChange('photo', e)}
-                                    className={`w-full m-auto p-3 mb-[20px] border ${errors.photo ? 'border-red-500' : 'border-gray-300'} rounded-md`}
+                                    name="attach_documents"
+                                    multiple
+                                    ref={attachDocsRef}
+                                       onChange={(e) => handleFileChange('attach_documents', e)}
+                                    className={`w-full m-auto p-3 mb-[20px] border border-gray-300  rounded-md`}
                                 />
 
                                 {errors.photo && <p className="text-red-500 text-sm">{errors.photo}</p>}
                             </div>
+                            {
+                                visibleFeilds.includes("photo") && (
 
-                            {/* Employee ID */}
-                            <div className="w-full">
-                                <label htmlFor="employeeId" className="block text-left w-full  m-auto mb-2 text-gray-700">Employee ID<span className="text-red-500 text-xl" >*</span></label>
-                                <input
-                                    type="text"
-                                    name="employeeId"
-                                    placeholder="EMPLOYEE ID"
-                                    value={formData.employeeId}
-                                    onChange={handleChange}
-                                    className={`w-full m-auto p-3 mb-[20px] border ${errors.employeeId ? 'border-red-500' : 'border-gray-300'} rounded-md`}
-                                />
-                                {errors.employeeId && <p className="text-red-500 text-sm">{errors.employeeId}</p>}
-                            </div>
+                                    <div className="w-full">
+                                        <label htmlFor="photo" className="block text-left w-full  m-auto mb-2 text-gray-700">Upload Photo (Optional)</label>
+                                        <input
+                                            type="file"
+                                            name="photo"
+                                            ref={fileInputRef}
+                                            accept="image/*"
+                                            onChange={(e) => handleFileChange('photo', e)}
+                                            className={`w-full m-auto p-3 mb-[20px] border ${errors.photo ? 'border-red-500' : 'border-gray-300'} rounded-md`}
+                                        />
 
-                            {/* Location */}
+                                        {errors.photo && <p className="text-red-500 text-sm">{errors.photo}</p>}
+                                    </div>
+                                )
+                            }
+                            {
+                                visibleFeilds.includes("employeeId") && (
+
+                                    <div className="w-full">
+                                        <label htmlFor="employeeId" className="block text-left w-full  m-auto mb-2 text-gray-700">Employee ID  (Optional)</label>
+                                        <input
+                                            type="text"
+                                            name="employeeId"
+                                            placeholder="EMPLOYEE ID"
+                                            value={formData.employeeId}
+                                            onChange={handleChange}
+                                            className={`w-full m-auto p-3 mb-[20px] border ${errors.employeeId ? 'border-red-500' : 'border-gray-300'} rounded-md`}
+                                        />
+                                        {errors.employeeId && <p className="text-red-500 text-sm">{errors.employeeId}</p>}
+                                    </div>
+                                )}
+
+
+                            {
+                                visibleFeilds.includes("location") && (
+                                    <div className="w-full">
+                                        <label htmlFor="location" className="block text-left w-full  m-auto mb-2 text-gray-700">Location (Optional)</label>
+                                        <input
+                                            type="text"
+                                            name="location"
+                                            placeholder="LOCATION"
+                                            value={formData.location}
+                                            onChange={handleChange}
+                                            className={`w-full m-auto p-3 mb-[20px] border ${errors.location ? 'border-red-500' : 'border-gray-300'} rounded-md`}
+                                        />
+                                        {errors.location && <p className="text-red-500 text-sm">{errors.location}</p>}
+                                    </div>
+                                )
+                            }
                             <div className="w-full">
-                                <label htmlFor="location" className="block text-left w-full  m-auto mb-2 text-gray-700">Location<span className="text-red-500 text-xl" >*</span></label>
-                                <input
-                                    type="text"
-                                    name="location"
-                                    placeholder="LOCATION"
-                                    value={formData.location}
-                                    onChange={handleChange}
-                                    className={`w-full m-auto p-3 mb-[20px] border ${errors.location ? 'border-red-500' : 'border-gray-300'} rounded-md`}
-                                />
-                                {errors.location && <p className="text-red-500 text-sm">{errors.location}</p>}
-                            </div>
-                            <div className="w-full">
-                                <label htmlFor="spocUploaded" className="block text-left w-full m-auto mb-2 text-gray-700">SPOC Case Uploaded<span className="text-red-500 text-xl" >*</span></label>
+                                <label htmlFor="client_spoc_name" className="block text-left w-full m-auto mb-2 text-gray-700">NAME OF THE SPOC CASE UPLOADED:(Optional)</label>
                                 <select
-                                    name="spocUploaded"
+                                    name="client_spoc_name"
                                     onChange={handleChange}
-                                    value={formData.spocUploaded || ""} // Ensure it's an empty string if undefined
-                                    className={`w-full m-auto p-3 mb-[20px] border ${errors.spocUploaded ? 'border-red-500' : 'border-gray-300'} rounded-md`}
+                                    value={formData.client_spoc_name || ""} // Ensure it's an empty string if undefined
+                                    className={`w-full m-auto uppercase p-3 mb-[20px] border ${errors.client_spoc_name ? 'border-red-500' : 'border-gray-300'} rounded-md`}
                                 >
                                     <option value="">
                                         Choose Any Client Spoc
                                     </option>
-                                    {spocs?.map((spoc) => (
-                                        <option key={spoc.id} value={spoc.id}>
-                                            {spoc.name}
-                                        </option>
-                                    ))}
+                                    <option value="Client Spoc">
+                                        Client Spoc
+                                    </option>
+                                    <option value="Screeningtar Spoc">
+                                        Screeningtar Spoc
+                                    </option>
                                 </select>
 
 
-                                {errors.spocUploaded && <p className="text-red-500 text-sm">{errors.spocUploaded}</p>}
+                                {errors.client_spoc_name && <p className="text-red-500 text-sm">{errors.client_spoc_name}</p>}
                             </div>
+                            {visibleFeilds.includes("gender") && (
+                                <div className="mb-4">
+                                    <label htmlFor="gender" className='block uppercase text-left w-full m-auto mb-2 text-gray-700'>Gender (Optional)</label>
+                                    <select
+                                        name="gender"
+                                        id="gender"
+                                        onChange={handleChange}
+                                        className="border border-gray-300 uppercase w-full rounded-md p-3 mt-2"
+                                        value={formData.gender || ''}
+                                    >
+                                        <option value="">Select Gender</option>
+                                        <option value="Male">Male</option>
+                                        <option value="Female">Female</option>
+                                        <option value="Transgender">Trans Gender</option>
+                                    </select>
+                                </div>
+                            )}
+                            {
+                                visibleFeilds.includes("batch_no") && (
+                                    <div className="mb-4">
+                                        <label className="block text-left w-full m-auto mb-2 text-gray-700" htmlFor="batch_no">
+                                            Batch No (Optional)
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="batch_no"
+                                            value={formData.batch_no}
+                                            id="batch_no"
+                                            className="border border-gray-300 w-full rounded-md p-3 mt-2 capitalize"
+                                            placeholder="Batch No"
+                                            onChange={handleChange}
+                                        />
+                                    </div>
+                                )
+                            }
+                            {
+                                visibleFeilds.includes("case_id") && (
+                                    <div className="mb-4">
+                                        <label className="block text-left w-full m-auto mb-2 text-gray-700" htmlFor="case_id">
+                                            Case ID (Optional)
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="case_id"
+                                            value={formData.case_id}
+
+                                            id="case_id"
+                                            className="border border-gray-300 w-full rounded-md p-3 mt-2 capitalize"
+                                            placeholder="Case ID"
+                                            onChange={handleChange}
+                                        />
+                                    </div>
+                                )
+                            }
+                            {
+                                visibleFeilds.includes("check_id") && (
+                                    <div className="mb-4">
+                                        <label className="block text-left w-full m-auto mb-2 text-gray-700" htmlFor="check_id">
+                                            Check ID (Optional)
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={formData.check_id}
+                                            name="check_id"
+                                            id="check_id"
+                                            className="border border-gray-300 w-full rounded-md p-3 mt-2 capitalize"
+                                            placeholder="Check ID"
+                                            onChange={handleChange}
+                                        />
+                                    </div>
+                                )
+                            }
+                            {
+                                visibleFeilds.includes("ticket_id") && (
+                                    <div className="mb-4">
+                                        <label className="block text-left w-full m-auto mb-2 text-gray-700" htmlFor="ticket_id">
+                                            Ticket ID (Optional)
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="ticket_id"
+                                            value={formData.ticket_id}
+                                            id="ticket_id"
+                                            className="border border-gray-300 w-full rounded-md p-3 mt-2 capitalize"
+                                            placeholder="Ticket ID"
+                                            onChange={handleChange}
+                                        />
+                                    </div>
+                                )
+                            }
+                            {
+                                visibleFeilds.includes("sub_client") && (
+                                    <div className="mb-4">
+                                        <label className="block text-left w-full m-auto mb-2 text-gray-700" htmlFor="sub_client">
+                                            Sub Client (Optional)
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="sub_client"
+                                            value={formData.sub_client}
+                                            id="sub_client"
+                                            className="border border-gray-300 w-full rounded-md p-3 mt-2 capitalize"
+                                            placeholder="Sub Client"
+                                            onChange={handleChange}
+                                        />
+                                    </div>
+                                )
+                            }
+
                             <div className='flex justify-center gap-5 items-center'>
                                 <div>
                                     <button
@@ -685,7 +930,7 @@ const ClientManager = () => {
                                         disabled={loadingbtn}
                                         className={`p-6 py-3 bg-[#2c81ba] hover:scale-105   transition duration-200  text-white font-bold rounded-md hover:bg-[#0f5381] ${loadingbtn ? 'opacity-50 cursor-not-allowed' : ''}`}
                                     >
-                                        {handleEditClick ? 'Edit' : 'Submit'}
+                                        Submit
                                     </button>
                                 </div>
                                 {handleEditClick && (
@@ -694,19 +939,28 @@ const ClientManager = () => {
                                             onClick={() => {
                                                 setHandleEditClick(null);
                                                 setFormData({
-                                                  fullName: '',
-                                                  employeeId: '',
-                                                  location: '',
-                                                  spocUploaded: '',
-                                                  groupManager: '',
-                                                  package: [],
-                                                  services: '',
-                                                  photo: '',
+                                                    fullName: '',
+                                                    employeeId: '',
+                                                    location: '',
+                                                    client_spoc_name: '',
+                                                    groupManager: '',
+                                                    package: [],
+                                                    services: '',
+                                                    photo: '',
+                                                    gender: '',
+                                                    batch_no: '',
+                                                    case_id: '',
+                                                    check_id: '',
+                                                    ticket_id: '',
+                                                    sub_client: '',
+                                                    photo: '',
+                                                    location: '',
+
                                                 });
-                                            fetchCustomerInfo();
-                                            setSpocs();
-                                              }}
-                                    
+                                                fetchCustomerInfo();
+                                                setSpocs();
+                                            }}
+
                                             disabled={loadingbtn}
                                             className={`p-6 py-3 bg-red-500 hover:scale-105 transition duration-200  text-white font-bold rounded-md hover:bg-red-600 ${loadingbtn ? 'opacity-50 cursor-not-allowed' : ''}`}
                                         >
@@ -733,28 +987,27 @@ const ClientManager = () => {
                             </div>
 
                         </div>
-                        <div className="w-3/5">
+                        <div className="md:w-3/5 margin-l">
 
                             <div className="space-y-4 m-auto w-full bg-white rounded-md">
-                                <MultiSelect
+                                <CustomMultiSelect
                                     options={Array.from(new Set(uniquePackages.map(pkg => pkg.name)))
                                         .map(name => ({ label: name, value: name }))
                                     }
                                     value={Array.isArray(formData.package) ? formData.package.map(pkg => ({ label: pkg, value: pkg })) : []}
+
                                     onChange={handlePackageChange}
-                                    isMulti
-                                    placeholder="--PACKAGE OPTIONS--"
-                                    className="rounded-md p-2.5"
+                                    placeholder="SELECT SERVICES"
                                 />
 
+
                             </div>
-                            <div className='p-2.5'>
+                            <div className='p-2.5 overflow-x-auto'>
                                 <table className="m-auto w-full  border-collapse border border-black rounded-lg">
                                     <thead>
                                         <tr className="bg-[#c1dff2] text-[#4d606b]">
                                             <th className=" uppercase border border-black  px-4 py-2">SERVICE</th>
-                                            <th className=" uppercase border border-black px-4 py-2">SERVICE CODE</th>
-                                            <th className=" uppercase border border-black px-4 py-2">SERVICE NAMES</th>
+                                            <th className=" uppercase border border-black px-4 text-left py-2">SERVICE NAMES</th>
                                         </tr>
                                     </thead>
 
@@ -773,15 +1026,14 @@ const ClientManager = () => {
                                                         <input
                                                             type="checkbox"
                                                             checked={service.isSelected || false}
+                                                            className="w-6 h-6"
                                                             name="services[]"
                                                             onChange={() =>
                                                                 handleCheckboxChange(service.index, service.groupIndex)
                                                             }
                                                         />
                                                     </td>
-                                                    <td className="border border-black px-4 py-2">
-                                                        {service.serviceCode}
-                                                    </td>
+
                                                     <td className="border px-4 border-black text-left py-2">
                                                         {service.serviceTitle}
                                                     </td>
@@ -885,14 +1137,30 @@ const ClientManager = () => {
                     </div>
                 </form>
                 <div className="w-full">
-                    <div className="flex justify-start pt-16 border-t-2 mb-4">
-                        <input
-                            type="text"
-                            placeholder="Search..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="px-4 py-2 border rounded-md"
-                        />
+                    <div className="block pt-16 border-t-2 mb-4">
+                        <div>
+                            <input
+                                type="text"
+                                placeholder="Search..."
+                                value={searchTerm}
+                                onChange={handleSearch}
+                                className="px-4 md:w-auto w-full py-2 border rounded-md"
+                            />
+                        </div>
+                        <select
+                            value={rowsPerPage}
+                            onChange={(e) => {
+                                setRowsPerPage(Number(e.target.value));
+                                setTableCurrentPage(1);
+                            }}
+                            className="border rounded-lg px-3 py-1 text-gray-700 bg-white mt-2  shadow-sm focus:ring-2 focus:ring-blue-400"
+                        >
+                            {optionsPerPage.map((option) => (
+                                <option key={option} value={option}>
+                                    {option}
+                                </option>
+                            ))}
+                        </select>
                     </div>
                     <div className='overflow-scroll '>
 
@@ -904,10 +1172,13 @@ const ClientManager = () => {
                                     <th className=" uppercase border border-black px-4 py-2">Photo</th>
                                     <th className=" uppercase border border-black px-4 py-2 text-left">Name Of The Applicant</th>
                                     <th className=" uppercase border border-black px-4 py-2 text-left">Application Id</th>
-                                    <th className=" uppercase border border-black px-4 py-2 text-left">Employe Id</th>
-                                    <th className=" uppercase border border-black px-4 py-2 text-left">Location</th>
+                                    {isExist.employeIdExist && (
+                                        <th className="uppercase border border-black px-4 py-2 text-left">Employe Id</th>
+                                    )}
+                                    {isExist.locationExist && (
+                                        <th className="uppercase border border-black px-4 py-2 text-left">Location</th>
+                                    )}
                                     <th className=" uppercase border border-black px-4 py-2 text-left">Service</th>
-                                    <th className=" uppercase border border-black px-4 py-2">Status</th>
                                     <th className=" uppercase border border-black px-4 py-2">Edit</th>
                                     <th className=" uppercase border border-black px-4 py-2">Delete</th>
 
@@ -921,6 +1192,13 @@ const ClientManager = () => {
                                             <Loader className="text-center" />
                                         </td>
                                     </tr>
+                                ) : paginatedData.length == 0 ? (
+
+                                    <tr>
+                                        <td colSpan={100} className="py-4 text-center text-gray-500">
+                                            No data available
+                                        </td>
+                                    </tr>
                                 ) : (
                                     <>
                                         {console.log(`tableData - `, tableData)}
@@ -929,17 +1207,19 @@ const ClientManager = () => {
                                                 <td className="border border-black px-4 py-2">
                                                     {index + 1 + (tableCurrentPage - 1) * rowsPerPage}
                                                 </td>
-                                                <td className="border border-black px-4 py-2">
-                                                    {item.photo ? (
-                                                        <img src={`${item.photo}`} alt="Photo" className="h-10 w-10 object-cover" />
-                                                    ) : (
-                                                        'null'
-                                                    )}
+                                                <td className="border border-black px-4 text-center py-2">
+                                                    <div className='flex justify-center'>
+                                                        <img src={item.photo ? item.photo : `${Default}`} alt="Photo" className="h-10 w-10 object-cover" />
+                                                    </div>
                                                 </td>
                                                 <td className="border border-black px-4 py-2 text-left">{item.name}</td>
                                                 <td className="border border-black px-4 py-2 text-left">{item.application_id}</td>
-                                                <td className="border border-black px-4 py-2 text-left">{item.employee_id}</td>
-                                                <td className="border border-black px-4 py-2 text-left ">{item.location}</td>
+                                                {isExist.employeIdExist && (
+                                                    <td className="border border-black px-4 py-2 text-left">{item.employee_id || "null"}</td>
+                                                )}
+                                                {isExist.locationExist && (
+                                                    <td className="border border-black px-4 py-2 text-left ">{item.location}</td>
+                                                )}
                                                 <td className="border border-black px-4 py-2  text-left">
                                                     <div className='flex whitespace-nowrap'>
                                                         {Array.isArray(item.serviceNames) && item.serviceNames.length > 0 ? (
@@ -978,7 +1258,6 @@ const ClientManager = () => {
                                                         )}
                                                     </div>
                                                 </td>
-                                                <td className="border  border-black px-4 py-2 uppercase">{item.status}</td>
                                                 <td className="border  border-black px-4 py-2">
                                                     <button
                                                         className="bg-green-500 hover:scale-105 transition duration-200  text-white px-4 py-2 rounded-md"
@@ -1026,8 +1305,8 @@ const ClientManager = () => {
                     </div>
                 </div>
                 {isModalOpen && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-999">
-                        <div className="bg-white rounded-lg shadow-lg p-4 w-1/3">
+                    <div className="fixed inset-0 bg-black no-margin bg-opacity-50 flex items-center justify-center z-999">
+                        <div className="bg-white rounded-lg shadow-lg p-4 md:mx-0 mx-4 md:w-1/3">
                             <div className="flex justify-between items-center">
                                 <h2 className="text-lg font-bold">Services</h2>
                                 <button

@@ -6,9 +6,12 @@ import { useClientContext } from "./ClientContext";
 import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import { use } from 'react';
+import Default from "../../imgs/default.png"
+
 Modal.setAppElement('#root'); // Make sure to set the app element for accessibility
 const ActiveAccounts = () => {
   const { validateAdminLogin, setApiLoading, apiLoading } = useApiLoading();
+  const [responseError, setResponseError] = useState(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalServices, setModalServices] = useState([]);
@@ -35,9 +38,11 @@ const ActiveAccounts = () => {
   const [updatedEmail, setUpdatedEmail] = useState('');
   const [isBlockLoading, setIsBlockLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const rowsPerPage = 8; // Number of rows per page
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const optionsPerPage = [10, 50, 100, 200];
   const totalPages = Math.ceil(activeList.length / rowsPerPage);
 
+  console.log('thisscedclien', selectedClient);
 
 
   const handleEditClick = (branch) => {
@@ -128,10 +133,10 @@ const ActiveAccounts = () => {
     }));
   };
 
-
   const fetchActiveAccounts = useCallback(async () => {
     setLoading(true);
     setApiLoading(true);
+
     const admin_id = JSON.parse(localStorage.getItem("admin"))?.id;
     const storedToken = localStorage.getItem("_token");
 
@@ -143,57 +148,50 @@ const ActiveAccounts = () => {
       });
       setApiLoading(false);
       setLoading(false);
-      return;
     }
 
     try {
       const response = await fetch(
         `https://api.screeningstar.co.in/customer/list?admin_id=${admin_id}&_token=${storedToken}`,
-        {
-          method: "GET",
-          redirect: "follow",
-        }
+        { method: "GET", redirect: "follow" }
       );
-
+      const data = await response.json();
       if (!response.ok) {
-        setLoading(false);
-        setApiLoading(false);
 
-        const data = await response.json();
-        const newToken = data.token || data._token;
-        if (newToken) {
-          localStorage.setItem("_token", newToken);
+        Swal.fire('Error!', `${data.message}`, 'error');
+        setResponseError(data.message);
+        const errorMessage = data?.message || `Error: ${response.status} ${response.statusText}`;
+
+        Swal.fire({
+          icon: "error",
+          title: "Fetch Error",
+          text: errorMessage,
+        });
+        if (data.token || data._token) {
+          localStorage.setItem("_token", data.token || data._token);
         }
-        throw new Error(`Error: ${response.status} ${response.statusText}`);
+        throw new Error(errorMessage);
       }
-      setLoading(false);
-      setApiLoading(false);
 
-      const result = await response.json();
-      const newToken = result.token || result._token;
-      console.log('localStorage-1', localStorage)
-      if (newToken) {
-        localStorage.setItem("_token", newToken);
+      // If successful, update token and store results
+      if (data.token || data._token) {
+        localStorage.setItem("_token", data.token || data._token);
       }
-      console.log('newToken', newToken)
-      console.log('localStorage-1', localStorage)
-      setActiveList(result.customers);
+      console.log('datcustomersa', data)
+
+      setActiveList(data.customers);
+
+
+
+
     } catch (error) {
-      Swal.fire({
-        icon: "error",
-        title: "Fetch Error",
-        text: "Failed to fetch active accounts. Please try again later.",
-      });
-      setLoading(false);
-      setApiLoading(false);
-
       console.error("Failed to fetch active accounts:", error);
     } finally {
       setLoading(false);
       setApiLoading(false);
-
     }
   }, []);
+
 
 
   useEffect(() => {
@@ -268,58 +266,56 @@ const ActiveAccounts = () => {
     }
   };
 
-  const handleDelete = useCallback((id) => {
-    // Initialize the delete loading state
-
-
-    // Show confirmation dialog
+  const handleDelete = useCallback((id, name) => {
     Swal.fire({
       title: 'Are you sure?',
-      text: `This action will delete the customer. You can't undo this!`,
+      text: `Are you sure you want to delete "${name}"?`,
       icon: 'warning',
       showCancelButton: true,
       confirmButtonText: 'Yes, delete it!',
       cancelButtonText: 'Cancel',
     }).then((result) => {
       if (result.isConfirmed) {
-        setIsDeleteLoading(true); // Start the loading state
+        setIsDeleteLoading(true);
         setActiveId(id);
-        // Get admin ID and token from localStorage
+  
         const admin_id = JSON.parse(localStorage.getItem("admin"))?.id;
         const storedToken = localStorage.getItem("_token");
         const formdata = new FormData();
-
+  
         const requestOptions = {
           method: "DELETE",
           body: formdata,
           redirect: "follow",
         };
-
-        // Perform the DELETE request to delete the customer
+  
         fetch(`https://api.screeningstar.co.in/customer/delete?id=${id}&admin_id=${admin_id}&_token=${storedToken}`, requestOptions)
-          .then((response) => response.text())
+          .then((response) => response.json()) // Parse as JSON
           .then((result) => {
             const newToken = result.token || result._token || '';
             if (newToken) {
               localStorage.setItem("_token", newToken);
             }
-            fetchActiveAccounts(); // Refresh the list of active accounts
-            Swal.fire('Deleted!', 'The customer has been deleted.', 'success');
+  
+            if (result.status == true) {
+              fetchActiveAccounts();
+              Swal.fire('Deleted!', result.message || `"${name}" has been deleted.`, 'success');
+            } else {
+              Swal.fire('Failed!', result.message || 'Could not delete the customer.', 'warning');
+            }
           })
           .catch((error) => {
             console.error(error);
-            Swal.fire('Error!', 'There was an issue deleting the customer.', 'error');
+            Swal.fire('Error!', error.message || 'There was an issue deleting the customer.', 'error');
           })
           .finally(() => {
             setIsDeleteLoading(false);
-            setActiveId(null); // Stop the loading state
+            setActiveId(null);
           });
-      } else {
-        Swal.fire('Cancelled', 'The customer deletion was cancelled.', 'info');
       }
     });
   }, [fetchActiveAccounts]);
-
+  
 
 
   const handleViewBranchesClick = async (clientId) => {
@@ -380,8 +376,6 @@ const ActiveAccounts = () => {
     }
   };
 
-
-
   const handleEdit = (client) => {
     navigate('/admin-editclient');
     setSelectedClient(client);
@@ -419,10 +413,10 @@ const ActiveAccounts = () => {
               localStorage.setItem("_token", newToken);
             }
 
-            // Remove the deleted branch from branchesData
             setBranchesData((prevData) => prevData.filter((item) => item.id !== branch.id));
-
             Swal.fire('Deleted!', `${branch.name} branch has been deleted.`, 'success');
+            fetchActiveAccounts();
+
           })
           .catch((error) => {
             console.error(error);
@@ -441,7 +435,6 @@ const ActiveAccounts = () => {
     </div>
   );
 
-  const paginatedData = activeList.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
   const changePage = (page) => {
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page);
@@ -485,13 +478,16 @@ const ActiveAccounts = () => {
   };
 
 
-  const filteredData = paginatedData.filter(client => {
+  const filteredData = activeList.filter(client => {
     return client.name.toLowerCase().includes(searchTerm.toLowerCase());
   });
+    const paginatedData = filteredData.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
+
   console.log('filteredData', filteredData)
   // Handle the change in search input
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
+  setCurrentPage(1)
   };
 
   const handleDownloadExcel = () => {
@@ -602,18 +598,35 @@ const ActiveAccounts = () => {
 
   return (
     <div className="w-full bg-[#c1dff2] overflow-hidden">
-      <div className="border border-black space-y-4 py-[30px] px-[51px] bg-white">
+      <div className="border border-black space-y-4 py-[30px] md:px-[51px] px-6  bg-white">
 
-        <div className='flex justify-between'>
+        <div className='md:flex justify-between items-center'>
           <div className="text-left">
-            <button
-              className="bg-green-500 hover:scale-105 hover:bg-green-600 text-white px-6 py-2 rounded"
-              onClick={handleDownloadExcel}
+            <div>
+              <button
+                className="bg-green-500 hover:scale-105 hover:bg-green-600 text-white px-6 py-2 rounded"
+                onClick={handleDownloadExcel}
+              >
+                Export to Excel
+              </button>
+
+            </div>
+            <select
+              value={rowsPerPage}
+              onChange={(e) => {
+                setRowsPerPage(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="border rounded-lg px-3 py-1 text-gray-700 bg-white mt-4 shadow-sm focus:ring-2 focus:ring-blue-400"
             >
-              Export to Excel
-            </button>
+              {optionsPerPage.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
           </div>
-          <div className="mb-4 w-1/2 text-right">
+          <div className="mb-4 md:w-1/2 text-right">
             <input
               type="text"
               placeholder="Search by Company Name"
@@ -636,7 +649,6 @@ const ActiveAccounts = () => {
                 <th className=" uppercase border  border-black px-4 py-2">Email</th>
                 <th className=" uppercase border  border-black px-4 py-2 text-center">State</th>
                 <th className=" uppercase border  border-black px-4 py-2 text-center">State Code</th>
-                <th className=" uppercase border  border-black px-4 py-2 text-center">ROLE</th>
                 <th className=" uppercase border  border-black px-4 py-2">GST Number</th>
                 <th className=" uppercase border  border-black px-4 py-2">Mobile Number</th>
                 <th className=" uppercase border  border-black px-4 py-2 text-center">TAT</th>
@@ -665,39 +677,38 @@ const ActiveAccounts = () => {
               </tbody>
             ) : (
               <tbody>
-                {filteredData.length === 0 ? (
+                {paginatedData.length === 0 ? (
                   <tr>
-                    <td colSpan="21" className="text-center py-4 text-gray-500">
-                      You have no data.
+                    <td colSpan="21" className="text-center py-4 text-red-500">
+                      {responseError && responseError !== "" ? responseError : "No data available in table"}
                     </td>
                   </tr>
                 ) : (
-                  filteredData.map((client, index) => {
+                  paginatedData.map((client, index) => {
                     const services = client.services ? JSON.parse(client.services).flatMap(group => group.services) : [];
-                    console.log('this is my seevice ', services)
+                    console.log('this is my client ', client)
                     return (
                       <tr key={client.clientId} className="border-b border-gray-300 text-left">
                         <td className="border  border-black px-4 py-2 text-center">
                           {(currentPage - 1) * rowsPerPage + index + 1}
                         </td>
-                        <td className="border  border-black px-4 py-2 whitespace-nowrap">{client.client_unique_id}</td>
-                        <td className="border  border-black px-4 py-2 min-w-[200px] whitespace-nowrap">{client.name}</td>
-                        <td className="border  border-black px-4 py-2">{client.address}</td>
+                        <td className="border  border-black px-4 py-2 whitespace-nowrap">{client.client_unique_id || 'null'}</td>
+                        <td className="border  border-black px-4 py-2 min-w-[200px] whitespace-nowrap">{client.name || 'null'}</td>
+                        <td className="border  border-black px-4 py-2">{client.address || 'null'}</td>
                         <td className="border  border-black px-4 py-2">
                           {client.emails ? JSON.parse(client.emails).join(', ') : 'NIL'}
                         </td>
-                        <td className="border  border-black px-4 py-2 text-center">{client.state}</td>
-                        <td className="border  border-black px-4 py-2 text-center">{client.state_code}</td>
-                        <td className="border  border-black px-4 py-2 text-center whitespace-nowrap">{client.role}</td>
-                        <td className="border  border-black px-4 py-2 min-w-[200px] whitespace-nowrap">{client.gst_number}</td>
-                        <td className="border  border-black px-4 py-2 min-w-[200px]">{client.mobile}</td>
+                        <td className="border  border-black px-4 py-2 text-center">{client.state || 'null'}</td>
+                        <td className="border  border-black px-4 py-2 text-center">{client.state_code || 'null'}</td>
+                        <td className="border  border-black px-4 py-2 min-w-[200px] whitespace-nowrap">{client.gst_number || 'null'}</td>
+                        <td className="border  border-black px-4 py-2 min-w-[200px]">{client.mobile || 'null'}</td>
                         <td className="border  border-black px-4 py-2 text-center whitespace-nowrap">{client.tat_days}</td>
                         <td className="border  border-black px-4 py-2 min-w-[300px] text-center">
                           {client.agreement_date
                             ? new Date(client.agreement_date).toLocaleDateString('en-GB').replace(/\//g, '-')
                             : 'NIL'}
                         </td>
-                        <td className="border  border-black px-4 py-2 min-w-[300px] text-center">{client.client_standard}</td>
+                        <td className="border  border-black px-4 py-2 min-w-[300px] text-center">{client.client_standard || 'null'}</td>
                         <td className="border border-black px-4 py-2 text-center">
                           {client.agreement_duration && !isNaN(new Date(client.agreement_duration))
                             ? new Date(client.agreement_duration).toLocaleDateString('en-GB', {
@@ -710,15 +721,11 @@ const ActiveAccounts = () => {
 
 
                         <td className="border  border-black px-4 py-2 text-center">
-                          {client.logo ? (
-                            <img
-                              src={`${client.logo}`}
-                              alt="Client Logo"
-                              className="w-10 text-center m-auto h-10"
-                            />
-                          ) : (
-                            'No Logo'
-                          )}
+                          <img
+                            src={client.logo ? client.logo : `${Default}`}
+                            alt="Client Logo"
+                            className="w-10 text-center m-auto h-10"
+                          />
                         </td>
                         <td className="border  border-black px-4 py-2 text-center">
                           <div className="flex items-center">
@@ -743,7 +750,7 @@ const ActiveAccounts = () => {
                             )}
                           </div>
 
-                        
+
                         </td>
                         <td className="border  border-black px-4 py-2 text-center">
                           {client.additional_login == 1 ? 'Yes' : 'No'}
@@ -774,20 +781,20 @@ const ActiveAccounts = () => {
                               Block
                             </button>
                             <button
-                              onClick={() => handleDelete(client.main_id)}
+                              onClick={() => handleDelete(client.main_id , client.name)}
                               disabled={isDeleteLoading && activeId == client.main_id}
                               className={`bg-[#073d88] hover:scale-105 hover:bg-[#12253f] text-white px-4 py-2 rounded ${isDeleteLoading && activeId == client.main_id ? "opacity-50 cursor-not-allowed" : ""}`}
                             >
                               Delete
                             </button>
-                            {client.branch_count > 0 && (
+                            {client.branch_count > 1 && (
                               <button
                                 onClick={() => handleViewBranchesClick(client.main_id)}
                                 className={`bg-green-600 hover:scale-105 hover:bg-green-700 text-white px-4 py-2 whitespace-nowrap rounded mr-3 ${branchViewLoading && activeId == client.main_id ? 'opacity-50 cursor-not-allowed' : ''
                                   }`}
                                 disabled={branchViewLoading && activeId == client.main_id}
                               >
-                                View Branches
+                                VIEW BRANCHES
                               </button>
                             )}
                           </div>
@@ -819,12 +826,12 @@ const ActiveAccounts = () => {
           >
             Next
           </button>
-          
+
         </div>
         <Modal
           isOpen={showModal}
           onRequestClose={() => setShowModal(false)}
-          contentLabel="View Branches"
+          contentLabel="VIEW BRANCHES"
           className="modal-content overflow-y-scroll max-h-[500px] "
           overlayClassName="modal-overlay"
         >
@@ -835,7 +842,7 @@ const ActiveAccounts = () => {
                 <th className=" uppercase border  border-black px-4 py-2">Branch ID</th>
                 <th className=" uppercase border  border-black px-4 py-2">Branch Name</th>
                 <th className=" uppercase border  border-black px-4 py-2">Branch Email</th>
-                <th className=" uppercase border  border-black px-4 py-2">Actions</th>
+                <th className=" uppercase border  border-black px-4 py-2" colSpan={2}>Actions</th>
               </tr>
             </thead>
             <tbody className="text-center">
@@ -847,15 +854,17 @@ const ActiveAccounts = () => {
                       <td className="border  border-black px-4 py-2 font-light">{index + 1}</td>
                       <td className="border  border-black px-4 py-2 font-light">{branch.name}</td>
                       <td className="border  border-black px-4 py-2 font-light">{branch.email}</td>
-                      <td className=" px-4 py-2 flex items-start gap-3">
+                      <td className="  p-2 items-start gap-3">
                         <button
-                          className="bg-green-500 text-white px-4 py-2 rounded mr-3"
+                          className="bg-green-500 text-white px-4 py-2 rounded "
                           onClick={() => handleEditClick(branch)}
                         >
                           Edit
                         </button>
+                      </td>
+                      <td className="  p-2 items-start gap-3">
                         <button
-                          className="bg-red-500 text-white px-4 py-2 rounded mr-3"
+                          className="bg-red-500 text-white px-4 py-2 rounded "
                           onClick={() => handleDeleteBranch(branch)}
                         >
                           Delete
@@ -934,31 +943,31 @@ const ActiveAccounts = () => {
           </form>
         </Modal>
         {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg p-4 w-1/3">
-            <div className="flex justify-between items-center">
-              <h2 className="text-lg font-bold">Services</h2>
-              <button className="text-red-500 text-2xl" onClick={handleCloseServiceModal}>
-                &times;
-              </button>
-            </div>
-            <div className="mt-4 flex flex-wrap gap-2 w-full max-h-96 overflow-y-auto">
-              {modalServices.length > 0 ? (
-                modalServices.map((service, idx) => (
-                  <span
-                    key={idx}
-                    className="px-4 py-2 bg-blue-100 border border-blue-500 rounded-lg text-sm"
-                  >
-                    {service.serviceTitle}
-                  </span>
-                ))
-              ) : (
-                <span className="text-gray-500">No service available</span>
-              )}
+          <div className="fixed inset-0 bg-black no-margin bg-opacity-50 flex items-center justify-center z-999">
+            <div className="bg-white rounded-lg shadow-lg p-4 md:mx-0 mx-4 md:w-1/3">
+              <div className="flex justify-between items-center">
+                <h2 className="text-lg font-bold">Services</h2>
+                <button className="text-red-500 text-2xl" onClick={handleCloseServiceModal}>
+                  &times;
+                </button>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2 w-full max-h-96 overflow-y-auto">
+                {modalServices.length > 0 ? (
+                  modalServices.map((service, idx) => (
+                    <span
+                      key={idx}
+                      className="px-4 py-2 bg-blue-100 border border-blue-500 rounded-lg text-sm"
+                    >
+                      {service.serviceTitle}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-gray-500">No service available</span>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
       </div>
     </div >

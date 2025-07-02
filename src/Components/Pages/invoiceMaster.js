@@ -1,12 +1,32 @@
 import React, { useState, useEffect } from "react";
 import Swal from "sweetalert2";
 import * as XLSX from "xlsx";
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
+import { parseISO, format } from 'date-fns';
 const InvoiceMaster = () => {
     const [invoices, setInvoices] = useState([]);
     const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 10; // Adjust as needed
+    const [itemsPerPage, setItemsPerPage] = useState(10);
+    const optionsPerPage = [10, 50, 100, 200];
+    const [responseError, setResponseError] = useState(null);
+  const formatDate = (dateString) => {
+    if (!dateString || isNaN(new Date(dateString).getTime())) {
+        return "N/A";
+    }
 
+    const date = new Date(dateString);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
 
+    return `${day}-${month}-${year}`;
+};
+const parseAndValidateDate = (dateString) => {
+  if (!dateString) return null;
+  const parsed = parseISO(dateString);
+  return isNaN(parsed) ? null : parsed;
+};
     const [loading, setLoading] = useState(true);
     const [selectedInvoice, setSelectedInvoice] = useState(null);
     const [showModal, setShowModal] = useState(false);
@@ -29,7 +49,7 @@ const InvoiceMaster = () => {
     const filteredInvoices = invoices.filter((invoice) => {
         return (
             (filters.month ? invoice.month == filters.month : true) &&
-            (filters.organizationName ? invoice.orgenization_name.includes(filters.organizationName) : true) &&
+            (filters.organizationName ? invoice.customer_name.includes(filters.organizationName) : true) &&
             (filters.taxableValue ? invoice.taxable_value === filters.taxableValue : true) &&
             (filters.invoiceSubtotal ? invoice.invoice_subtotal === filters.invoiceSubtotal : true) &&
             (filters.paymentStatus ? invoice.payment_status.includes(filters.paymentStatus) : true)
@@ -44,12 +64,17 @@ const InvoiceMaster = () => {
             const url = `https://api.screeningstar.co.in/invoice-master?admin_id=${admin_id}&_token=${storedToken}`;
 
             const response = await fetch(url, { method: "GET", redirect: "follow" });
+            const data = await response.json();
 
             if (!response.ok) {
+
+                Swal.fire('Error!', `${data.message}`, 'error');
+                setResponseError(data.message);
+
+
                 throw new Error("Failed to fetch invoices");
             }
 
-            const data = await response.json();
             setInvoices(data.invoice || []);
         } catch (error) {
             console.error("Error fetching invoices:", error);
@@ -141,7 +166,7 @@ const InvoiceMaster = () => {
 
     const uniqueOrganizations =
         filteredInvoices.length > 0
-            ? [...new Set(filteredInvoices.map((invoice) => invoice.orgenization_name))]
+            ? [...new Set(filteredInvoices.map((invoice) => invoice.customer_name))]
             : [];
 
 
@@ -157,18 +182,8 @@ const InvoiceMaster = () => {
         }
     };
 
-    const formatDate = (dateString) => {
-        if (!dateString || isNaN(new Date(dateString).getTime())) {
-            return "N/A";
-        }
 
-        const date = new Date(dateString);
-        const day = String(date.getDate()).padStart(2, '0'); // Ensure 2 digits for day
-        const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-based
-        const year = date.getFullYear();
 
-        return `${day}-${month}-${year}`;
-    };
     const exportToExcel = () => {
         const formattedData = paginatedInvoices.map((invoice, index) => ({
             "S.No": index + 1,
@@ -189,7 +204,7 @@ const InvoiceMaster = () => {
                 };
                 return monthNames[invoice.month] || invoice.month;
             })(),
-            "Organization Name": invoice.orgenization_name,
+            "Organization Name": invoice.customer_name,
             "GST Number": invoice.gst_number,
             State: invoice.state,
             "State Code": invoice.state_code,
@@ -223,95 +238,95 @@ const InvoiceMaster = () => {
     };
     const handleExportToExcel = () => {
         const tableHeaders = [
-          "S.No",
-          "Month",
-          "Organization Name",
-          "GST Number",
-          "State",
-          "State Code",
-          "Invoice Date",
-          "Invoice Number",
-          "Taxable Value",
-          "CGST",
-          "SGST",
-          "IGST",
-          "Total GST",
-          "Invoice Subtotal",
-          "Due Date",
-          "Payment Status",
-          "Received Date",
-          "TDS Percentage",
-          "TDS Deducted",
-          "Amount Received",
-          "Balance Payment",
-          "Payment Remarks",
+            "S.No",
+            "Month",
+            "Organization Name",
+            "GST Number",
+            "State",
+            "State Code",
+            "Invoice Date",
+            "Invoice Number",
+            "Taxable Value",
+            "CGST",
+            "SGST",
+            "IGST",
+            "Total GST",
+            "Invoice Subtotal",
+            "Due Date",
+            "Payment Status",
+            "Received Date",
+            "TDS Percentage",
+            "TDS Deducted",
+            "Amount Received",
+            "Balance Payment",
+            "Payment Remarks",
         ];
-    
+
         const tableData = paginatedInvoices.length
-          ? paginatedInvoices.map((invoice, index) => ({
-              "S.No": index + 1,
-              Month: (() => {
-                const monthNames = {
-                  "01": "January",
-                  "02": "February",
-                  "03": "March",
-                  "04": "April",
-                  "05": "May",
-                  "06": "June",
-                  "07": "July",
-                  "08": "August",
-                  "09": "September",
-                  "10": "October",
-                  "11": "November",
-                  "12": "December",
-                };
-                return monthNames[invoice.month] || invoice.month; // Fallback to original value if no match
-              })(),
-              "Organization Name": invoice.orgenization_name || "null",
-              "GST Number": invoice.gst_number || "null",
-              State: invoice.state || "null",
-              "State Code": invoice.state_code || "null",
-              "Invoice Date": formatDate(invoice.invoice_date) || "null",
-              "Invoice Number": invoice.invoice_number || "null",
-              "Taxable Value": invoice.taxable_value || "null",
-              CGST: invoice.cgst || "null",
-              SGST: invoice.sgst || "null",
-              IGST: invoice.igst || "null",
-              "Total GST": invoice.total_gst || "null",
-              "Invoice Subtotal": invoice.invoice_subtotal || "null",
-              "Due Date": formatDate(invoice.due_date) || "null",
-              "Payment Status": invoice.payment_status || "null",
-              "Received Date": formatDate(invoice.received_date) || "null",
-              "TDS Percentage": invoice.tds_percentage || "null",
-              "TDS Deducted": invoice.tds_deducted || "null",
-              "Amount Received": invoice.ammount_received || "null",
-              "Balance Payment": invoice.balance_payment || "null",
-              "Payment Remarks": invoice.payment_remarks || "null",
+            ? paginatedInvoices.map((invoice, index) => ({
+                "S.No": index + 1,
+                Month: (() => {
+                    const monthNames = {
+                        "1": "January",
+                        "2": "February",
+                        "3": "March",
+                        "4": "April",
+                        "5": "May",
+                        "6": "June",
+                        "7": "July",
+                        "8": "August",
+                        "9": "September",
+                        "10": "October",
+                        "11": "November",
+                        "12": "December",
+                    };
+                    return monthNames[invoice.month] || invoice.month; // Fallback to original value if no match
+                })(),
+                "Organization Name": invoice.customer_name || "null",
+                "GST Number": invoice.gst_number || "null",
+                State: invoice.state || "null",
+                "State Code": invoice.state_code || "null",
+                "Invoice Date": formatDate(invoice.invoice_date) || "null",
+                "Invoice Number": invoice.invoice_number || "null",
+                "Taxable Value": invoice.taxable_value || "null",
+                CGST: invoice.cgst || "null",
+                SGST: invoice.sgst || "null",
+                IGST: invoice.igst || "null",
+                "Total GST": invoice.total_gst || "null",
+                "Invoice Subtotal": invoice.invoice_subtotal || "null",
+                "Due Date": formatDate(invoice.due_date) || "null",
+                "Payment Status": invoice.payment_status || "null",
+                "Received Date": formatDate(invoice.received_date) || "null",
+                "TDS Percentage": invoice.tds_percentage || "null",
+                "TDS Deducted": invoice.tds_deducted || "null",
+                "Amount Received": invoice.ammount_received || "null",
+                "Balance Payment": invoice.balance_payment || "null",
+                "Payment Remarks": invoice.payment_remarks || "null",
             }))
-          : [{ ...Object.fromEntries(tableHeaders.map((header) => [header, "null"])) }];
-    
+            : [{ ...Object.fromEntries(tableHeaders.map((header) => [header, "null"])) }];
+
         const worksheet = XLSX.utils.json_to_sheet(tableData);
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Invoices");
-    
+
         XLSX.writeFile(workbook, "Invoices.xlsx");
-      };
-    
+    };
+
     return (
         <div className="w-full bg-[#c1dff2] border border-black overflow-hidden">
-            <div className="bg-white p-12 w-full mx-auto">
-            <button
-        onClick={handleExportToExcel}
-        className="mb-4 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded"
-      >
-        Export to Excel
-      </button>
-                <div className="flex space-x-4 mb-4">
+            <div className="bg-white md:p-12 p-6 w-full mx-auto">
+                <button
+                    onClick={handleExportToExcel}
+                    className="mb-4 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded"
+                >
+                    Export to Excel
+                </button>
+                <div className="md:flex space-x-4 mb-4">
                     <select
                         name="month"
                         value={filters.month}
                         onChange={handleFilterChange}
-                        className="px-4 py-2 border  rounded"
+                        className="px-4 py-2 border md:w-auto w-full mb-4 md:mb-0 rounded"
                     >
                         <option value="">Select Month</option>
                         <option value="01">January</option>
@@ -332,7 +347,7 @@ const InvoiceMaster = () => {
                         name="organizationName"
                         value={filters.organizationName}
                         onChange={handleFilterChange}
-                        className="px-4 py-2 border  "
+                        className="px-4 py-2 border md:w-auto w-full margin-l mb-4 md:mb-0 "
                     >
                         <option value="">Select Organization</option>
                         {uniqueOrganizations.map((org, index) => (
@@ -347,7 +362,7 @@ const InvoiceMaster = () => {
                         placeholder="Taxable Value"
                         value={filters.taxableValue}
                         onChange={handleFilterChange}
-                        className="px-4 py-2 border  "
+                        className="px-4 py-2 border md:w-auto w-full margin-l mb-4 md:mb-0"
                     />
                     <input
                         type="number"
@@ -355,7 +370,7 @@ const InvoiceMaster = () => {
                         placeholder="Invoice Subtotal"
                         value={filters.invoiceSubtotal}
                         onChange={handleFilterChange}
-                        className="px-4 py-2 border  "
+                        className="px-4 py-2 border md:w-auto w-full margin-l mb-4 md:mb-0 "
                     />
                     <input
                         type="text"
@@ -363,9 +378,23 @@ const InvoiceMaster = () => {
                         placeholder="Payment Status"
                         value={filters.paymentStatus}
                         onChange={handleFilterChange}
-                        className="px-4 py-2 border  "
+                        className="px-4 py-2 border md:w-auto w-full margin-l mb-4 md:mb-0 "
                     />
                 </div>
+                <select
+                    value={itemsPerPage}
+                    onChange={(e) => {
+                        setItemsPerPage(Number(e.target.value));
+                        setCurrentPage(1);
+                    }}
+                    className="border rounded-lg px-3 py-1 text-gray-700 bg-white mb-4 shadow-sm focus:ring-2 focus:ring-blue-400"
+                >
+                    {optionsPerPage.map((option) => (
+                        <option key={option} value={option}>
+                            {option}
+                        </option>
+                    ))}
+                </select>
                 <div className="overflow-scroll">
                     <table className="min-w-full border-collapse border border-black">
                         <thead className="bg-[#c1dff2]">
@@ -411,15 +440,15 @@ const InvoiceMaster = () => {
                                         <td className="border border-black px-4 py-2">
                                             {(() => {
                                                 const monthNames = {
-                                                    "01": "January",
-                                                    "02": "February",
-                                                    "03": "March",
-                                                    "04": "April",
-                                                    "05": "May",
-                                                    "06": "June",
-                                                    "07": "July",
-                                                    "08": "August",
-                                                    "09": "September",
+                                                    "1": "January",
+                                                    "2": "February",
+                                                    "3": "March",
+                                                    "4": "April",
+                                                    "5": "May",
+                                                    "6": "June",
+                                                    "7": "July",
+                                                    "8": "August",
+                                                    "9": "September",
                                                     "10": "October",
                                                     "11": "November",
                                                     "12": "December"
@@ -428,7 +457,7 @@ const InvoiceMaster = () => {
                                             })()}
                                         </td>
 
-                                        <td className="border border-black px-4 py-2 whitespace-nowrap">{invoice.orgenization_name}</td>
+                                        <td className="border border-black px-4 py-2 whitespace-nowrap">{invoice.customer_name}</td>
                                         <td className="border border-black px-4 py-2 whitespace-nowrap">{invoice.gst_number}</td>
                                         <td className="border border-black px-4 py-2 whitespace-nowrap">{invoice.state}</td>
                                         <td className="border border-black px-4 py-2 whitespace-nowrap">{invoice.state_code}</td>
@@ -442,7 +471,7 @@ const InvoiceMaster = () => {
                                         <td className="border border-black px-4 py-2">{invoice.invoice_subtotal}</td>
                                         <td className="border border-black px-4 py-2">{formatDate(invoice.due_date)}</td>
                                         <td className="border border-black px-4 py-2">{invoice.payment_status}</td>
-                                        <td className="border border-black px-4 py-2">{formatDate(invoice.received_date)()}</td>
+                                        <td className="border border-black px-4 py-2">{formatDate(invoice.received_date)}</td>
                                         <td className="border border-black px-4 py-2">{invoice.tds_percentage}</td>
                                         <td className="border border-black px-4 py-2">{invoice.tds_deducted}</td>
                                         <td className="border border-black px-4 py-2">{invoice.ammount_received}</td>
@@ -460,8 +489,10 @@ const InvoiceMaster = () => {
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan="15" className="text-center py-6">
-                                        No invoices available.
+                                    <td colSpan="15" className="text-center text-red-500 py-6">
+
+                                        {responseError && responseError !== "" ? responseError : "No invoices available."}
+
                                     </td>
                                 </tr>
                             )}
@@ -502,15 +533,15 @@ const InvoiceMaster = () => {
                                         value={selectedInvoice.month}
                                         onChange={(e) => setSelectedInvoice({ ...selectedInvoice, month: e.target.value })}
                                     >
-                                        <option value="01">January</option>
-                                        <option value="02">February</option>
-                                        <option value="03">March</option>
-                                        <option value="04">April</option>
-                                        <option value="05">May</option>
-                                        <option value="06">June</option>
-                                        <option value="07">July</option>
-                                        <option value="08">August</option>
-                                        <option value="09">September</option>
+                                        <option value="1">January</option>
+                                        <option value="2">February</option>
+                                        <option value="3">March</option>
+                                        <option value="4">April</option>
+                                        <option value="5">May</option>
+                                        <option value="6">June</option>
+                                        <option value="7">July</option>
+                                        <option value="8">August</option>
+                                        <option value="9">September</option>
                                         <option value="10">October</option>
                                         <option value="11">November</option>
                                         <option value="12">December</option>
@@ -528,15 +559,23 @@ const InvoiceMaster = () => {
                                 </div>
                                 <div className="mb-4">
                                     <label className="block mb-2">Due Date</label>
-                                    <input
-                                        type="date"
-                                        className="w-full p-2 border"
-                                        value={selectedInvoice.due_date ? selectedInvoice.due_date.split('T')[0] : ''}
-                                        onChange={(e) => setSelectedInvoice({ ...selectedInvoice, due_date: e.target.value })}
-                                    />
+                                    <DatePicker
+    selected={parseAndValidateDate(selectedInvoice.due_date)}
+    onChange={(date) => {
+      const formattedDate = date ? format(date, "yyyy-MM-dd") : "";
+      setSelectedInvoice((prev) => ({ ...prev, due_date: formattedDate }));
+    }}
+    onChangeRaw={(e) => {
+      setSelectedInvoice((prev) => ({ ...prev, due_date: e.target.value }));
+    }}
+    dateFormat="dd-MM-yyyy"
+    placeholderText="Select Due Date"
+    className="w-full p-2 border border-gray-300 rounded-md uppercase focus:outline-none focus:ring-2 focus:ring-blue-500"
+  />
+                                    
                                 </div>
                                 <div className="mb-4">
-                                    <label className="block mb-2">Payment Status</label>
+                                    <label className="block mb-2">Payment Status <span className="text-red-500 text-xl" >*</span></label>
                                     <input
                                         type="text"
                                         className="w-full p-2 border"
@@ -546,12 +585,19 @@ const InvoiceMaster = () => {
                                 </div>
                                 <div className="mb-4">
                                     <label className="block mb-2">Received Date</label>
-                                    <input
-                                        type="date"
-                                        className="w-full p-2 border"
-                                        value={selectedInvoice.received_date ? selectedInvoice.received_date.split('T')[0] : ''}
-                                        onChange={(e) => setSelectedInvoice({ ...selectedInvoice, received_date: e.target.value })}
-                                    />
+                                    <DatePicker
+    selected={parseAndValidateDate(selectedInvoice.received_date)}
+    onChange={(date) => {
+      const formattedDate = date ? format(date, "yyyy-MM-dd") : "";
+      setSelectedInvoice((prev) => ({ ...prev, received_date: formattedDate }));
+    }}
+    onChangeRaw={(e) => {
+      setSelectedInvoice((prev) => ({ ...prev, received_date: e.target.value }));
+    }}
+    dateFormat="dd-MM-yyyy"
+    placeholderText="Select Received Date"
+    className="w-full p-2 border border-gray-300 rounded-md uppercase focus:outline-none focus:ring-2 focus:ring-blue-500"
+  />
                                 </div>
                                 <div className="mb-4">
                                     <label className="block mb-2">TDS Percentage</label>
@@ -590,7 +636,7 @@ const InvoiceMaster = () => {
                                     />
                                 </div>
                                 <div className="mb-4">
-                                    <label className="block mb-2">Payment Remarks</label>
+                                    <label className="block mb-2">Payment Remarks<span className="text-red-500 text-xl" >*</span></label>
                                     <input
                                         type="text"
                                         className="w-full p-2 border"

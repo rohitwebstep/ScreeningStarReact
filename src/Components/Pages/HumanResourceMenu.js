@@ -5,8 +5,12 @@ import axios from 'axios';
 import { useApiLoading } from '../ApiLoadingContext';
 import Swal from 'sweetalert2';
 import swal from 'sweetalert';
+import Default from "../../imgs/default.png"
+import DatePicker from "react-datepicker";
+import { format, parseISO } from "date-fns";
+import "react-datepicker/dist/react-datepicker.css";
 const HumanResourceMenu = () => {
-       const {validateAdminLogin,setApiLoading,apiLoading} = useApiLoading();
+    const { validateAdminLogin, setApiLoading, apiLoading } = useApiLoading();
 
 
     const [loadingSpoc, setLoadingSpoc] = useState({});
@@ -24,13 +28,14 @@ const HumanResourceMenu = () => {
     const [error, setError] = useState(null);
     const [viewBranchesRow, setViewBranchesRow] = useState(null);
     const [branchesData, setBranchesData] = useState([]);
-    const storedToken = localStorage.getItem('token');
+    const storedToken = localStorage.getItem('_token');
     const location = useLocation();
     const [currentPage, setCurrentPage] = useState(1);
     const query = new URLSearchParams(location.search);
     const emailFromQuery = query.get('email') || '';
     const [isEditing, setIsEditing] = useState(false);
-    const itemsPerPage = 5;
+    const [itemsPerPage, setItemsPerPage] = useState(10);
+    const optionsPerPage = [10, 50, 100, 200];
 
     const [formData, setFormData] = useState({
         ticket_date: "",
@@ -44,6 +49,12 @@ const HumanResourceMenu = () => {
     });
 
 
+
+    let adminData;
+    if (storedToken) {
+        adminData = JSON.parse(localStorage.getItem('admin'))
+    }
+
     const fetchClientData = async () => {
         const admin_id = JSON.parse(localStorage.getItem("admin"))?.id;
         const storedToken = localStorage.getItem("_token");
@@ -55,7 +66,7 @@ const HumanResourceMenu = () => {
             );
 
             if (!response.ok) {
-        setApiLoading(false)
+                setApiLoading(false)
 
                 throw new Error(`Error: ${response.status} ${response.statusText}`);
             }
@@ -84,8 +95,8 @@ const HumanResourceMenu = () => {
         const initialize = async () => {
             try {
                 if (apiLoading == false) {
-                await validateAdminLogin();
-                await fetchClientData();
+                    await validateAdminLogin();
+                    await fetchClientData();
                 }
             } catch (error) {
                 console.error(error.message);
@@ -140,7 +151,7 @@ const HumanResourceMenu = () => {
                     console.log("Upload response:", response.data);
 
                     // Save the new token if present in the response
-                    const newToken = response.data._token || response.data.token || storedToken ;
+                    const newToken = response.data._token || response.data.token || storedToken;
                     if (newToken) {
                         localStorage.setItem("_token", newToken);
                     }
@@ -151,7 +162,7 @@ const HumanResourceMenu = () => {
                     Swal.fire('Error!', `An error occurred while uploading profile picture: ${err.message}`, 'error');
 
                     // Save the new token even in case of failure
-                    const newToken = err.response?.data._token || err.response?.data.token || storedToken ;
+                    const newToken = err.response?.data._token || err.response?.data.token || storedToken;
                     if (newToken) {
                         localStorage.setItem("_token", newToken);
                     }
@@ -220,7 +231,7 @@ const HumanResourceMenu = () => {
         try {
             const response = await fetch(url, requestOptions);
             const data = await response.json();
-            const newToken = data.token || data._token || storedToken  || "";
+            const newToken = data.token || data._token || storedToken || "";
             if (newToken) {
                 localStorage.setItem("_token", newToken);
             }
@@ -414,6 +425,17 @@ const HumanResourceMenu = () => {
             });
         }
     };
+    const formatDate = (date) => {
+        if (!date) return null; // Return null if date is undefined, null, or empty
+        const dateObj = new Date(date);
+        if (isNaN(dateObj)) return null; // Return null if date is invalid
+    
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const year = dateObj.getFullYear();
+    
+        return `${day}-${month}-${year}`;
+    };
     return (
         <div className="w-full bg-[#c1dff2] border border-black overflow-hidden">
             <div className="space-y-4 py-[30px] px-[51px] bg-white">
@@ -424,15 +446,18 @@ const HumanResourceMenu = () => {
                             <form className="space-y-4 ps-0 pb-[30px] px-[51px] bg-white rounded-md" id="client-spoc" onSubmit={handleSubmit}>
                                 <div>
                                     <label htmlFor="ticket_date" className="block mb-2">Ticket Date<span className="text-red-500 text-xl">*</span></label>
-                                    <input
-                                        type="date"
-                                        id="ticket_date"
-                                        name="ticket_date"
-                                        value={formData.ticket_date}
-                                        onChange={handleChange}
-                                        className="w-full border rounded p-2"
-                                        required
-                                    />
+                                    <DatePicker
+  id="ticket_date"
+  name="ticket_date"
+  selected={formData.ticket_date ? parseISO(formData.ticket_date) : null}
+  onChange={(date) => {
+    const value = date ? format(date, "yyyy-MM-dd") : "";
+    setFormData((prevData) => ({ ...prevData, ticket_date: value }));
+  }}
+  dateFormat="dd-MM-yyyy"
+  placeholderText="DD-MM-YYYY"
+  className="w-full border rounded p-2"
+/>
                                 </div>
 
                                 <div>
@@ -475,15 +500,18 @@ const HumanResourceMenu = () => {
 
                                 <div>
                                     <label htmlFor="leave_date" className="block mb-2">Leave Date<span className="text-red-500 text-xl">*</span></label>
-                                    <input
-                                        type="date"
-                                        id="leave_date"
-                                        name="leave_date"
-                                        value={formData.leave_date}
-                                        onChange={handleChange}
-                                        className="w-full border rounded p-2"
-                                        required
-                                    />
+                                    <DatePicker
+  id="leave_date"
+  name="leave_date"
+  selected={formData.leave_date ? parseISO(formData.leave_date) : null}
+  onChange={(date) => {
+    const value = date ? format(date, "yyyy-MM-dd") : "";
+    setFormData((prevData) => ({ ...prevData, leave_date: value }));
+  }}
+  dateFormat="dd-MM-yyyy"
+  placeholderText="DD-MM-YYYY"
+  className="w-full border rounded p-2"
+/>
                                 </div>
 
                                 <div>
@@ -535,13 +563,29 @@ const HumanResourceMenu = () => {
 
 
                         <div className="mb-4">
-                            <input
-                                type="text"
-                                placeholder="Search by Name"
-                                className="w-1/3 rounded-md p-2.5 border border-gray-300"
-                                value={searchTerm}
-                                onChange={handleSearch}
-                            />
+                            <div>
+                                <input
+                                    type="text"
+                                    placeholder="Search by Name"
+                                    className="w-1/3 rounded-md p-2.5 border border-gray-300"
+                                    value={searchTerm}
+                                    onChange={handleSearch}
+                                />
+                            </div>
+                            <select
+                                value={itemsPerPage}
+                                onChange={(e) => {
+                                    setItemsPerPage(Number(e.target.value));
+                                    setCurrentPage(1);
+                                }}
+                                className="border rounded-lg px-3 py-1 text-gray-700 bg-white mt-4 shadow-sm focus:ring-2 focus:ring-blue-400"
+                            >
+                                {optionsPerPage.map((option) => (
+                                    <option key={option} value={option}>
+                                        {option}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
                         <div className=" overflow-scroll">
                             <table className="min-w-full border-collapse border border-black rounded-lg">
@@ -554,7 +598,7 @@ const HumanResourceMenu = () => {
                                         <th className="py-2 px-4 border border-black uppercase">Employee ID</th>
                                         <th className="py-2 px-4 border border-black uppercase">Leave Date</th>
                                         <th className="py-2 px-4 border border-black uppercase">Purpose of Leave</th>
-                                        <th className="py-2 px-4 border border-black uppercase">Remarks</th>
+                                        <th className="py-2 px-4 border border-black uppercase  w-96">Remarks</th>
                                         <th className="py-2 px-4 border border-black text-center uppercase">Actions</th>
                                     </tr>
                                 </thead>
@@ -577,15 +621,20 @@ const HumanResourceMenu = () => {
                                                 currentSpocs.map((spoc, index) => (
                                                     <tr key={spoc.id} className="hover:bg-gray-200">
                                                         <td className="py-2 px-4 border border-black">{index + indexOfFirstItem + 1}</td>
-                                                        <td className="py-2 px-4 border border-black">{spoc.ticket_date}</td>
+                                                        <td className="py-2 px-4 border border-black">{formatDate(spoc.ticket_date)}</td>
                                                         <td className="py-2 px-4 border border-black">
-                                                            <img src={spoc.photo} alt="Employee" className="w-12 h-12 object-cover rounded-full" />
+                                                            <img
+                                                           
+                                                                src={spoc.photo ? spoc.photo : `${Default}`}
+                                                                alt="Employee" className="w-12 h-12 object-cover rounded-full" />
                                                         </td>
                                                         <td className="py-2 px-4 border border-black">{spoc.employee_name}</td>
                                                         <td className="py-2 px-4 border border-black">{spoc.employee_id}</td>
-                                                        <td className="py-2 px-4 border border-black">{spoc.leave_date}</td>
+                                                        <td className="py-2 px-4 border border-black whitespace-nowrap">
+                                                        {`${formatDate(spoc.from_date)} To ${formatDate(spoc.to_date)}`}
+                                                        </td>
                                                         <td className="py-2 px-4 border border-black">{spoc.purpose_of_leave}</td>
-                                                        <td className="py-2 px-4 border border-black">{spoc.remarks}</td>
+                                                        <td className="py-2 px-4 border border-black ">{spoc.remarks}</td>
                                                         <td className="py-2 px-4 border border-black  whitespace-nowrap">
                                                             <div className='flex gap-2'>
 

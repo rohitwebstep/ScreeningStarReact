@@ -1,16 +1,20 @@
 import React, { useState, useEffect, useCallback } from "react";
 import "../App.css";
-import Logo from "../imgs/track-master.webp";
+import Logo from "../imgs/track-master.png";
 import adminBG from "../imgs/admin-bg3.jpeg";
 import { Modal, Button, Form } from 'react-bootstrap';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Link } from "react-router-dom";
 import Swal from 'sweetalert2';
+import { FaEye, FaEyeSlash } from "react-icons/fa"; // Importing eye icons
+
 import axios from "axios";
 
 const UserLogin = () => {
+  const [isValid, setIsValid] = useState(true);
   const [error, setError] = useState({});
   const [loading, setLoading] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [otpModalOpen, setOtpModalOpen] = useState(false);
   const [loginResult, setLoginResult] = useState(null);
   const admin_id = JSON.parse(localStorage.getItem("admin"))?.id;
@@ -20,56 +24,73 @@ const UserLogin = () => {
   const emailFromQuery = query.get('email') || '';
   const adminidFromQuery = query.get('adminid') || '';
   const tokenFromQuery = query.get('token') || '';
+  const logoFromQuery = query.get('logo') || '';
+  console.log('logoFromQuery', logoFromQuery)
   const usernameFromQuery = query.get('branchEmail') || '';
   const navigate = useNavigate();
+  const [passwordVisible, setPasswordVisible] = useState(false); // State for password visibility
 
   const [loginData, setLoginData] = useState({
     username: emailFromQuery,
     password: '',
   });
 
-  const fetchPassword = useCallback(async () => {
-    if (storedToken && loginData.username) {
-      const requestOptions = {
-        method: "GET",
-        redirect: "follow",
-      };
+useEffect(() => {
+  if (usernameFromQuery) {
+    setLoginData((prevState) => ({
+      ...prevState,
+      username: usernameFromQuery,
+    }));
+  }
+}, [usernameFromQuery]);
 
-      try {
-        const response = await fetch(`https://api.screeningstar.co.in/customer/fetch-branch-password?branch_email=${loginData.username}&admin_id=${admin_id}&_token=${storedToken}`, requestOptions);
-        const result = await response.json();
-        const newToken = result.token || result._token || '';
-        if (newToken) {
-          localStorage.setItem("branch_token", newToken);
+useEffect(() => {
+  // Run only once when the component mounts and username is already set
+  if (usernameFromQuery) {
+    const fetchOnLoad = async () => {
+      setIsLoading(true);
+      if (storedToken && usernameFromQuery && admin_id) {
+        const requestOptions = {
+          method: "GET",
+          redirect: "follow",
+        };
+        try {
+          const response = await fetch(
+            `https://api.screeningstar.co.in/customer/fetch-branch-password?branch_email=${usernameFromQuery}&admin_id=${admin_id}&_token=${storedToken}`,
+            requestOptions
+          );
+          const result = await response.json();
+          const newToken = result.token || result._token || '';
+          if (newToken) {
+            localStorage.setItem("branch_token", newToken);
+          }
+          if (result.status) {
+            setLoginData((prevState) => ({
+              ...prevState,
+              password: result.password || '',
+            }));
+          } else {
+            console.log('Something went wrong');
+          }
+        } catch (error) {
+          Swal.fire({
+            title: 'Error!',
+            text: 'Error:',
+            icon: 'error',
+            confirmButtonText: 'Ok',
+          });
+        } finally {
+          setIsLoading(false);
         }
-        if (result.status) {
-          setLoginData((prevState) => ({
-            ...prevState,
-            password: result.password || '',
-          }));
-        } else {
-        }
-      } catch (error) {
-        Swal.fire({
-          title: 'Error!',
-          text: `Error:`,
-          icon: 'error',
-          confirmButtonText: 'Ok',
-        });
+      } else {
+        console.log('Something is missing');
+        setIsLoading(false);
       }
-    } else {
-    }
-  }, [loginData.username, storedToken, admin_id]);
+    };
 
-  useEffect(() => {
-    if (usernameFromQuery) {
-      setLoginData((prevState) => ({
-        ...prevState,
-        username: usernameFromQuery,
-      }));
-      fetchPassword();
-    }
-  }, [usernameFromQuery, fetchPassword]);
+    fetchOnLoad();
+  }
+}, []); // 👈 Empty dependency: only run on first render
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -77,6 +98,7 @@ const UserLogin = () => {
       ...prevState,
       [name]: value,
     }));
+    
   };
 
   const handleUserSubmit = async (e) => {
@@ -121,17 +143,42 @@ const UserLogin = () => {
       const loginResult = await loginResponse.json();
 
       if (loginResult.status) {
+        localStorage.setItem('inHome', 'yes');
         if (loginResult.branchData) {
           localStorage.setItem('branch_token', loginResult.token);
           localStorage.setItem('branch', JSON.stringify(loginResult.branchData));
-
-          Swal.fire({
-            title: 'Success!',
-            text: 'Login successfull. Redirecting...',
-            icon: 'success',
-            timer: 2000,
-            timerProgressBar: true,
-          });
+          const branchimage = JSON.parse(localStorage.getItem("branch"))?.logo;
+          if (branchimage && /\.(jpeg|jpg|gif|png|webp|svg)$/i.test(branchimage)) {
+            Swal.fire({
+              title: '',
+              html: `
+                <div style="text-align: center;">
+                  <img src="${branchimage}" 
+                       alt="Admin Image" 
+                       style="width: 100px; height: 100px; border-radius: 50%; margin: 0 auto; margin-bottom: 15px;" />
+                  <div style="font-size: 20px; font-weight: bold; margin-bottom: 10px;">
+                    Login successful. Redirecting...
+                  </div>
+                </div>
+              `,
+              showConfirmButton: false,
+              timer: 4000,
+              timerProgressBar: true,
+              customClass: {
+                popup: 'swal-custom-popup',
+                htmlContainer: 'swal-custom-html',
+              }
+            });
+          } else {
+            Swal.fire({
+              title: 'Success!',
+              text: 'Login successful. Redirecting...',
+              icon: 'success',
+              timer: 2000,
+              timerProgressBar: true,
+            });
+          }
+          
 
           localStorage.removeItem('sectiontabJson');
           localStorage.removeItem('subMenu');
@@ -192,6 +239,7 @@ const UserLogin = () => {
         localStorage.setItem('branch', JSON.stringify(result.branchData));
         console.log('Data stored in localStorage:', localStorage.getItem('branch')); // Debugging log
         setOtpModalOpen(false);
+        localStorage.setItem('inHome', 'yes');
         Swal.fire({
           title: 'Success!',
           text: 'OTP verified successfully. Redirecting...',
@@ -259,9 +307,19 @@ const UserLogin = () => {
           >
             <img
               src={Logo}
-              className="mb-6 w-[300px] sm:w-[300px] mx-auto"
+              className=" w-[350px] sm:w-[350px] mx-auto"
               alt="Logo"
             />
+            {logoFromQuery && typeof logoFromQuery === "string" && logoFromQuery.trim() !== "" && (
+              <img
+                src={logoFromQuery}
+                className="mb-6 w-[50px] md:w-[100px] mx-auto"
+                alt="Logo"
+                onError={(e) => e.target.style.display = "none"} // Hide image if it fails to load
+              />
+            )}
+
+
             <input
               type="email"
               id="username"
@@ -272,21 +330,31 @@ const UserLogin = () => {
               onChange={handleChange}
               className="p-3 mb-4 w-full rounded bg-gray-100 border-l-4 border-[#073d88] focus:outline-none focus:ring-2 focus:ring-[#073d88] placeholder-gray-500 text-sm"
             />
+              <div className="mr-2 md:flex-1 mb-3 w-full relative">
             <input
-              type="password"
-              id="password"
               name="password"
               placeholder="Password"
               required
               value={loginData.password}
               onChange={handleChange}
-              className="p-3 mb-4 w-full rounded bg-gray-100 border-l-4 border-[#073d88] focus:outline-none focus:ring-2 focus:ring-[#073d88] placeholder-gray-500 text-sm"
-            />
+                className="p-3 mb-4 w-full rounded bg-gray-100 border-l-4 border-[#073d88] focus:outline-none focus:ring-2 focus:ring-[#073d88] placeholder-gray-500 text-sm"
+
+                    id="password"
+                    type={passwordVisible ? "text" : "password"}
+                                />
+              <span
+                                className="absolute right-3 top-3 cursor-pointer"
+                                onClick={() => setPasswordVisible(!passwordVisible)} // Toggle password visibility
+                              >
+                                {passwordVisible ? <FaEyeSlash className="text-gray-400 mt-1 mr-1" /> : <FaEye FaEyeSlash className="text-gray-400 mt-1 mr-1" />} {/* Show/hide icon */}
+                              </span>
+
             {error && Object.keys(error).length > 0 ? (
               <p className="text-red-500 text-center text-sm">{JSON.stringify(error)}</p>
             ) : (
               error && <p className="text-red-500 text-center text-sm"></p>
             )}
+            </div>
             <div className="flex justify-between items-center mb-4 text-sm">
               <label className="flex items-center text-gray-500">
                 <input type="checkbox" className="mr-2" />
@@ -298,10 +366,10 @@ const UserLogin = () => {
             </div>
             <button
               type="submit"
-              disabled={loading}
-              className={`text-lg w-full py-2 bg-[#073d88] text-white rounded hover:bg-[#0553a1] transition duration-200 ${loading ? 'bg-gray-400 opacity-50 cursor-not-allowed' : 'bg-[#2c81ba]'} border-gray-300`}
+              disabled={loading || isLoading}
+              className={`text-lg w-full py-2 bg-[#073d88] text-white rounded hover:bg-[#0553a1] transition duration-200 ${loading || isLoading ? 'bg-gray-400 opacity-50 cursor-not-allowed' : 'bg-[#2c81ba]'} border-gray-300`}
             >
-              {loading ? "Please wait..." : "Login"}
+              {loading || isLoading ? "Please wait..." : "Login"}
             </button>
           </form>
           <OtpModal

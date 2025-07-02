@@ -3,9 +3,11 @@ import Swal from 'sweetalert2';
 
 const UserForgotPassword = () => {
     const [email, setEmail] = useState('');
+    const [loading, setLoading] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setLoading(true);
 
         // Validate the email input
         if (!email) {
@@ -14,6 +16,7 @@ const UserForgotPassword = () => {
                 title: 'Warning',
                 text: 'Please enter your email.',
             });
+            setLoading(false);
             return;
         }
 
@@ -34,18 +37,17 @@ const UserForgotPassword = () => {
             const result = await response.json();
 
             if (response.ok) {
-                // Success Alert with API message
                 Swal.fire({
                     icon: 'success',
                     title: 'Success',
                     text: result.message || 'Reset instructions have been sent to your email.',
                 });
+
                 const newToken = result.token || result._token || '';
-            if (newToken) {
-              localStorage.setItem("branch_token", newToken);
-            }
+                if (newToken) {
+                    localStorage.setItem("branch_token", newToken);
+                }
             } else {
-                // Error Alert with API message
                 Swal.fire({
                     icon: 'error',
                     title: 'Error',
@@ -54,22 +56,23 @@ const UserForgotPassword = () => {
             }
         } catch (error) {
             console.error(error);
-            
-            // Network Error Alert
             Swal.fire({
                 icon: 'error',
                 title: 'Error',
                 text: 'A network error occurred. Please try again later.',
             });
+        } finally {
+            setLoading(false); // Ensure loading state resets
         }
     };
+
 
     return (
         <div className="overflow-x-auto py-6 px-0 bg-white mt-10 m-auto">
             <div className="bg-white p-6 border w-1/2 mx-auto">
                 <h2 className="text-4xl font-bold text-left text-[#4d606b] px-3">Forgot Password</h2>
                 <h4 className="text-base py-3 text-left text-[#4d606b] px-3">We'll send you reset instructions.</h4>
-                
+
                 <form onSubmit={handleSubmit}>
                     <div>
                         <label className="py-1">Email:</label>
@@ -85,15 +88,18 @@ const UserForgotPassword = () => {
                     <div>
                         <button
                             type="submit"
-                            className="w-full my-3 rounded-md text-white p-2.5 border bg-[#2c81ba] border-gray-300"
+                            disabled={loading}
+                            className={`w-full my-3 rounded-md text-white p-2.5 border border-gray-300 
+                ${loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#2c81ba]'}`}
                         >
-                            Reset Password
+                            {loading ? 'Loading...' : 'Reset Password'}
                         </button>
+
                     </div>
                 </form>
-                
+
                 <h3 className="text-lg text-center font-semibold">
-                    <a href="/" className="text-[#61c0ff] hover:text-blue-800 no-underline">Back to Login</a>
+                    <a href="/userLogin" className="text-[#61c0ff] hover:text-blue-800 no-underline">Back to Login</a>
                 </h3>
             </div>
         </div>

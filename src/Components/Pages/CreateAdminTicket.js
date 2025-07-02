@@ -6,15 +6,16 @@ import { useApiLoading } from '../ApiLoadingContext';
 const CreateAdminTicket = () => {
   const [adminData, setAdminData] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
-     const {validateAdminLogin,setApiLoading,apiLoading} = useApiLoading();
+  const { validateAdminLogin, setApiLoading, apiLoading } = useApiLoading();
+  const [responseError, setResponseError] = useState(null);
 
 
   const [loading, setLoading] = useState(true);
   const [tickets, setTickets] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 6;
-  const [totalResults, setTotalResults] = useState(0);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const optionsPerPage = [10, 50, 100, 200]; const [totalResults, setTotalResults] = useState(0);
   const navigate = useNavigate();
   useEffect(() => {
     const adminInfo = JSON.parse(localStorage.getItem('admin'));
@@ -47,7 +48,7 @@ const CreateAdminTicket = () => {
       }
       if (result.status) {
         // Flatten the tickets from the branches structure
-         const allTickets = result.branches.flatMap(branch =>
+        const allTickets = result.branches.flatMap(branch =>
           branch.branches.flatMap(b =>
             b.tickets.map(ticket => ({
               customer_name: branch.customer_name,
@@ -64,14 +65,16 @@ const CreateAdminTicket = () => {
         setTickets(allTickets);
         setTotalResults(allTickets.length);
       } else {
+        setResponseError(result.message);
         Swal.fire('Error', result.message || 'Failed to fetch tickets.', 'error');
       }
     } catch (error) {
+
       console.error('Error fetching data:', error);
       Swal.fire('Error', 'Failed to fetch data.', 'error');
     } finally {
-    setApiLoading(false);
-     
+      setApiLoading(false);
+
       setLoading(false);
     }
   };
@@ -80,8 +83,8 @@ const CreateAdminTicket = () => {
     const initialize = async () => {
       try {
         if (apiLoading == false) {
-        await validateAdminLogin();
-        await fetchData();
+          await validateAdminLogin();
+          await fetchData();
         }
       } catch (error) {
         console.error(error.message);
@@ -101,15 +104,15 @@ const CreateAdminTicket = () => {
   };
 
 
-  const filteredTickets = tickets.filter((ticket) =>
-    ticket.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    ticket.client_unique_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    ticket.ticket_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    ticket.status.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    ticket.remarks.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    ticket.title.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-  
+ const filteredTickets = tickets.filter((ticket) =>
+  (ticket.customer_name?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+  (ticket.client_unique_id?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+  (ticket.ticket_number?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+  (ticket.status?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+  (ticket.remarks?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+  (ticket.title?.toLowerCase() || "").includes(searchTerm.toLowerCase())
+);
+
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = filteredTickets.slice(indexOfFirstItem, indexOfLastItem);
@@ -159,19 +162,35 @@ const CreateAdminTicket = () => {
   };
 
   return (
-    <div className="bg-white border-black border p-12 w-full mx-auto">
+    <div className="bg-white border-black border md:p-12 p-6 w-full mx-auto">
       <div className="flex flex-wrap">
 
 
         <div className="w-full">
-          <div className="flex justify-between mb-4">
-            <input
-              type="text"
-              placeholder="Search..."
-              value={searchTerm}
-              onChange={handleSearch}
-              className="w-[450px] rounded-md p-2.5 border border-gray-300"
-            />
+          <div className="block justify-between mb-4">
+            <div>
+              <input
+                type="text"
+                placeholder="Search..."
+                value={searchTerm}
+                onChange={handleSearch}
+                className="w-[450px] rounded-md p-2.5 border border-gray-300"
+              />
+            </div>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => {
+                setItemsPerPage(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="border rounded-lg px-3 py-1 text-gray-700 bg-white my-2 shadow-sm focus:ring-2 focus:ring-blue-400"
+            >
+              {optionsPerPage.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="overflow-auto">
@@ -193,7 +212,7 @@ const CreateAdminTicket = () => {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="5" className="text-center py-4">
+                    <td colSpan="10" className="text-center py-4">
                       <div className="flex w-full justify-center items-center h-20">
                         <div className="loader border-t-4 border-[#2c81ba] rounded-full w-10 h-10 animate-spin"></div>
                       </div>
@@ -201,8 +220,8 @@ const CreateAdminTicket = () => {
                   </tr>
                 ) : currentItems.length === 0 ? (
                   <tr>
-                    <td colSpan="5" className="py-4 text-center text-gray-500">
-                      You have no data
+                    <td colSpan="10" className="text-center text-red-500 p-4">
+                      {responseError && responseError !== "" ? responseError : "No data available in table"}
                     </td>
                   </tr>
                 ) : (
@@ -226,7 +245,7 @@ const CreateAdminTicket = () => {
                       <td className="border border-black px-4 py-2">{ticket.title}</td>
                       <td className="border border-black px-4 py-2">{ticket.remarks}</td>
                       <td className="border border-black px-4 py-2">{ticket.status}</td>
-                     
+
                       <td className="border border-black px-4 py-2">
                         <button
                           onClick={() => handleview(ticket.ticket_number)}

@@ -6,7 +6,9 @@ import { FcSalesPerformance, FcCalendar, FcCustomerSupport, FcManager, FcBarChar
 import {
   FaUser,
   FaFileInvoice,
+
   FaUserCog,
+  FaTrash,
   FaClipboardList,
   FaUserShield,
   FaEdit,
@@ -19,18 +21,19 @@ import {
   FaIdBadge,
   FaKey,
   FaRegFileAlt,
+  FaSignInAlt,
   FaTasks,
   FaClock, FaHistory, FaCheckCircle, FaTicketAlt
 } from "react-icons/fa";
 import { useApiLoading } from './ApiLoadingContext';
-
+import { MdStorage } from "react-icons/md";
 import { GrServices } from "react-icons/gr";
 import { useParams } from 'react-router-dom';
 const AdminBar = () => {
   const { validateAdminLogin, setApiLoading, apiLoading } = useApiLoading();
 
   const { isMenuOpen, setIsMenuOpen } = useContext(MobileContext);
-  const fullUrl = window.location.href;  // Example: "http://localhost:3001/demo/screening/admin-client-spoc"
+  const fullUrl = window.location.href;
   const urlParts = fullUrl.split('/');    // Split URL by "/"
   const desiredPart = urlParts[urlParts.length - 1];  // Get the last part (after "screening")
   console.log('queryParams', desiredPart);
@@ -60,7 +63,7 @@ const AdminBar = () => {
 
     if (linkName === 'Client Overview') {
       localStorage.setItem('subMenu', 'clientOnboarding');
-    } else if (linkName === 'Client Credentials') {
+    } else if (linkName === 'Go To Login') {
       localStorage.setItem('subMenu', 'enterSaleData');
     } else if (linkName === 'Admin Manager') {
       localStorage.setItem('subMenu', 'adminManager');
@@ -100,7 +103,7 @@ const AdminBar = () => {
       localStorage.setItem('subMenu', 'ServiceReportForms');
     } else if (linkName === 'Case Allocation') {
       localStorage.setItem('subMenu', 'CaseAllocation');
-    } else if (linkName === 'Human Resource Menu') {
+    } else if (linkName === 'Human Resource') {
       localStorage.setItem('subMenu', 'HumanResourceMenu');
     } else if (linkName === 'See More') {
       localStorage.setItem('subMenu', 'createUser');
@@ -114,6 +117,10 @@ const AdminBar = () => {
       localStorage.setItem('subMenu', 'Documents');
     } else if (linkName === 'See More') {
       localStorage.setItem('subMenu', 'createUser');
+    }else if (linkName === 'Trash Applications') {
+      localStorage.setItem('subMenu', 'trashapplications');
+    }else if (linkName === 'Universities') {
+      localStorage.setItem('subMenu', 'universities');
     }
 
     else {
@@ -130,7 +137,7 @@ const AdminBar = () => {
     handleSectionClick(linkName);
   };
   console.log('localStorage', localStorage);
-
+// localStorage.clear()
   const handleOpenClick = () => {
     handleClick('See More');
     if (isTabOpen) {
@@ -139,7 +146,6 @@ const AdminBar = () => {
       setIsTabOpen(true);
     }
   }
-
   useEffect(() => {
     // Get the role from localStorage and set it into the state
     const storedRole = JSON.parse(localStorage.getItem('admin'))?.role;
@@ -149,9 +155,9 @@ const AdminBar = () => {
   const [shouldRender, setShouldRender] = useState(isTabOpen);
   const [visibleItems, setVisibleItems] = useState([]); // Track visible items for stagger effect
   const tabs = [
-    { name: "Employee Credentials", icon: <FaUserShield className="text-4xl m-auto" />, link: "/admin-createUser" },
-    { name: "Billing Dashboard", icon: <FaFileInvoice className="text-4xl m-auto" />, link: "/admin-generate-invoice" },
-    { name: "User History", icon: <FaHistory className="text-4xl m-auto" />, link: "/admin-user-history" }
+    { name: "Employee Credentials", icon: <FaUserShield className="text-3xl m-auto" />, link: "/admin-createUser" },
+    { name: "Billing Dashboard", icon: <FaFileInvoice className="text-3xl m-auto" />, link: "/admin-generate-invoice" },
+    { name: "User History", icon: <FaHistory className="text-3xl m-auto" />, link: "/admin-user-history" }
   ];
 
   useEffect(() => {
@@ -179,7 +185,6 @@ const AdminBar = () => {
       setTimeout(() => setShouldRender(false), tabs.length * 100 + 500);
     }
   }, [isTabOpen]);
-
   return (
     <nav className="bg-gradient-to-r bg-white md:h-full ">
       <div className="container flex flex-col mx-auto md:py-4 py-0">
@@ -210,26 +215,26 @@ const AdminBar = () => {
           </li>
 
 
-          <li className={`flex justify-center mx-[30px] border border-[#7d7d7d] min-h-[130px] transition duration-300 transform ease-in-out ${activeTab === 'Client Credentials' || localStorage.getItem('SideBarName') === 'Client Credentials'
+          {/* <li className={`flex justify-center mx-[30px] border border-[#7d7d7d] min-h-[130px] transition duration-300 transform ease-in-out ${activeTab === 'Go To Login' || localStorage.getItem('SideBarName') === 'Go To Login'
             ? 'bg-[#c1dff2] text-gray-800 activeSubmenu scale-105'
             : 'bg-gradient-to-b from-gray-100 to-gray-300 text-[#4d606b] hover:bg-gradient-to-b hover:from-[#cde4f3] hover:to-[#cde4f3] hover:bg-[#cde4f3] hover:text-gray-800 hover:font-semibold hover:scale-105'} rounded-md shadow-md hover:shadow-lg`}>
             <Link
               to="/admin-client-credentials"
-              className={`flex flex-wrap justify-center items-center p-2 ${activeTab === 'Client Credentials' || localStorage.getItem('SideBarName') === 'Client Credentials' ? 'font-semibold' : ''} ${apiLoading ? 'cursor-not-allowed opacity-50' : ''}`}
+              className={`flex flex-wrap justify-center items-center p-2 ${activeTab === 'Go To Login' || localStorage.getItem('SideBarName') === 'Go To Login' ? 'font-semibold' : ''} ${apiLoading ? 'cursor-not-allowed opacity-50' : ''}`}
               onClick={(e) => {
                 if (apiLoading) {
                   e.preventDefault(); // Prevent navigation if apiLoading is true
                 } else {
-                  handleClick('Client Credentials');
+                  handleClick('Go To Login');
                 }
               }}
             >
               <div className="p-2 m-auto text-center">
-                <FaClipboardList className="text-4xl m-auto" />
-                CLIENT CREDENTIALS
+                <FaSignInAlt  className="text-4xl m-auto" />
+                GO TO LOGIN
               </div>
             </Link>
-          </li>
+          </li> */}
 
           <li className={`flex justify-center mx-[30px] border border-[#7d7d7d] min-h-[130px] transition duration-300 transform ease-in-out ${activeTab === 'Admin Manager' || localStorage.getItem('SideBarName') === 'Admin Manager'
             ? 'bg-[#c1dff2] text-gray-800 activeSubmenu scale-105'
@@ -412,7 +417,7 @@ const AdminBar = () => {
                 }
               }}
             >
-              <div className="p-2 m-auto text-center">
+              <div className="p-2 m-auto whitespace-nowrap text-center">
                 <FaTasks className="text-4xl m-auto" />
                 CASE ALLOCATION
               </div>
@@ -423,24 +428,24 @@ const AdminBar = () => {
 
           {(!roleByLocal || roleByLocal !== 'sub_user' && roleByLocal !== 'user') && (
             <li
-              className={`flex justify-center mx-[30px] border border-[#7d7d7d] min-h-[130px] transition duration-300 transform ease-in-out ${activeTab === 'Human Resource Menu' || localStorage.getItem('SideBarName') === 'Human Resource Menu'
+              className={`flex justify-center mx-[30px] border border-[#7d7d7d] min-h-[130px] transition duration-300 transform ease-in-out ${activeTab === 'Human Resource' || localStorage.getItem('SideBarName') === 'Human Resource'
                 ? 'bg-[#c1dff2] text-gray-800 activeSubmenu scale-105' // Light blue background and slight zoom effect when selected
                 : 'bg-gradient-to-b from-gray-100 to-gray-300 text-[#4d606b] hover:bg-gradient-to-b hover:from-[#cde4f3] hover:to-[#cde4f3] hover:bg-[#cde4f3] hover:text-gray-800 hover:font-semibold hover:scale-105' // Light blue on hover with zoom effect
                 } rounded-md shadow-md hover:shadow-lg`}>
               <Link
                 to="/admin-HumanResourceMenu"
-                className={`flex flex-wrap justify-center items-center p-2 ${activeTab === 'Human Resource Menu' || localStorage.getItem('SideBarName') === 'Human Resource Menu' ? 'font-semibold' : ''} ${apiLoading ? 'cursor-not-allowed opacity-50' : ''}`}
+                className={`flex flex-wrap justify-center items-center p-2 ${activeTab === 'Human Resource' || localStorage.getItem('SideBarName') === 'Human Resource' ? 'font-semibold' : ''} ${apiLoading ? 'cursor-not-allowed opacity-50' : ''}`}
                 onClick={(e) => {
                   if (apiLoading) {
                     e.preventDefault(); // Prevent navigation if apiLoading is true
                   } else {
-                    handleClick('Human Resource Menu');
+                    handleClick('Human Resource');
                   }
                 }}
               >
-                <div className="p-2 m-auto text-center">
+                <div className="p-2 m-auto whitespace-nowrap text-center">
                   <FaIdBadge className="text-4xl m-auto" />
-                  HUMAN RESOURCE MENU
+                  HUMAN RESOURCE
                 </div>
               </Link>
             </li>
@@ -505,8 +510,53 @@ const AdminBar = () => {
             </div>
           )}
 
-
+       
           <li
+            className={`flex justify-center mx-[30px] border border-[#7d7d7d] min-h-[130px] transition duration-300 transform ease-in-out ${activeTab === 'Trash Applications' || localStorage.getItem('SideBarName') === 'Trash Applications'
+              ? 'bg-[#c1dff2] text-gray-800 activeSubmenu scale-105' // Light blue background and slight zoom effect when selected
+              : 'bg-gradient-to-b from-gray-100 to-gray-300 text-[#4d606b] hover:bg-gradient-to-b hover:from-[#cde4f3] hover:to-[#cde4f3] hover:bg-[#cde4f3] hover:text-gray-800 hover:font-semibold hover:scale-105' // Light blue on hover with zoom effect
+              } rounded-md shadow-md hover:shadow-lg`}>
+            <Link
+              to="/admin-TrashApplications"
+              className={`flex flex-wrap justify-center items-center p-2 ${activeTab === 'Trash Applications' || localStorage.getItem('SideBarName') === 'Trash Applications' ? 'font-semibold' : ''} ${apiLoading ? 'cursor-not-allowed opacity-50' : ''}`}
+              onClick={(e) => {
+                if (apiLoading) {
+                  e.preventDefault(); // Prevent navigation if apiLoading is true
+                } else {
+                  handleClick('Trash Applications');
+                }
+              }}
+            >
+              <div className="p-2 m-auto text-center">
+                <FaTrash className="text-4xl m-auto" />
+                TRASH
+              </div>
+            </Link>
+          </li>
+          <li
+            className={`flex justify-center mx-[30px] border border-[#7d7d7d] min-h-[130px] transition duration-300 transform ease-in-out ${activeTab === 'Universities' || localStorage.getItem('SideBarName') === 'Universities'
+              ? 'bg-[#c1dff2] text-gray-800 activeSubmenu scale-105' // Light blue background and slight zoom effect when selected
+              : 'bg-gradient-to-b from-gray-100 to-gray-300 text-[#4d606b] hover:bg-gradient-to-b hover:from-[#cde4f3] hover:to-[#cde4f3] hover:bg-[#cde4f3] hover:text-gray-800 hover:font-semibold hover:scale-105' // Light blue on hover with zoom effect
+              } rounded-md shadow-md hover:shadow-lg`}>
+            <Link
+              to="/admin-Universities"
+              className={`flex flex-wrap justify-center items-center p-2 ${activeTab === 'Universities' || localStorage.getItem('SideBarName') === 'Universities' ? 'font-semibold' : ''} ${apiLoading ? 'cursor-not-allowed opacity-50' : ''}`}
+              onClick={(e) => {
+                if (apiLoading) {
+                  e.preventDefault(); // Prevent navigation if apiLoading is true
+                } else {
+                  handleClick('Universities');
+                }
+              }}
+            >
+              <div className="p-2 m-auto text-center">
+                <MdStorage className="text-4xl m-auto" />
+                INTERNAL STORAGE
+              </div>
+            </Link>
+          </li>
+          
+          {/* <li
             className={`flex justify-center mx-[30px] border border-[#7d7d7d] min-h-[130px] transition duration-300 transform ease-in-out ${activeTab === 'Service Report Forms' || localStorage.getItem('SideBarName') === 'Service Report Forms'
               ? 'bg-[#c1dff2] text-gray-800 activeSubmenu scale-105' // Light blue background and slight zoom effect when selected
               : 'bg-gradient-to-b from-gray-100 to-gray-300 text-[#4d606b] hover:bg-gradient-to-b hover:from-[#cde4f3] hover:to-[#cde4f3] hover:bg-[#cde4f3] hover:text-gray-800 hover:font-semibold hover:scale-105' // Light blue on hover with zoom effect
@@ -527,7 +577,7 @@ const AdminBar = () => {
                 DEVELOPERS
               </div>
             </Link>
-          </li>
+          </li> */}
 
 
         </ul>
@@ -536,7 +586,7 @@ const AdminBar = () => {
         >
 
           <li
-            className={`flex items-center border border-gray-300 p-3 rounded-md transition duration-300 transform  ${activeTab === 'Client Overview' || localStorage.getItem('SideBarName') === 'Client Overview'
+            className={`${apiLoading ? 'pointer-events-none opacity-50' : ''} flex items-center border border-gray-300 p-3 rounded-md transition duration-300 transform  ${activeTab === 'Client Overview' || localStorage.getItem('SideBarName') === 'Client Overview'
               ? 'bg-gray-200 text-gray-800 font-semibold scale-105' // Light blue background and slight zoom effect when selected
               : 'bg-white text-gray-600 hover:bg-gray-100 hover:scale-105' // Light blue on hover with zoom effect
               } rounded-md shadow-md hover:shadow-lg`}
@@ -553,35 +603,35 @@ const AdminBar = () => {
             </Link>
           </li>
           <li
-            className={`flex items-center border border-gray-300 p-3 rounded-md transition duration-300 transform ${activeTab === 'Client Credentials' || localStorage.getItem('SideBarName') === 'Client Credentials'
+            className={`${apiLoading ? 'pointer-events-none opacity-50' : ''} flex items-center border border-gray-300 p-3 rounded-md transition duration-300 transform ${activeTab === 'Go To Login' || localStorage.getItem('SideBarName') === 'Go To Login'
               ? 'bg-gray-200 text-gray-800 font-semibold scale-105'
               : 'bg-white text-gray-600 hover:bg-gray-100 hover:scale-105'
               } shadow-md hover:shadow-lg`}
           >
             <Link
               to="/admin-client-credentials"
-              className={`flex items-center space-x-2 w-full ${activeTab === 'Client Credentials' || localStorage.getItem('SideBarName') === 'Client Credentials'
+              className={`flex items-center space-x-2 w-full ${activeTab === 'Go To Login' || localStorage.getItem('SideBarName') === 'Go To Login'
                 ? 'font-semibold'
                 : ''
                 }`}
-              onClick={() => handleClick('Client Credentials')}
+              onClick={() => handleClick('Go To Login')}
             >
               <div className="flex gap-3">
                 <FaClipboardList className="text-2xl" />
-                <span>{'CLIENT CREDENTIALS'}</span>
+                <span>{'GO TO LOGIN'}</span>
               </div>
             </Link>
           </li>
 
           <li
-            className={`flex items-center border border-gray-300  p-3 rounded-md transition duration-300 transform ${activeTab === 'Admin Manager' || localStorage.getItem('SideBarName') === 'Admin Manager'
+            className={`${apiLoading ? 'pointer-events-none opacity-50' : ''} flex items-center border border-gray-300  p-3 rounded-md transition duration-300 transform ${activeTab === 'Admin Manager' || localStorage.getItem('SideBarName') === 'Admin Manager'
               ? 'bg-gray-200 text-gray-800 font-semibold scale-105'
               : 'bg-white text-gray-600 hover:bg-gray-100 hover:scale-105'
               } shadow-md hover:shadow-lg`}
           >
             <Link
               to="/admin-admin-manager"
-              className={`flex items-center space-x-2 w-full ${activeTab === 'Admin Manager' || localStorage.getItem('SideBarName') === 'Admin Manager'
+              className={` flex items-center space-x-2 w-full ${activeTab === 'Admin Manager' || localStorage.getItem('SideBarName') === 'Admin Manager'
                 ? 'font-semibold'
                 : ''
                 }`}
@@ -595,56 +645,61 @@ const AdminBar = () => {
           </li>
 
           {adminManagerOpen && (
-            <div className="transition duration-300  ease-in-out transform origin-top">
-              {['Data Management', 'Team Management', 'APPLICATION DOCUMENT'].map((tab, index) => (
-                <li
-                  key={tab}
-                  className={`flex items-center border border-gray-300 p-2 rounded-md w-11/12 m-auto  transition duration-300 transform ${activeTab === tab || localStorage.getItem('SideBarName') === tab
-                    ? 'bg-gray-200 text-gray-800 font-semibold scale-105'
-                    : 'bg-white text-gray-600 hover:bg-gray-100 hover:scale-105'
-                    } shadow-md hover:shadow-lg`}
-                  style={{ animationDelay: `${index * 0.2}s` }}
-                >
-                  <Link
-                    to={
-                      tab === 'Data Management'
-                        ? '/admin-data-management'
-                        : tab === 'Team Management'
-                          ? '/admin-team-management'
-                          : '/admin-documents'
-                    }
-                    className={`flex items-center space-x-2 w-full ${activeTab === tab || localStorage.getItem('SideBarName') === tab
-                      ? 'font-semibold'
-                      : ''
-                      }`}
-                    onClick={() => handleClick(tab)}
+            <div className="transition duration-300 ease-in-out transform origin-top">
+              {['Data Management', 'Team Management', 'APPLICATION DOCUMENT', 'Candidate Manager'].map((tab, index) => {
+                const tabRoutes = {
+                  'Data Management': '/admin-data-management',
+                  'Team Management': '/admin-team-management',
+                  'APPLICATION DOCUMENT': '/admin-documents',
+                  'Candidate Manager': '/admin-candidate-manager',
+                };
+
+                return (
+                  <li
+                    key={tab}
+                    className={`${apiLoading ? 'pointer-events-none opacity-50' : ''} flex items-center border border-gray-300 p-2 rounded-md w-11/12 m-auto transition duration-300 transform ${activeTab === tab || localStorage.getItem('SideBarName') === tab
+                      ? 'bg-gray-200 text-gray-800 font-semibold scale-105'
+                      : 'bg-white text-gray-600 hover:bg-gray-100 hover:scale-105'
+                      } shadow-md hover:shadow-lg`}
+                    style={{ animationDelay: `${index * 0.2}s` }}
                   >
-                    <div className="flex gap-3">
-                      {tab === 'Data Management' && <FaDatabase className="text-lg" />}
-                      {tab === 'Team Management' && <FaUsersCog className="text-lg" />}
-                      {tab === 'APPLICATION DOCUMENT' && <FaFileAlt className="text-lg" />}
-                      <span className="text-xs ">{tab.toUpperCase()}</span>
-                    </div>
-                  </Link>
-                </li>
-              ))}
+                    <Link
+                      to={tabRoutes[tab] || '/default-route'}
+                      className={` flex items-center space-x-2 w-full ${activeTab === tab || localStorage.getItem('SideBarName') === tab
+                        ? 'font-semibold'
+                        : ''
+                        }`}
+                      onClick={() => handleClick(tab)}
+                    >
+                      <div className="flex gap-3">
+                        {tab === 'Data Management' && <FaDatabase className="text-lg" />}
+                        {tab === 'Team Management' && <FaUsersCog className="text-lg" />}
+                        {tab === 'APPLICATION DOCUMENT' && <FaFileAlt className="text-lg" />}
+                        {tab === 'Candidate Manager' && <FaEdit className="text-lg" />}
+                        <span className="text-xs">{tab.toUpperCase()}</span>
+                      </div>
+                    </Link>
+                  </li>
+                );
+              })}
             </div>
           )}
-          <li
-            className={`flex items-center border border-gray-300 p-3 rounded-md transition duration-300 transform ${activeTab === 'Candidate Manager' || localStorage.getItem('SideBarName') === 'Candidate Manager' ? 'bg-gray-200 text-gray-800 font-semibold scale-105' : 'bg-white text-gray-600 hover:bg-gray-100 hover:scale-105'} shadow-md hover:shadow-lg`}
+
+          {/* <li
+            className={`${apiLoading  ? 'pointer-events-none opacity-50' : ''} flex items-center border border-gray-300 p-3 rounded-md transition duration-300 transform ${activeTab === 'Candidate Manager' || localStorage.getItem('SideBarName') === 'Candidate Manager' ? 'bg-gray-200 text-gray-800 font-semibold scale-105' : 'bg-white text-gray-600 hover:bg-gray-100 hover:scale-105'} shadow-md hover:shadow-lg`}
           >
             <Link
               to="/admin-candidate-manager"
-              className={`flex items-center space-x-2 w-full ${activeTab === 'Candidate Manager' || localStorage.getItem('SideBarName') === 'Candidate Manager' ? 'font-semibold' : ''}`}
+              className={`${apiLoading  ? 'pointer-events-none opacity-50' : ''} flex items-center space-x-2 w-full ${activeTab === 'Candidate Manager' || localStorage.getItem('SideBarName') === 'Candidate Manager' ? 'font-semibold' : ''}`}
               onClick={() => handleClick('Candidate Manager')}
             >
               <FaEdit className="text-2xl" />
               <h5 className="text-sm">CANDIDATE MANAGER</h5>
             </Link>
-          </li>
+          </li> */}
 
           <li
-            className={`flex items-center border border-gray-300 p-3 rounded-md transition duration-300 transform ${activeTab === 'Acknowledgement' || localStorage.getItem('SideBarName') === 'Acknowledgement' ? 'bg-gray-200 text-gray-800 font-semibold scale-105' : 'bg-white text-gray-600 hover:bg-gray-100 hover:scale-105'} shadow-md hover:shadow-lg`}
+            className={`${apiLoading ? 'pointer-events-none opacity-50' : ''} flex items-center border border-gray-300 p-3 rounded-md transition duration-300 transform ${activeTab === 'Acknowledgement' || localStorage.getItem('SideBarName') === 'Acknowledgement' ? 'bg-gray-200 text-gray-800 font-semibold scale-105' : 'bg-white text-gray-600 hover:bg-gray-100 hover:scale-105'} shadow-md hover:shadow-lg`}
           >
             <Link
               to="/admin-acknowledgement"
@@ -657,11 +712,11 @@ const AdminBar = () => {
           </li>
 
           <li
-            className={`flex items-center border border-gray-300 p-3 rounded-md transition duration-300 transform ${activeTab === 'TICKETS' || localStorage.getItem('SideBarName') === 'TICKETS' ? 'bg-gray-200 text-gray-800 font-semibold scale-105' : 'bg-white text-gray-600 hover:bg-gray-100 hover:scale-105'} shadow-md hover:shadow-lg`}
+            className={`${apiLoading ? 'pointer-events-none opacity-50' : ''} flex items-center border border-gray-300 p-3 rounded-md transition duration-300 transform ${activeTab === 'TICKETS' || localStorage.getItem('SideBarName') === 'TICKETS' ? 'bg-gray-200 text-gray-800 font-semibold scale-105' : 'bg-white text-gray-600 hover:bg-gray-100 hover:scale-105'} shadow-md hover:shadow-lg`}
           >
             <Link
               to="/admin-createTicket"
-              className={`flex items-center space-x-2 w-full ${activeTab === 'TICKETS' || localStorage.getItem('SideBarName') === 'TICKETS' ? 'font-semibold' : ''}`}
+              className={` flex items-center space-x-2 w-full ${activeTab === 'TICKETS' || localStorage.getItem('SideBarName') === 'TICKETS' ? 'font-semibold' : ''}`}
               onClick={() => handleClick('TICKETS')}
             >
               <FaTicketAlt className="text-2xl" />
@@ -670,11 +725,11 @@ const AdminBar = () => {
           </li>
 
           <li
-            className={`flex items-center border border-gray-300 p-3 rounded-md transition duration-300 transform ${activeTab === 'TAT Reminder' || localStorage.getItem('SideBarName') === 'TAT Reminder' ? 'bg-gray-200 text-gray-800 font-semibold scale-105' : 'bg-white text-gray-600 hover:bg-gray-100 hover:scale-105'} shadow-md hover:shadow-lg`}
+            className={`${apiLoading ? 'pointer-events-none opacity-50' : ''} flex items-center border border-gray-300 p-3 rounded-md transition duration-300 transform ${activeTab === 'TAT Reminder' || localStorage.getItem('SideBarName') === 'TAT Reminder' ? 'bg-gray-200 text-gray-800 font-semibold scale-105' : 'bg-white text-gray-600 hover:bg-gray-100 hover:scale-105'} shadow-md hover:shadow-lg`}
           >
             <Link
               to="/admin-tat-reminder"
-              className={`flex items-center space-x-2 w-full ${activeTab === 'TAT Reminder' || localStorage.getItem('SideBarName') === 'TAT Reminder' ? 'font-semibold' : ''}`}
+              className={` flex items-center space-x-2 w-full ${activeTab === 'TAT Reminder' || localStorage.getItem('SideBarName') === 'TAT Reminder' ? 'font-semibold' : ''}`}
               onClick={() => handleClick('TAT Reminder')}
             >
               <FaClock className="text-2xl" />
@@ -683,7 +738,7 @@ const AdminBar = () => {
           </li>
 
           <li
-            className={`flex items-center border border-gray-300 p-3 rounded-md transition duration-300 transform ${activeTab === 'Report Master' || localStorage.getItem('SideBarName') === 'Report Master' ? 'bg-gray-200 text-gray-800 font-semibold scale-105' : 'bg-white text-gray-600 hover:bg-gray-100 hover:scale-105'} shadow-md hover:shadow-lg`}
+            className={`${apiLoading ? 'pointer-events-none opacity-50' : ''} flex items-center border border-gray-300 p-3 rounded-md transition duration-300 transform ${activeTab === 'Report Master' || localStorage.getItem('SideBarName') === 'Report Master' ? 'bg-gray-200 text-gray-800 font-semibold scale-105' : 'bg-white text-gray-600 hover:bg-gray-100 hover:scale-105'} shadow-md hover:shadow-lg`}
           >
             <Link
               to="/admin-application-status"
@@ -695,113 +750,107 @@ const AdminBar = () => {
             </Link>
           </li>
 
-          <li
-            className={`flex items-center border border-gray-300 p-3 rounded-md transition duration-300 transform ${activeTab === 'Service Report Forms' || localStorage.getItem('SideBarName') === 'Service Report Forms' ? 'bg-gray-200 text-gray-800 font-semibold scale-105' : 'bg-white text-gray-600 hover:bg-gray-100 hover:scale-105'} shadow-md hover:shadow-lg`}
-          >
-            <Link
-              to="/admin-ServiceReportForm"
-              className={`flex items-center space-x-2 w-full ${activeTab === 'Service Report Forms' || localStorage.getItem('SideBarName') === 'Service Report Forms' ? 'font-semibold' : ''}`}
-              onClick={() => handleClick('Service Report Forms')}
-            >
-              <FaRegFileAlt className="text-2xl" />
-              <h5 className="text-sm">SERVICE REPORT FORMS</h5>
-            </Link>
-          </li>
 
           <li
-            className={`flex items-center border border-gray-300 p-3 rounded-md transition duration-300 transform ${activeTab === 'Case Allocation' || localStorage.getItem('SideBarName') === 'Case Allocation' ? 'bg-gray-200 text-gray-800 font-semibold scale-105' : 'bg-white text-gray-600 hover:bg-gray-100 hover:scale-105'} shadow-md hover:shadow-lg`}
+            className={`${apiLoading ? 'pointer-events-none opacity-50' : ''} flex items-center border border-gray-300 p-3 rounded-md transition duration-300 transform ${activeTab === 'Case Allocation' || localStorage.getItem('SideBarName') === 'Case Allocation' ? 'bg-gray-200 text-gray-800 font-semibold scale-105' : 'bg-white text-gray-600 hover:bg-gray-100 hover:scale-105'} shadow-md hover:shadow-lg`}
           >
             <Link
               to="/admin-CaseAllocation"
-              className={`flex items-center space-x-2 w-full ${activeTab === 'Case Allocation' || localStorage.getItem('SideBarName') === 'Case Allocation' ? 'font-semibold' : ''}`}
+              className={` flex items-center space-x-2 w-full ${activeTab === 'Case Allocation' || localStorage.getItem('SideBarName') === 'Case Allocation' ? 'font-semibold' : ''}`}
               onClick={() => handleClick('Case Allocation')}
             >
               <FaTasks className="text-2xl" />
               <h5 className="text-sm">CASE ALLOCATION</h5>
             </Link>
           </li>
-          <li className={`flex items-center border border-gray-300 p-3 rounded-md transition duration-300 transform ${activeTab === 'See More' || localStorage.getItem('SideBarName') === 'See More'
-            ? 'bg-gray-200 text-gray-800 font-semibold scale-105' // Selected item style
+          <li className={`${apiLoading ? 'pointer-events-none opacity-50' : ''} flex items-center border border-gray-300 p-3 rounded-md transition duration-300 transform ${activeTab === 'See More' || localStorage.getItem('SideBarName') === 'See More'
+            ? 'bg-gray-200 text-gray-800 font-semibold scale-105'
             : 'bg-white text-gray-600 hover:bg-gray-100 hover:scale-105' // Hover effect for unselected item
             } shadow-md hover:shadow-lg`}>
             <Link
-              className={`flex items-center space-x-2 w-full ${activeTab === 'See More' || localStorage.getItem('SideBarName') === 'See More' ? 'font-semibold' : ''}`}
+              className={` flex items-center space-x-2 w-full ${activeTab === 'See More' || localStorage.getItem('SideBarName') === 'See More' ? 'font-semibold' : ''}`}
               onClick={() => handleOpenClick()}
               to={'/'}
             >
-              <FaKey className="text-3xl" />
+              <FaKey className="text-2xl" />
               <h5 className="text-sm">ADMIN ACCESS</h5>
             </Link>
           </li>
-
-          {/* Conditional rendering when isTabOpen is true */}
-          {isTabOpen ? (
-            <>
-              <li className={`flex items-center border border-gray-300 p-3 rounded-md transition duration-300 transform ${activeTab === 'Employee Credentials' || localStorage.getItem('SideBarName') === 'Employee Credentials'
-                ? 'bg-gray-200 text-gray-800 font-semibold scale-105' // Selected item style
-                : 'bg-white text-gray-600 hover:bg-gray-100 hover:scale-105' // Hover effect for unselected item
-                } shadow-md hover:shadow-lg`}>
-                <Link
-                  to="/admin-createUser"
-                  className={`flex items-center space-x-2 w-full ${activeTab === 'Employee Credentials' || localStorage.getItem('SideBarName') === 'Employee Credentials' ? 'font-semibold' : ''}`}
-                  onClick={() => handleClick('Employee Credentials')}
+          {shouldRender && (
+            <div className="mx-auto mt-0 duration-500">
+              {tabs.map((tab, index) => (
+                <li
+                  key={tab.name}
+                  className={`flex justify-center border mb-2  p-3  border-[#7d7d7d]transition duration-300 ease-out transform
+          ${visibleItems.includes(index)
+                      ? "opacity-100 translate-y-0 scale-100"
+                      : "opacity-0 translate-y-3 scale-100"
+                    }
+          ${activeTab === tab.name || localStorage.getItem("SideBarName") === tab.name
+                      ? "bg-[#c1dff2] text-gray-800 activeSubmenu scale-105"
+                      : "bg-white text-gray-600 hover:bg-gray-100 hover:scale-105 hover:font-semibold "
+                    } rounded-md shadow-md hover:shadow-lg`}
+                  style={{
+                    transitionDelay: `${index * 100}ms`,
+                  }}
                 >
-                  <FaUserShield className="text-3xl" />
-                  <h5 className="text-sm">EMPLOYEE CREDENTIALS</h5>
-                </Link>
-              </li>
-
-              <li className={`flex items-center border border-gray-300 p-3 rounded-md transition duration-300 transform ${activeTab === 'Billing Dashboard' || localStorage.getItem('SideBarName') === 'Billing Dashboard'
-                ? 'bg-gray-200 text-gray-800 font-semibold scale-105' // Selected item style
-                : 'bg-white text-gray-600 hover:bg-gray-100 hover:scale-105' // Hover effect for unselected item
-                } shadow-md hover:shadow-lg`}>
-                <Link
-                  to="/admin-generate-invoice"
-                  className={`flex items-center space-x-2 w-full ${activeTab === 'Billing Dashboard' || localStorage.getItem('SideBarName') === 'Billing Dashboard' ? 'font-semibold' : ''}`}
-                  onClick={() => handleClick('Billing Dashboard')}
-                >
-                  <FaFileInvoice className="text-3xl" />
-                  <h5 className="text-sm">BILLING DASHBOARD</h5>
-                </Link>
-              </li>
-
-              <li className={`flex items-center border border-gray-300 p-3 rounded-md transition duration-300 transform ${activeTab === 'User History' || localStorage.getItem('SideBarName') === 'User History'
-                ? 'bg-gray-200 text-gray-800 font-semibold scale-105' // Selected item style
-                : 'bg-white text-gray-600 hover:bg-gray-100 hover:scale-105' // Hover effect for unselected item
-                } shadow-md hover:shadow-lg`}>
-                <Link
-                  to="/admin-user-history"
-                  className={`flex items-center space-x-2 w-full ${activeTab === 'User History' || localStorage.getItem('SideBarName') === 'User History' ? 'font-semibold' : ''}`}
-                  onClick={() => handleClick('User History')}
-                >
-                  <FaHistory className="text-3xl" />
-                  <h5 className="text-sm">USER HISTORY</h5>
-                </Link>
-              </li>
-            </>
-          ) : (
-            // Render items with opacity 0 when tab is not open
-            <>
-              <li className="flex items-center mx-[30px] opacity-0 border border-gray-300 p-3 rounded-md bg-gray-200">
-                <div className="p-2 m-auto text-center">
-                  <FaUserShield className="text-3xl text-gray-400" />
-                  <h5 className="text-sm text-gray-400">EMPLOYEE CREDENTIALS</h5>
-                </div>
-              </li>
-              <li className="flex items-center mx-[30px] opacity-0 border border-gray-300 p-3 rounded-md bg-gray-200">
-                <div className="p-2 m-auto text-center">
-                  <FaFileInvoice className="text-3xl text-gray-400" />
-                  <h5 className="text-sm text-gray-400">BILLING DASHBOARD</h5>
-                </div>
-              </li>
-              <li className="flex items-center mx-[30px] opacity-0 border border-gray-300 p-3 rounded-md bg-gray-200">
-                <div className="p-2 m-auto text-center">
-                  <FaHistory className="text-3xl text-gray-400" />
-                  <h5 className="text-sm text-gray-400">USER HISTORY</h5>
-                </div>
-              </li>
-            </>
+                  <Link
+                    to={tab.link}
+                    className={`${apiLoading ? 'pointer-events-none opacity-50' : ''} flex items-center space-x-2 w-full ${activeTab === tab.name || localStorage.getItem("SideBarName") === tab.name ? "font-semibold" : ""} 
+            ${apiLoading ? "cursor-not-allowed opacity-50" : ""}`}
+                    onClick={(e) => {
+                      if (apiLoading) {
+                        e.preventDefault(); // Prevent navigation if apiLoading is true
+                      } else {
+                        handleClick(tab.name);
+                      }
+                    }}
+                  >
+                    {tab.icon && <span className="text-2xl">{tab.icon}</span>}
+                    <h5 className="text-sm">{tab.name.toUpperCase()}</h5>
+                  </Link>
+                </li>
+              ))}
+            </div>
           )}
+
+          <li
+            className={`${apiLoading ? 'pointer-events-none opacity-50' : ''} flex items-center border border-gray-300 p-3 rounded-md transition duration-300 transform ${activeTab === 'Trash Applications' || localStorage.getItem('SideBarName') === 'Trash Applications' ? 'bg-gray-200 text-gray-800 font-semibold scale-105' : 'bg-white text-gray-600 hover:bg-gray-100 hover:scale-105'} shadow-md hover:shadow-lg`}
+          >
+            <Link
+              to="/admin-TrashApplications"
+              className={` flex items-center space-x-2 w-full ${activeTab === 'Trash Applications' || localStorage.getItem('SideBarName') === 'Trash Applications' ? 'font-semibold' : ''}`}
+              onClick={() => handleClick('Trash Applications')}
+            >
+              <FaTrash className="text-2xl" />
+              <h5 className="text-sm"> Trash</h5>
+            </Link>
+          </li>
+          <li
+            className={`${apiLoading ? 'pointer-events-none opacity-50' : ''} flex items-center border border-gray-300 p-3 rounded-md transition duration-300 transform ${activeTab === 'Universities' || localStorage.getItem('SideBarName') === 'Universities' ? 'bg-gray-200 text-gray-800 font-semibold scale-105' : 'bg-white text-gray-600 hover:bg-gray-100 hover:scale-105'} shadow-md hover:shadow-lg`}
+          >
+            <Link
+              to="/admin-Universities"
+              className={` flex items-center space-x-2 w-full ${activeTab === 'Universities' || localStorage.getItem('SideBarName') === 'Universities' ? 'font-semibold' : ''}`}
+              onClick={() => handleClick('Universities')}
+            >
+              <MdStorage className="text-2xl" />
+              <h5 className="text-sm"> INTERNAL STORAGE</h5>
+            </Link>
+          </li>
+     
+          {/* <li
+            className={`${apiLoading ? 'pointer-events-none opacity-50' : ''} flex items-center border border-gray-300 p-3 rounded-md transition duration-300 transform ${activeTab === 'Service Report Forms' || localStorage.getItem('SideBarName') === 'Service Report Forms' ? 'bg-gray-200 text-gray-800 font-semibold scale-105' : 'bg-white text-gray-600 hover:bg-gray-100 hover:scale-105'} shadow-md hover:shadow-lg`}
+          >
+            <Link
+              to="/admin-ServiceReportForm"
+              className={` flex items-center space-x-2 w-full ${activeTab === 'Service Report Forms' || localStorage.getItem('SideBarName') === 'Service Report Forms' ? 'font-semibold' : ''}`}
+              onClick={() => handleClick('Service Report Forms')}
+            >
+              <FaCode className="text-2xl" />
+              <h5 className="text-sm"> DEVELOPERS</h5>
+            </Link>
+          </li> */}
 
         </ul>
       </div>

@@ -7,7 +7,13 @@ import { FaChevronLeft } from 'react-icons/fa';
 import Modal from 'react-modal';
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
+import Default from "../../imgs/default.png"
+import axios from "axios";
+import { useApiLoading } from '../ApiLoadingContext';
+
 const DocumentCheckin = () => {
+    const { validateAdminLogin, setApiLoading, apiLoading } = useApiLoading();
+
     const [servicesDataInfo, setServicesDataInfo] = useState('');
     const [expandedRow, setExpandedRow] = useState({ index: '', headingsAndStatuses: [] });
     const navigate = useNavigate();
@@ -30,8 +36,8 @@ const DocumentCheckin = () => {
 
 
     const [currentPage, setCurrentPage] = useState(1);
-    const rowsPerPage = 10;
-    const totalPages = Math.ceil(data.length / rowsPerPage);
+    const [rowsPerPage, setRowsPerPage] = useState(10);
+    const optionsPerPage = [10, 50, 100, 200]; const totalPages = Math.ceil(data.length / rowsPerPage);
     const paginatedData = data.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
     const colorNames = ['red', 'green', 'blue', 'yellow', 'orange', 'purple', 'pink'];
     const getColorStyle = (status) => {
@@ -75,7 +81,7 @@ const DocumentCheckin = () => {
                 setLoading(false);
                 setData(result.customers || []);
 
-                const newToken = result.token || result._token || token ;
+                const newToken = result.token || result._token || token;
                 if (newToken) {
                     localStorage.setItem("_token", newToken);
                 }
@@ -116,7 +122,7 @@ const DocumentCheckin = () => {
                 setServicesLoading(null);
 
                 // Update the token if a new one is provided
-                const newToken = result.token || result._token  || token;
+                const newToken = result.token || result._token || token;
                 if (newToken) {
                     localStorage.setItem("_token", newToken);
                 }
@@ -129,7 +135,7 @@ const DocumentCheckin = () => {
             } else {
                 // Handle error and update token if provided
                 setServicesLoading(applicationId);
-                const newToken = result.token || result._token  || token;
+                const newToken = result.token || result._token || token;
                 if (newToken) {
                     localStorage.setItem("_token", newToken);
                 }
@@ -144,10 +150,10 @@ const DocumentCheckin = () => {
     };
 
     const hasAnnexureDocuments = (serviceData) => {
-        return (
-            serviceData?.annexure_attachments &&
-            Object.keys(serviceData.annexure_attachments).length > 0
-        );
+        if (!serviceData || Object.keys(serviceData).length === 0) {
+            return null;
+        }
+        return true;
     };
     const downloadFile = (url) => {
         const link = document.createElement('a');
@@ -320,50 +326,158 @@ const DocumentCheckin = () => {
     };
 
 
-    const handleViewDocuments = (serviceData) => {
+ const handleViewDocuments = (serviceData) => {
+        const commaSeparatedData = Object.values(serviceData).join(', ');
+        console.log('Comma Separated serviceData:', commaSeparatedData);
+
         setSelectedServiceData(serviceData);
         setIsModalOpen(true);
     };
-    const handleDownloadFile = async (url) => {
+   const fetchImageToBase = async (imageUrls) => {
+        setApiLoading(true);
         try {
-            const response = await fetch(url);
-            const blob = await response.blob();
-            const fileName = url.split("/").pop();
-            saveAs(blob, fileName);
+            const response = await axios.post(
+                "https://api.screeningstar.co.in/utils/image-to-base",
+                { image_urls: imageUrls },
+                { headers: { "Content-Type": "application/json" } }
+            );
+            setApiLoading(false);
+
+            // Ensure we return an array
+            return Array.isArray(response.data.images) ? response.data.images : [];
         } catch (error) {
-            console.error("Error downloading file:", error);
+            setApiLoading(false);
+
+            console.error("Error fetching images:", error);
+            return [];
+        }
+    };
+    const base64ToBlob = (base64) => {
+        try {
+            // Convert Base64 string to binary
+            const byteCharacters = atob(base64);
+            const byteNumbers = new Uint8Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            return new Blob([byteNumbers], { type: "image/png" });
+        } catch (error) {
+            console.error("Error converting base64 to blob:", error);
+            return null;
         }
     };
     const handleDownloadAllFiles = async (attachments) => {
-        const zip = new JSZip();
+           const zip = new JSZip();
+           console.log("📁 Initialized new JSZip instance.");
+   
+           try {
+               // Step 1: Convert comma-separated string to array
+               const fileUrls = attachments
+                   .split(",")
+                   .map(url => url.trim())
+                   .filter(Boolean);
+               console.log("🔗 Extracted file URLs:", fileUrls);
+   
+               if (fileUrls.length === 0) {
+                   console.warn("⚠️ No valid image URLs found.");
+                   return;
+               }
+   
+               // Step 2: Fetch Base64 for all image URLs
+               console.log("📡 Fetching Base64 representations of images...");
+               const base64Response = await fetchImageToBase(fileUrls);
+               const base64Images = base64Response || [];
+               console.log("🖼️ Received Base64 images:", base64Images);
+   
+               if (base64Images.length === 0) {
+                   console.error("❌ No images received from API.");
+                   return;
+               }
+   
+               // Step 3: Add each image to ZIP
+               for (let i = 0; i < fileUrls.length; i++) {
+                   const url = fileUrls[i];
+                   const imageData = base64Images.find(img => img.url === url);
+                   console.log('base64Images', base64Images)
+   
+                   console.log('url', url)
+                   console.log(`🔍 Processing image ${i + 1}/${fileUrls.length} - URL: ${url}`);
+                   console.log("📦 Matched image data:", imageData);
+   
+                   if (imageData && imageData.base64) {
+                       const base64Data = imageData.base64.split(",")[1];
+                       const blob = base64ToBlob(base64Data, imageData.type);
+   
+                       if (blob) {
+                           const fileName = `${imageData.fileName}`;
+                           zip.file(fileName, blob);
+                           console.log(`✅ Added to ZIP: ${fileName}`);
+                       } else {
+                           console.warn(`⚠️ Failed to create blob for: ${url}`);
+                       }
+                   } else {
+                       console.warn(`⚠️ Skipping invalid or missing Base64 data for URL: ${url}`);
+                   }
+               }
+   
+               // Step 4: Generate and trigger ZIP download
+               console.log("🛠️ Generating ZIP file...");
+               const zipContent = await zip.generateAsync({ type: "blob" });
+               saveAs(zipContent, "attachments.zip");
+               console.log("✅ ZIP file downloaded successfully!");
+   
+           } catch (error) {
+               console.error("❌ Error generating ZIP:", error);
+           }
+       };
+   
+   
+   
+       const handleDownloadFile = async (url) => {
+           try {
+               console.log("🔄 Starting download process...");
+               console.log("📥 Downloading file from:", url);
+   
+               const base64Response = await fetchImageToBase([url]);
+               console.log("✅ Received base64 response:", base64Response);
+   
+               if (!base64Response || base64Response.length === 0) {
+                   throw new Error("No image data received.");
+               }
+   
+               const imageData = base64Response.find(img => img.url === url);
+               console.log("🔍 Found image data:", imageData);
+   
+               if (!imageData || !imageData.base64) {
+                   throw new Error("Invalid Base64 data.");
+               }
+   
+               const base64Data = imageData.base64.split(",")[1];
+               console.log("📦 Extracted base64 content.");
+   
+               const byteCharacters = atob(base64Data);
+               const byteNumbers = new Uint8Array(byteCharacters.length);
+   
+               for (let i = 0; i < byteCharacters.length; i++) {
+                   byteNumbers[i] = byteCharacters.charCodeAt(i);
+               }
+   
+               console.log("🧱 Converted base64 to byte array.");
+   
+               const blob = new Blob([byteNumbers], { type: `image/${imageData.type}` });
+               console.log("🗂️ Created Blob object.");
+   
+               const fileName = imageData.fileName;
+               console.log("📄 Extracted file name:", fileName);
+   
+               saveAs(blob, fileName);
+               console.log("✅ File download triggered successfully!");
+           } catch (error) {
+               console.error("❌ Error during download process:", error);
+           }
+       };
 
-        // Iterate through the attachments to add files to the ZIP
-        for (const [category, files] of Object.entries(attachments)) {
-            for (const attachment of files) {
-                const label = Object.keys(attachment)[0];
-                const fileUrls = attachment[label]?.split(",");
 
-                for (const url of fileUrls) {
-                    try {
-                        const response = await fetch(url.trim());
-                        const blob = await response.blob();
-                        const fileName = `${category}/${label}/${url.split("/").pop()}`;
-                        zip.file(fileName, blob);
-                    } catch (error) {
-                        console.error(`Error fetching file ${url}:`, error);
-                    }
-                }
-            }
-        }
-
-        // Generate the ZIP and trigger download
-        try {
-            const content = await zip.generateAsync({ type: "blob" });
-            saveAs(content, "attachments.zip");
-        } catch (error) {
-            console.error("Error generating ZIP:", error);
-        }
-    };
     const handleCloseModal = () => {
         setIsModalOpen(false);
         setSelectedServiceData(null);
@@ -444,11 +558,11 @@ const DocumentCheckin = () => {
     const handleGoBack = () => {
         navigate('/admin-documents');
     };
-
+console.log('selectedServiceData-- ',selectedServiceData)
     return (
         <div className="bg-[#c1dff2]">
-            <h2 className="text-2xl font-bold py-3 text-left text-[#4d606b] px-3 border">APPLICATION DOCUMENT CHECKIN - {parentName}</h2>
-            <div className="space-y-4 py-[30px] px-[51px] bg-white">
+            <h2 className="md:text-2xl text-xl font-bold py-3 text-left text-[#4d606b] px-3 border">APPLICATION DOCUMENT CHECKIN - {parentName}</h2>
+            <div className="space-y-4 py-[30px] md:px-[51px] px-6 bg-white">
                 <div
                     onClick={handleGoBack}
                     className="flex items-center w-36 space-x-3 p-2 rounded-lg bg-[#2c81ba] text-white hover:bg-[#1a5b8b] transition-all duration-300 ease-in-out transform hover:scale-105 shadow-md hover:shadow-lg cursor-pointer"
@@ -456,17 +570,33 @@ const DocumentCheckin = () => {
                     <FaChevronLeft className="text-xl text-white" />
                     <span className="font-semibold text-lg">Go Back</span>
                 </div>
-                <div className='flex justify-between items-baseline mb-6 '>
+                <div className='md:flex justify-between items-baseline mb-6 '>
 
-                    <div className=" text-left">
-                        <button
-                            className="bg-green-500 hover:bg-green-600 transition-all duration-300 ease-in-out transform hover:scale-105  text-white px-6 py-2 rounded"
-                            onClick={handleExportToExcel}
+                    <div className=" text-left md:mb-0 mb-4">
+                        <div>
+                            <button
+                                className="bg-green-500 hover:bg-green-600 transition-all duration-300 ease-in-out transform hover:scale-105  text-white px-6 py-2 rounded"
+                                onClick={handleExportToExcel}
+                            >
+                                Export to Excel
+                            </button>
+                        </div>
+                        <select
+                            value={rowsPerPage}
+                            onChange={(e) => {
+                                setRowsPerPage(Number(e.target.value));
+                                setCurrentPage(1);
+                            }}
+                            className="border rounded-lg px-3 py-1 text-gray-700 bg-white mt-2  shadow-sm focus:ring-2 focus:ring-blue-400"
                         >
-                            Export to Excel
-                        </button>
+                            {optionsPerPage.map((option) => (
+                                <option key={option} value={option}>
+                                    {option}
+                                </option>
+                            ))}
+                        </select>
                     </div>
-                    <div className=" w-1/2 text-right">
+                    <div className=" md:w-1/2 text-right">
                         <input
                             type="text"
                             placeholder="Search by Name"
@@ -474,6 +604,7 @@ const DocumentCheckin = () => {
                             value={searchTerm}
                             onChange={handleSearch}
                         />
+
                     </div>
                 </div>
 
@@ -508,7 +639,7 @@ const DocumentCheckin = () => {
                             ) : filteredData.length === 0 ? (
                                 <tr>
                                     <td colSpan={17} className="py-4 text-center text-gray-500">
-                                        You have no data
+                                        No data available in table
                                     </td>
                                 </tr>
                             ) : (
@@ -517,27 +648,29 @@ const DocumentCheckin = () => {
                                         <React.Fragment key={data.id}>
                                             <tr className="text-center">
                                                 <td className="border border-black px-4 py-2">{index + 1}</td>
-                                                <td className="border border-black px-4 py-2">{new Date(data.created_at).toLocaleDateString()}</td>
+                                                <td className="border border-black px-4 py-2">{new Date(data.created_at).toLocaleDateString('en-GB').replace(/\//g, '-')}</td>
                                                 <td className="border border-black px-4 py-2">{data.employee_id || 'NIL'}</td>
                                                 <td className="border border-black px-4 py-2">{data.application_id || 'NIL'}</td>
                                                 <td className="border border-black px-4 py-2">
                                                     <div className='flex justify-center'>
-                                                        <img src={`${data.photo}`} alt={data.name} className="w-10 h-10 rounded-full" />
+                                                        <img src={data.photo ? data.photo : `${Default}`}
+                                                            alt={data.name || 'No name available'}
+                                                            className="w-10 h-10 rounded-full" />
                                                     </div>
                                                 </td>
                                                 <td className="border border-black px-4 py-2">{data.name || 'NIL'}</td>
                                                 <td className="border border-black px-4 text-center py-2">
 
-                                                    <button
-                                                        className={`px-4 py-2 rounded ${hasAnnexureDocuments(data.service_data)
+                                                   <button
+                                                        className={`px-4 py-2 rounded ${hasAnnexureDocuments(data.attach_documents)
                                                             ? 'bg-[#073d88] text-white hover:bg-[#05275c]'
                                                             : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                                                             }`}
                                                         onClick={() =>
-                                                            hasAnnexureDocuments(data.service_data) &&
-                                                            handleViewDocuments(data.service_data)
+                                                            hasAnnexureDocuments(data.attach_documents) &&
+                                                            handleViewDocuments(data.attach_documents)
                                                         }
-                                                        disabled={!hasAnnexureDocuments(data.service_data)}
+                                                        disabled={!hasAnnexureDocuments(data.attach_documents)}
                                                     >
                                                         View Docs
                                                     </button>
@@ -545,7 +678,7 @@ const DocumentCheckin = () => {
                                                 </td>
                                                 <td className="border border-black px-4 text-center py-2">
                                                     <button
-                                                        className={`bg-[#2c81ba] text-white transition-all duration-300 ease-in-out transform hover:scale-105 rounded px-4 py-2 ${servicesLoading == data.main_id ? 'opacity-50 cursor-not-allowed' : ''} hover:bg-[#073d88]`}
+                                                        className={`bg-[#2c81ba]     ${expandedRow.index === data.main_id ? ' bg-red-600 hover:bg-red-800 ' : 'bg-[#2c81ba] hover:bg-[#073d88] '} text-white transition-all duration-300 ease-in-out transform hover:scale-105 rounded px-4 py-2 ${servicesLoading == data.main_id ? 'opacity-50 cursor-not-allowed' : ''} `}
                                                         onClick={() => !servicesLoading && handleViewMore(data.main_id)} // Prevent clicks during loading
                                                         disabled={servicesLoading == data.main_id} // Disable button when loading
                                                     >
@@ -596,77 +729,56 @@ const DocumentCheckin = () => {
                 </div>
             </div>
             {isModalOpen && selectedServiceData && (
-                <Modal
-                    isOpen={true}
-                    className="custom-modal-content"
-                    overlayClassName="custom-modal-overlay"
-                    onRequestClose={handleCloseModal}
-                >
-                    <div className="modal-container">
-                        <h2 className="modal-title text-center my-4 text-2xl font-bold">Attachments</h2>
-                        <div className='flex justify-end'>
-                            <button
-                                className="modal-download-all bg-blue-500 text-white p-2  text-end w-fit rounded-md mb-4"
-                                onClick={() => handleDownloadAllFiles(selectedServiceData.annexure_attachments)}
-                            >
-                                Download All
-                            </button>
-                        </div>
-                        <ul className="modal-list h-[400px] overflow-scroll">
-                            {Object.entries(selectedServiceData.annexure_attachments).map(
-                                ([category, attachments], idx) => (
-                                    <li key={idx} className="modal-list-category">
-                                        <h3 className="modal-category-title md:text-lg font-semibold my-2">
-                                            {category}
-                                        </h3>
-                                        <ul>
-                                            {attachments.map((attachment, subIdx) => {
-                                                const label = Object.keys(attachment)[0];
-                                                const fileUrls = attachment[label]?.split(","); // Split URLs by commas
-                                                return (
-                                                    <li
-                                                        key={subIdx}
-                                                        className="grid grid-cols-2 items-center border-b py-2"
-                                                    >
-                                                        <span className="modal-list-text">{label}</span>
-                                                        <div className="modal-url-list grid md:me-7 gap-2 justify-end">
-                                                            {fileUrls.map((url, urlIdx) => (
-                                                                <div key={urlIdx} className="flex gap-2">
-                                                                    <a
-                                                                        href={url.trim()}
-                                                                        target="_blank"
-                                                                        rel="noopener noreferrer"
-                                                                        className="modal-view-button w-auto m-0 bg-[#2c81ba] text-white p-2 rounded-md px-4 block text-center"
-                                                                    >
-                                                                        View {urlIdx + 1}
-                                                                    </a>
-                                                                    <button
-                                                                        onClick={() => handleDownloadFile(url.trim())}
-                                                                        className="modal-download-button w-auto m-0 bg-[#4caf50] text-white p-2 rounded-md px-4 block text-center"
-                                                                    >
-                                                                        Download {urlIdx + 1}
-                                                                    </button>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    </li>
-                                                );
-                                            })}
-                                        </ul>
-                                    </li>
-                                )
-                            )}
-                        </ul>
-                        <div className="modal-footer">
-                            <button
-                                className="modal-close-button bg-red-500 text-white p-2 rounded-md mt-4"
-                                onClick={handleCloseModal}
-                            >
-                                Close
-                            </button>
-                        </div>
-                    </div>
-                </Modal>
+                
+                  <Modal
+                                     isOpen={true}
+                                     className="custom-modal-content md:max-h-fit max-h-96"
+                                     overlayClassName="custom-modal-overlay"
+                                     onRequestClose={handleCloseModal}
+                                 >
+                                     <div className="modal-container md:overscroll-none md:overflow-y-auto  overflow-y-scroll ">
+                                         <h2 className="modal-title text-center my-4 text-2xl font-bold">Attachments</h2>
+                                         <div className='flex justify-end'>
+                                             <button
+                                                 className="modal-download-all bg-blue-500 text-white p-2  text-end w-fit rounded-md mb-4"
+                                                 onClick={() => handleDownloadAllFiles(selectedServiceData)}
+                                             >
+                                                 Download All
+                                             </button>
+                                         </div>
+                                         <ul className="modal-list h-[400px] overflow-scroll">
+                                             {selectedServiceData.split(',').map((url, idx) => (
+                                                 <li key={idx} className="grid  items-center border-b py-2">
+                                                     <div className="flex justify-between gap-2">
+                                                         <a
+                                                             href={url.trim()}
+                                                             target="_blank"
+                                                             rel="noopener noreferrer"
+                                                             className="modal-view-button w-auto m-0 bg-[#2c81ba] text-white p-2 rounded-md px-4 block text-center"
+                                                         >
+                                                             View {idx + 1}
+                                                         </a>
+                                                         <button
+                                                             onClick={() => handleDownloadFile(url.trim())}
+                                                             className="modal-download-button w-auto m-0 bg-[#4caf50] text-white p-2 rounded-md px-4 block text-center"
+                                                         >
+                                                             Download {idx + 1}
+                                                         </button>
+                                                     </div>
+                                                 </li>
+                                             ))}
+             
+                                         </ul>
+                                         <div className="modal-footer">
+                                             <button
+                                                 className="modal-close-button bg-red-500 text-white p-2 rounded-md mt-4"
+                                                 onClick={handleCloseModal}
+                                             >
+                                                 Close
+                                             </button>
+                                         </div>
+                                     </div>
+                                 </Modal>
             )}
         </div >
 

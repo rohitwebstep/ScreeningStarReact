@@ -134,7 +134,7 @@ const UserSetPassword = () => {
                 </form>
 
                 <h3 className="text-lg text-center font-semibold">
-                    <a href="/" className="text-[#61c0ff] hover:text-blue-800 no-underline">Back to Login</a>
+                    <a href="/userLogin" className="text-[#61c0ff] hover:text-blue-800 no-underline">Back to Login</a>
                 </h3>
             </div>
         </div>

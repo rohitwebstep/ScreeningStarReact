@@ -2,76 +2,84 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import SidebarContext from '../SidebarContext'
 import { useApiLoading } from "../ApiLoadingContext";
+import Swal from 'sweetalert2';
+
 const ClientCredentials = () => {
-     const {validateAdminLogin,setApiLoading,apiLoading} = useApiLoading();
-  
+  const { validateAdminLogin, setApiLoading, apiLoading } = useApiLoading();
+
   const [searchQuery, setSearchQuery] = useState("");
   const [clientData, setClientData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isLoading, setIsLoading] = useState(null);
-  const [error, setError] = useState(null);  
+  const [error, setError] = useState(null);
+  const [responseError, setResponseError] = useState(null);
   const [viewBranchesRow, setViewBranchesRow] = useState(null);
   const [branchesData, setBranchesData] = useState([]);
   const storedToken = localStorage.getItem('token');
+
   const location = useLocation();
   const query = new URLSearchParams(location.search);
   const emailFromQuery = query.get('email') || '';
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10; // Number of rows per page
-    const fetchClientData = async () => {
-      const admin_id = JSON.parse(localStorage.getItem("admin"))?.id;
-      const storedToken = localStorage.getItem("_token");
-      setApiLoading(true);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const optionsPerPage = [10, 50, 100, 200];
+  const fetchClientData = async () => {
+    const admin_id = JSON.parse(localStorage.getItem("admin"))?.id;
+    const storedToken = localStorage.getItem("_token");
+    setApiLoading(true);
+    try {
+      const response = await fetch(
+        `https://api.screeningstar.co.in/external-login-credentials/list?admin_id=${admin_id}&_token=${storedToken}`,
+        { method: "GET", redirect: "follow" }
+      );
+      const data = await response.json();
+
+      if (!response.ok) {
+        Swal.fire('Error!', `${data.message}`, 'error');
+        setResponseError(data.message);
+        setApiLoading(false);
+        throw new Error(`Error: ${response.status} ${response.statusText}`);
+      }
+
+      const newToken = data.token || data._token || storedToken || '';
+      if (newToken) {
+        localStorage.setItem("_token", newToken);
+      }
+
+      if (data.status) {
+        const mappedData = data.customers.map((client, index) => ({
+          clientId: client.client_unique_id,
+          branchName: client.name,
+          branchEmail: client.emails ? JSON.parse(client.emails)[0] : 'N/A',
+          branchCount: client.branch_count,
+          main_id: client.main_id,
+          logo: client.logo
+        }));
+        setClientData(mappedData);
+      } else {
+        setError("Unexpected data format received.");
+      }
+    } catch (error) {
+      console.error(error.message);
+      setError(`Error fetching data: ${error.message}`);
+    } finally {
+      setApiLoading(false);
+      setLoading(false);
+    }
+  };
+  useEffect(() => {
+    const initialize = async () => {
       try {
-        const response = await fetch(
-          `https://api.screeningstar.co.in/external-login-credentials/list?admin_id=${admin_id}&_token=${storedToken}`,
-          { method: "GET", redirect: "follow" }
-        );
-
-        if (!response.ok) {
-          setApiLoading(false);
-          throw new Error(`Error: ${response.status} ${response.statusText}`);
-        }
-
-        const data = await response.json();
-        const newToken = data.token || data._token ||storedToken || '';
-        if (newToken) {
-          localStorage.setItem("_token", newToken);
-        }
-
-        if (data.status) {
-          const mappedData = data.customers.map((client, index) => ({
-            clientId: client.client_unique_id,
-            branchName: client.name,
-            branchEmail: client.emails ? JSON.parse(client.emails)[0] : 'N/A',
-            branchCount: client.branch_count,
-            main_id: client.main_id,
-          }));
-          setClientData(mappedData);
-        } else {
-          setError("Unexpected data format received.");
+        if (apiLoading == false) {
+          await validateAdminLogin();
+          await fetchClientData();
         }
       } catch (error) {
         console.error(error.message);
-        setError(`Error fetching data: ${error.message}`);
-      } finally {
-        setApiLoading(false);
-        setLoading(false);
+        navigate('/admin-login');
       }
     };
-    useEffect(() => {
-      const initialize = async () => {
-        try {
-          if (apiLoading == false) {
-          await validateAdminLogin();
-            await fetchClientData();
-          }
-        } catch (error) {
-          console.error(error.message);
-          navigate('/admin-login');
-        }
-      };
     initialize();
   }, [navigate]);
 
@@ -156,16 +164,35 @@ const ClientCredentials = () => {
   return (
     <div className="w-full bg-[#c1dff2] border border-black overflow-hidden">
 
-      <div className="space-y-4 py-6 px-4 md:py-[30px] md:px-[51px] bg-white">
+      <div className=" py-6 px-4 md:py-[30px] md:px-[51px] bg-white">
         <div className="mb-4">
           <input
             type="text"
-            placeholder="Search by Client ID, Name, or Email"
+            placeholder="Search by Client ID, Name, or Username"
             className="md:w-1/3 w-full rounded-md p-2.5 border border-gray-300"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(1);
+            }}
           />
+
+
         </div>
+        <select
+          value={itemsPerPage}
+          onChange={(e) => {
+            setItemsPerPage(Number(e.target.value));
+            setCurrentPage(1);
+          }}
+          className="border rounded-lg px-3 py-1 text-gray-700 bg-white mb-4 shadow-sm focus:ring-2 focus:ring-blue-400"
+        >
+          {optionsPerPage.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
         <div className=" overflow-scroll">
           <table className="min-w-full border-collapse border border-black text-sm md:text-base">
             <thead className="">
@@ -192,7 +219,7 @@ const ClientCredentials = () => {
                 {error ? (
                   <tr>
                     <td colSpan={5} className="border border-black px-4 py-2 text-red-500">
-                      Error: No Data Found
+                      {responseError}
                     </td>
                   </tr>
                 ) : currentData.length > 0 ? (
@@ -205,28 +232,28 @@ const ClientCredentials = () => {
                         <td className="border border-black px-4 py-2 text-left">
                           <div className="text-left">{client.branchEmail}</div>
                         </td>
-                        <td className="border border-black px-4 text-center py-2">
+                        <td className="border border-black whitespace-nowrap px-4 text-center py-2">
                           {client.branchCount > 1 ? (
                             <button
                               onClick={() => handleViewBranchesClick(client.main_id)}
                               className={`ml-2 p-2 px-4 font-bold  text-white transition-transform duration-300 ease-in-out transform rounded-md border ${isLoading === client.main_id
-                                  ? 'opacity-50  cursor-not-allowed bg-green-500 hover:bg-green-600'
-                                  : viewBranchesRow === client.main_id
-                                    ? 'bg-red-500 hover:bg-red-600 focus:ring-2 focus:ring-red-300'
-                                    : 'bg-green-500 hover:bg-green-600 focus:ring-2 focus:ring-green-300'
+                                ? 'opacity-50  cursor-not-allowed bg-green-500 hover:bg-green-600'
+                                : viewBranchesRow === client.main_id
+                                  ? 'bg-red-500 hover:bg-red-600 focus:ring-2 focus:ring-red-300'
+                                  : 'bg-green-500 hover:bg-green-600 focus:ring-2 focus:ring-green-300'
                                 } ${!isLoading && 'hover:scale-105'}`}
                               disabled={isLoading === client.main_id}
                             >
-                              {viewBranchesRow === client.main_id ? 'Less' : 'View Branches'}
+                              {viewBranchesRow === client.main_id ? 'LESS' : 'VIEW BRANCHES'}
                             </button>
 
                           ) : (
                             <Link
-                            to={`/userLogin?branchEmail=${encodeURIComponent(client.branchEmail)}&adminid=${JSON.parse(localStorage.getItem("admin"))?.id}&token=${localStorage.getItem("_token")}`}
-                            target="_blank"
+                              to={`/userLogin?branchEmail=${encodeURIComponent(client.branchEmail)}&adminid=${JSON.parse(localStorage.getItem("admin"))?.id}&token=${localStorage.getItem("_token")}&logo=${client.logo}`}
+                              target="_blank"
                               className="bg-green-500 hover:bg-green-600 hover:scale-105 focus:ring-2 focus:ring-green-300 ml-2 p-2 px-4 font-bold  text-white transition-transform duration-300 ease-in-out transform rounded-md border "
                             >
-                              Go
+                             LOGIN 
                             </Link>
                           )}
                         </td>
@@ -254,11 +281,11 @@ const ClientCredentials = () => {
                                       <td className="border border-black px-4 py-2 text-left">{branch.email}</td>
                                       <td className="border border-black px-4 py-2">
                                         <Link
-                                          to={`/userLogin?branchEmail=${encodeURIComponent(branch.email)}&adminid=${JSON.parse(localStorage.getItem("admin"))?.id}&token=${localStorage.getItem("_token")}`}
+                                          to={`/userLogin?branchEmail=${encodeURIComponent(branch.email)}&adminid=${JSON.parse(localStorage.getItem("admin"))?.id}&token=${localStorage.getItem("_token")}&logo=${client.logo}`}
                                           target="_blank"
                                           className="bg-green-500 hover:bg-green-600 hover:scale-105 focus:ring-2 focus:ring-green-300 ml-2 p-2 px-4 font-bold  text-white transition-transform duration-300 ease-in-out transform rounded-md border"
                                         >
-                                          Go
+                                          LOGIN
                                         </Link>
                                       </td>
                                     </tr>
@@ -289,26 +316,26 @@ const ClientCredentials = () => {
           </table>
         </div>
         <div className="flex justify-between items-center mt-4">
-        <button
-          onClick={() => handlePageChange(currentPage - 1)}
-          disabled={currentPage === 1}
-          className="px-4 py-2 bg-gray-300 text-gray-600 rounded hover:bg-gray-400"
-        >
-          Previous
-        </button>
-        <span className="text-gray-700">
-          Page {currentPage} of {totalPages}
-        </span>
-        <button
-          onClick={() => handlePageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
-          className="px-4 py-2 bg-gray-300 text-gray-600 rounded hover:bg-gray-400"
-        >
-          Next
-        </button>
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className="px-4 py-2 bg-gray-300 text-gray-600 rounded hover:bg-gray-400"
+          >
+            Previous
+          </button>
+          <span className="text-gray-700">
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className="px-4 py-2 bg-gray-300 text-gray-600 rounded hover:bg-gray-400"
+          >
+            Next
+          </button>
+        </div>
       </div>
-      </div>
-   
+
     </div>
   );
 };

@@ -7,9 +7,10 @@ import { useApiLoading } from '../ApiLoadingContext';
 import { useCallback } from 'react';
 
 const PackageManagement = () => {
-      const {validateAdminLogin,setApiLoading,apiLoading} = useApiLoading();
+    const { validateAdminLogin, setApiLoading, apiLoading } = useApiLoading();
 
-    
+    const [responseError, setResponseError] = useState(null);
+
     const [deletingId, setDeletingId] = useState(null);
     const [packageName, setPackageName] = useState('');
     const [packageDescription, setPackageDescription] = useState('');
@@ -17,11 +18,11 @@ const PackageManagement = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [loading, setLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
-    const [packagesPerPage] = useState(5);
     const [editingPackageId, setEditingPackageId] = useState(null);
     const navigate = useNavigate();
     const storedToken = localStorage.getItem("_token");
-
+    const [packagesPerPage, setPackagesPerPage] = useState(10);
+    const optionsPerPage = [10, 50, 100, 200];
     const fetchPackages = useCallback(async () => {
         setLoading(true);
         setApiLoading(true);
@@ -32,7 +33,7 @@ const PackageManagement = () => {
         if (!storedToken) {
             console.error("No token found. Please log in.");
             setLoading(false);
-        setApiLoading(false);
+            setApiLoading(false);
 
             navigate('/admin-login');
             return;
@@ -42,7 +43,7 @@ const PackageManagement = () => {
         if (!admin_id) {
             console.error("Admin ID not found in localStorage.");
             setLoading(false);
-        setApiLoading(false);
+            setApiLoading(false);
 
             navigate('/admin-login');
             return;
@@ -58,7 +59,7 @@ const PackageManagement = () => {
 
             const result = response.data;
 
-            const newToken = result.token || result._token || storedToken ;
+            const newToken = result.token || result._token || storedToken;
             if (newToken) {
                 localStorage.setItem("_token", newToken);
             }
@@ -69,9 +70,14 @@ const PackageManagement = () => {
                 console.error("Failed to fetch packages. Response:", result);
             }
         } catch (error) {
-            console.error("Error fetching packages:", error);
+            if (error.response) {
+                Swal.fire('Error!', `${error.response.data.message}`, 'error');
+                setResponseError(error.response.data.message);
+            } else {
+                Swal.fire('Error!', 'An unknown error occurred.', 'error');
+            }
         } finally {
-           setApiLoading(false);
+            setApiLoading(false);
             setLoading(false);
         }
     }, [navigate]); // Only re-create if `navigate` changes
@@ -80,8 +86,8 @@ const PackageManagement = () => {
         const initialize = async () => {
             try {
                 if (apiLoading == false) {
-                await validateAdminLogin();
-                await fetchPackages();
+                    await validateAdminLogin();
+                    await fetchPackages();
                 }
             } catch (error) {
                 console.error(error.message);
@@ -137,7 +143,7 @@ const PackageManagement = () => {
             }
 
             // Update the token if returned by the API
-            const newToken = response?.data?.token || response?.data?._token || storedToken ;
+            const newToken = response?.data?.token || response?.data?._token || storedToken;
             if (newToken) {
                 localStorage.setItem("_token", newToken);
             }
@@ -185,7 +191,7 @@ const PackageManagement = () => {
                     );
 
                     // Check and store a new token if provided in the API response
-                    const newToken = response.data?.token || response.data?._token || storedToken ;
+                    const newToken = response.data?.token || response.data?._token || storedToken;
                     if (newToken) {
                         localStorage.setItem("_token", newToken);
                     }
@@ -233,17 +239,22 @@ const PackageManagement = () => {
             <div className="loader border-t-4 border-[#2c81ba] rounded-full w-10 h-10 animate-spin"></div>
         </div>
     );
+    const handleSearchChange = (e) => {
+        setSearchTerm(e.target.value);
+        setCurrentPage(1)
+    };
     return (
         <div className="">
-            <div className="bg-white border-black border  p-12 w-full mx-auto">
-                <div className="flex flex-wrap">
+            <div className="bg-white border-black border  md:p-12 p-6 w-full mx-auto">
+                <div className="md:flex flex-wrap">
 
-                    <div className="w-2/5">
-                        <form onSubmit={handleSubmit} className="space-y-4 ps-0 pb-[30px] px-[51px] bg-white rounded-md">
+                    <div className="md:w-2/5">
+                        <form onSubmit={handleSubmit} className="space-y-4 ps-0 md:pr-[30px] pb-[30px] bg-white rounded-md">
                             <div className="grid grid-cols-1 gap-4">
                                 <input
                                     type="text"
                                     name="packageName"
+                                    required
                                     value={packageName}
                                     onChange={(e) => setPackageName(e.target.value)}
                                     placeholder="Package Name"
@@ -253,6 +264,7 @@ const PackageManagement = () => {
                             <div className="grid grid-cols-1 gap-4">
                                 <textarea
                                     name='packageDescription'
+                                    required
                                     value={packageDescription}
                                     onChange={(e) => setPackageDescription(e.target.value)}
                                     placeholder='Package Description'
@@ -263,7 +275,7 @@ const PackageManagement = () => {
                                 <button
                                     type="submit"
                                     disabled={loading}
-                                    className={`bg-[#2c81ba] hover:bg-[#0f5381] hover:scale-105 text-white  py-2.5 px-[30px] text-[18px] border rounded-md ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    className={`flex justify-center text-center align-middle items-center w-full bg-[#2c81ba] hover:bg-[#0f5381] hover:scale-105 text-white  py-2.5 px-[30px] text-[18px] border rounded-md ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 >
                                     {editingPackageId ? 'Update' : 'Submit'}
                                 </button>
@@ -271,16 +283,34 @@ const PackageManagement = () => {
                         </form>
                     </div>
 
-                    <div className="w-3/5">
-                        <div className="flex justify-between mb-4">
-                            <input
-                                type="text"
-                                placeholder="Search by Package Name"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-[450px] rounded-md p-2.5 border border-gray-300"
-                            />
-                            <button onClick={exportToExcel} className="bg-green-500 hover:scale-105  hover:bg-green-600 text-white px-4 py-2 rounded text-[18px]">
+                    <div className="md:w-3/5">
+                        <div className="md:flex justify-between items-center mb-4">
+                            <div>
+                                <div>
+                                    <input
+                                        type="text"
+                                        placeholder="Search by Package Name"
+                                        value={searchTerm}
+                                        onChange={handleSearchChange}
+                                        className="md:w-[450px] w-full rounded-md p-2.5 border border-gray-300 mb-4"
+                                    />
+                                </div>
+                                <select
+                                    value={packagesPerPage}
+                                    onChange={(e) => {
+                                        setPackagesPerPage(Number(e.target.value));
+                                        setCurrentPage(1);
+                                    }}
+                                    className="border rounded-lg px-3 py-1 text-gray-700 bg-white  shadow-sm focus:ring-2 focus:ring-blue-400"
+                                >
+                                    {optionsPerPage.map((option) => (
+                                        <option key={option} value={option}>
+                                            {option}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <button onClick={exportToExcel} className="bg-green-500 hover:scale-105 mb-4 hover:bg-green-600 text-white px-4 py-2 rounded text-[18px]">
                                 Export to Excel
                             </button>
                         </div>
@@ -300,6 +330,14 @@ const PackageManagement = () => {
                                         <tr>
                                             <td colSpan={6} className="py-4 text-center text-gray-500">
                                                 <Loader className="text-center" />
+                                            </td>
+                                        </tr>
+                                    ) : currentPackages.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={6} className="py-4 text-center text-red-500">
+                                                {responseError && responseError !== ""
+                                                    ? responseError
+                                                    : "No data available in table"}
                                             </td>
                                         </tr>
                                     ) : (

@@ -119,6 +119,26 @@ import { ServiceProvider } from "./Components/Pages/ServiceContext.js";
 import Modules from "./Components/Pages/Modules.js";
 import ViewModules from "./Components/Pages/ModuleView.js";
 import CkEditor from "./Components/Pages/CkEditor.js";
+import ServiceBGVForm from "./Components/Pages/ServiceBGVForm.js";
+import GenerateServiceBGVForm from "./Components/Pages/GenerateServiceBGVForm.js";
+import LeaveListing from "./Components/Pages/LeaveListing.js";
+import MyProfile from "./Components/UserPages/MyProfile.js";
+import Attendance from "./Components/Pages/Attendance.js";
+import ApplicationTrash from "./Components/Pages/ApplicationTrash.js";
+import ApplicationTrashCheckin from "./Components/Pages/ApplicationTrashCheckin.js";
+import CustomerTrash from "./Components/Pages/CustomerTrash.js";
+import CLientTrashed from "./Components/UserPages/CLientTrashed.js";
+import Universities from "./Components/Pages/Universities.js";
+import ExEmployements from "./Components/Pages/ExEmployments.js";
+import Vendors from "./Components/Pages/Vendors.js";
+import BusinessDevelopmentActivity from "./Components/Pages/BusinessDevelopmentActivity.js";
+import UniversitiesBulk from "./Components/Pages/UniversitiesBulk.js";
+import ExEmploymentBulk from "./Components/Pages/ExEmploymentBulk.js";
+import VendorBulk from "./Components/Pages/VendorBulk.js";
+import BusinessDevelopmentBulk from "./Components/Pages/BusinessDevelopmentBulk.js";
+import CaseAllocationBulk from "./Components/Pages/CaseAllocationBulk.js";
+import TimeManagement from "./Components/Pages/TimeManagement.js";
+import CaseAllocationEdit from "./Components/Pages/CaseAllocationEdit.js";
 
 const Layout = () => {
   const location = useLocation();
@@ -130,6 +150,7 @@ const Layout = () => {
     location.pathname === "/user-forgot-password" ||
     location.pathname === "/admin-set-password" ||
     location.pathname === "/branch/reset-password" ||
+    location.pathname === "/reset-password" ||
     location.pathname === "/userLogin"||
     location.pathname === "/admin-update-password"||
     location.pathname === "/user-update-password" ||
@@ -138,7 +159,7 @@ const Layout = () => {
     
   return (
     <div className="">
-      <div className="flex flex-col h-screen">
+      <div className="flex flex-col h-screen ">
         {!hideSidebarAndHeader && (
           <>
             {isUserRoute && !isAdminRoute && <UserHeader />}
@@ -146,7 +167,7 @@ const Layout = () => {
             
           </>
         )}
-        <div className="block md:flex flex-grow">
+        <div className="block md:flex flex-grow desktopPOS">
           {!hideSidebarAndHeader && (
             <>
               {isUserRoute && <UserBar />}
@@ -159,7 +180,7 @@ const Layout = () => {
 
             <Route path="/background-form" element={<BackgroundVerificationForm />} />
             <Route path="/digital-form" element={<DigitalAddressVerification />} />
-     
+         
               <Route path="/userLogin" element={<UserLogin />} />
               <Route path="/" element={ <LoginCheck><Dashboard /></LoginCheck>} />
               <Route path="/admin-login" element={<AdminLogin />} />
@@ -178,10 +199,11 @@ const Layout = () => {
               <Route path="/admin-Modules" element={<Modules/>} />
               <Route path="/admin-ViewModules" element={<ViewModules/>} />
               <Route path="/admin-CkEditor" element={<CkEditor/>} />
-
-
-
-              
+              <Route path="/admin-UniversitiesBulk" element={<UniversitiesBulk/>} />
+              <Route path="/admin-ExEmploymentBulk" element={<ExEmploymentBulk/>} />
+              <Route path="/admin-VendorBulk" element={<VendorBulk/>} />
+              <Route path="/admin-BusinessDevelopmentBulk" element={<BusinessDevelopmentBulk/>} />
+              <Route path="/admin-CaseAllocationBulk" element={<CaseAllocationBulk/>} />
 
               
               <Route path="/admin-DocumentCheckin" element={<DocumentCheckin />} />
@@ -221,7 +243,10 @@ const Layout = () => {
               <Route path="/admin-CaseAllocation" element={<CaseAllocation/>} />
               <Route path="/admin-LeaveManagement" element={<LeaveManagement/>} />
               <Route path="/admin-HumanResourceMenu" element={<HumanResourceMenu/>} />
+              <Route path="/admin-ServiceBGVForm" element={<ServiceBGVForm/>} />
 
+              <Route path="/admin-GenerateServiceBGVForm" element={<GenerateServiceBGVForm/>} />
+              <Route path="/admin-TimeManagement" element={<TimeManagement/>} />
 
  
               
@@ -242,7 +267,21 @@ const Layout = () => {
               <Route path="/admin-team-management" element={<TeamManagment />} />
               <Route path="/admin-clienttable" element={<ClientManagementData />} />
               <Route path="/admin-PermissionManager" element={<PermissionManager />} />
+              <Route path="/admin-LeaveListing" element={<LeaveListing />} />
+              <Route path="/admin-Attendance" element={<Attendance />} />
+              <Route path="/admin-TrashApplications" element={<ApplicationTrash />} />
+              <Route path="/admin-ApplicationTrashCheckin" element={<ApplicationTrashCheckin />} />
+              <Route path="/admin-CustomerTrash" element={<CustomerTrash />} />
+              <Route path="/admin-Universities" element={<Universities />} />
+              <Route path="/admin-ExEmployements" element={<ExEmployements />} />
+              <Route path="/admin-Vendors" element={<Vendors />} />
+              <Route path="/admin-BusinessDevelopmentActivity" element={<BusinessDevelopmentActivity />} />
+              <Route path="/admin-CaseAllocationEdit" element={<CaseAllocationEdit />} />
 
+              
+
+
+              
               
               
 
@@ -267,7 +306,10 @@ const Layout = () => {
               <Route path="/user-update-password" element={<UserUpdatePassword />} />
               <Route path="/user-listing" element={<UserListing />} />
               <Route path="/user-viewTicket" element={<ViewUserTicket />} />
+              <Route path="/user-MyProfile" element={<MyProfile />} />
+              <Route path="/user-CLientTrashed" element={<CLientTrashed />} />
 
+              
 
 
               
@@ -291,7 +333,7 @@ const App = () => {
       <ApiLoadingProvider>
       <BranchApiLoadingProvider>
         
-        <Router basename="/demo/screening">
+        <Router basename="/">
           <Layout />
         </Router>
         </BranchApiLoadingProvider>
