@@ -91,6 +91,53 @@ const Attendance = () => {
     return Object.values(grouped);
   }
 
+  function transformAttendanceData(data) {
+    const result = {};
+
+    data.forEach(admin => {
+      const {
+        admin_id,
+        admin_name,
+        profile_picture,
+        admin_email,
+        admin_mobile,
+        emp_id,
+        daily_records
+      } = admin;
+
+      Object.keys(daily_records).forEach(year => {
+        if (!result[year]) result[year] = [];
+
+        Object.keys(daily_records[year]).forEach(month => {
+          // Find if the month already exists in result[year]
+          let monthEntry = result[year].find(entry => entry[month]);
+
+          if (!monthEntry) {
+            monthEntry = { [month]: [] };
+            result[year].push(monthEntry);
+          }
+
+          // Push the current admin's month data to the month array
+          monthEntry[month].push({
+            admin_id,
+            admin_name,
+            profile_picture,
+            admin_email,
+            admin_mobile,
+            emp_id,
+            daily_records: {
+              [year]: {
+                [month]: daily_records[year][month]
+              }
+            }
+          });
+        });
+      });
+    });
+
+    return result;
+  }
+
 
   const fetchData = useCallback(() => {
     setLoading(true);
@@ -131,16 +178,15 @@ const Attendance = () => {
         if (newToken) {
           localStorage.setItem("_token", newToken);
         }
-        console.log(`client_spocs - `, result.client_spocs);
 
         const groupedResult = groupByAdmin(result.client_spocs);
-        console.log(`groupedResult - `, groupedResult);
+        const transformed = transformAttendanceData(groupedResult);
 
-        setTableData(groupedResult || []);
+        setTableData(transformed || []);
       })
       .catch((error) => {
         console.error("Fetch error:", error);
-        setTableData([]);
+
       })
       .finally(() => {
         setApiLoading(false);
@@ -218,43 +264,80 @@ const Attendance = () => {
     return `${year}-${month}-${day}`; // Output: YYYY-MM-DD
   };
 
-  const filteredData = (Array.isArray(tableData) ? tableData : []).filter(
-    (row) => {
-      const normalizeString = (str) => {
-        return str?.toLowerCase().replace(/\s+/g, " ").trim() || "";
-      };
+  const normalizeString = (str) =>
+    str?.toLowerCase().replace(/\s+/g, " ").trim() || "";
 
-      const searchTermNormalized = normalizeString(searchTerm);
-      const adminNameNormalized = normalizeString(row?.admin_name);
-      const adminEmailNormalized = normalizeString(row?.admin_email);
-      const adminMobileNormalized = normalizeString(
-        row?.admin_mobile?.toString()
-      );
+  const searchTermNormalized = normalizeString(searchTerm);
 
-      const matchesSearchTerm =
-        adminNameNormalized.includes(searchTermNormalized) ||
-        adminEmailNormalized.includes(searchTermNormalized) ||
-        adminMobileNormalized.includes(searchTermNormalized);
+  // ✅ Maintain same structure as tableData
+  let filteredData = {};
 
-      const matchesDateRange = (() => {
-        if (!startDate && !endDate) return true;
+  if (!searchTermNormalized) {
+    // Return full data unfiltered
+    filteredData = tableData;
+  } else {
+    filteredData = {};
 
-        const loginDate = new Date(row.first_login_time);
-        const from = startDate ? new Date(startDate) : null;
-        const to = endDate ? new Date(endDate) : null;
+    Object.entries(tableData || {}).forEach(([year, monthArray]) => {
+      monthArray.forEach(monthObj => {
+        Object.entries(monthObj).forEach(([month, admins]) => {
+          const matchedAdmins = [];
 
-        if (from && to) {
-          return loginDate >= from && loginDate <= to;
-        } else if (from) {
-          return loginDate >= from;
-        } else if (to) {
-          return loginDate <= to;
-        }
-      })();
+          admins.forEach(admin => {
+            const adminNameNormalized = normalizeString(admin.admin_name);
+            const adminEmailNormalized = normalizeString(admin.admin_email);
+            const adminMobileNormalized = normalizeString(admin.admin_mobile?.toString());
 
-      return matchesSearchTerm && matchesDateRange;
-    }
-  );
+            const matchesSearchTerm =
+              adminNameNormalized.includes(searchTermNormalized) ||
+              adminEmailNormalized.includes(searchTermNormalized) ||
+              adminMobileNormalized.includes(searchTermNormalized);
+
+            const records = admin.daily_records?.[year]?.[month] || [];
+
+            const filteredRecords = records.filter(record => {
+              if (!startDate && !endDate) return true;
+
+              const loginDate = new Date(record.first_login_time);
+              const from = startDate ? new Date(startDate) : null;
+              const to = endDate ? new Date(endDate) : null;
+
+              if (from && to) return loginDate >= from && loginDate <= to;
+              if (from) return loginDate >= from;
+              if (to) return loginDate <= to;
+
+              return true;
+            });
+
+            if (matchesSearchTerm && filteredRecords.length > 0) {
+              const filteredAdmin = {
+                ...admin,
+                daily_records: {
+                  [year]: {
+                    [month]: filteredRecords
+                  }
+                }
+              };
+              matchedAdmins.push(filteredAdmin);
+            }
+          });
+
+          if (matchedAdmins.length > 0) {
+            if (!filteredData[year]) filteredData[year] = [];
+
+            // Find if month already exists
+            let existingMonth = filteredData[year].find(m => m[month]);
+            if (!existingMonth) {
+              filteredData[year].push({ [month]: matchedAdmins });
+            } else {
+              existingMonth[month] = matchedAdmins;
+            }
+          }
+        });
+      });
+    });
+  }
+
 
   const handleFilter = () => {
     console.log("Filter triggered");
@@ -297,19 +380,15 @@ const Attendance = () => {
   console.log('setFiltredDataRaw', filtredDataRaw)
 
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
-  const paginatedData = filteredData.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-  console.log('paginatedData', paginatedData)
+  const paginatedData = Array.isArray(filteredData)
+    ? filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+    : [];
 
   const handlePageChange = (newPage) => {
     if (newPage > 0 && newPage <= totalPages) {
       setCurrentPage(newPage);
     }
   };
-
-
 
   const exportToExcel = () => {
     const date = new Date();
@@ -430,80 +509,72 @@ const Attendance = () => {
     return new Date(year, parseInt(month), 0).getDate(); // month = "07" → 7
   }
 
-  const breakTypes = [
-    "LOGIN",
-    "TEA BREAK IN-1",
-    "TEA BREAK OUT-1",
-    "LUNCH BREAK IN",
-    "LUNCH BREAK OUT",
-    "TEA BREAK IN-2",
-    "TEA BREAK OUT-2",
-    "LOGOUT"
-  ];
-
-
   return (
     <div className="bg-[#c1dff2] border border-black">
       <div className="bg-white p-12 w-full mx-auto">
         {/* Filter Section */}
-        <div className="flex justify-between items-start flex-wrap gap-4 mb-4">
-          <div className="w-full md:w-1/3 space-y-2">
-            <input
-              type="text"
-              placeholder="Search by Name"
-              value={searchTerm}
-              onChange={handleSearchChange}
-              className="border p-2 rounded w-full shadow-sm focus:ring-2 focus:ring-blue-400"
-            />
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-gray-600 w-16">From</label>
-              <DatePicker
-                selected={startDate ? parseISO(startDate) : null}
-                onChange={(date) => setStartDate(date ? format(date, "yyyy-MM-dd") : "")}
-                dateFormat="dd-MM-yyyy"
-                placeholderText="DD-MM-YYYY"
-                className="uppercase border p-2 rounded w-full shadow-sm focus:ring-2 focus:ring-blue-400"
+        <div className="flex flex-col md:flex-row justify-between items-start gap-6 mb-6 p-4 bg-white rounded-lg shadow-sm border">
+          {/* Left Filters */}
+          <div className="w-full md:w-1/2 space-y-4">
+            {/* Search */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Search by Name</label>
+              <input
+                type="text"
+                placeholder="Enter name, email or mobile"
+                value={searchTerm}
+                onChange={handleSearchChange}
+                className="w-full border rounded-md px-4 py-2 shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
               />
             </div>
 
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-gray-600 w-16">To</label>
-              <DatePicker
-                selected={endDate ? parseISO(endDate) : null}
-                onChange={(date) => setEndDate(date ? format(date, "yyyy-MM-dd") : "")}
-                dateFormat="dd-MM-yyyy"
-                placeholderText="DD-MM-YYYY"
-                className="uppercase border p-2 rounded w-full shadow-sm focus:ring-2 focus:ring-blue-400"
-              />
-            </div>
-            <button
-              onClick={handleFilter}
-              className="bg-blue-500 text-white px-4 py-2 rounded shadow hover:bg-blue-600"
-            >
-              Search
-            </button>
+            {/* Date Range */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* From Date */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">From Date</label>
+                <DatePicker
+                  selected={startDate ? parseISO(startDate) : null}
+                  onChange={(date) => setStartDate(date ? format(date, "yyyy-MM-dd") : "")}
+                  dateFormat="dd-MM-yyyy"
+                  placeholderText="DD-MM-YYYY"
+                  className="w-full border px-4 py-2 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm uppercase"
+                />
+              </div>
 
-            <select
-              value={itemsPerPage}
-              onChange={(e) => {
-                setItemsPerPage(Number(e.target.value));
-                setCurrentPage(1);
-              }}
-              className="border rounded-lg px-3 py-2 w-full bg-white shadow-sm focus:ring-2 focus:ring-blue-400"
-            >
-              {optionsPerPage.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
+              {/* To Date */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">To Date</label>
+                <DatePicker
+                  selected={endDate ? parseISO(endDate) : null}
+                  onChange={(date) => setEndDate(date ? format(date, "yyyy-MM-dd") : "")}
+                  dateFormat="dd-MM-yyyy"
+                  placeholderText="DD-MM-YYYY"
+                  className="w-full border px-4 py-2 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm uppercase"
+                />
+              </div>
+            </div>
+
+            {/* Search Button */}
+            <div>
+              <button
+                onClick={handleFilter}
+                className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-2 rounded-md shadow-sm transition duration-150"
+              >
+                Apply Filters
+              </button>
+            </div>
           </div>
-          <button
-            onClick={exportToExcel}
-            className="bg-green-600 hover:bg-green-700 transition transform hover:scale-105 text-white px-6 py-2 rounded-lg shadow-sm"
-          >
-            Export to Excel
-          </button>
+
+          {/* Right - Export */}
+          <div className="w-full md:w-auto">
+            <button
+              onClick={exportToExcel}
+              className="w-full md:w-auto bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-2 rounded-md shadow-sm transition duration-150 hover:scale-105"
+            >
+              Export to Excel
+            </button>
+          </div>
         </div>
 
         {/* Table */}
@@ -516,9 +587,7 @@ const Attendance = () => {
                 <th className="border border-black px-4 py-2">NAME OF THE EMPLOYEE</th>
                 <th className="border border-black px-4 py-2">ATTENDANCE</th>
                 {Array.from({ length: 31 }, (_, i) => (
-                  <th key={i + 1} className="border border-black px-2 py-2">
-                    {i + 1}
-                  </th>
+                  <th key={i + 1} className="border border-black px-2 py-2">{i + 1}</th>
                 ))}
                 <th className="border border-black px-4 py-2">LEAVE</th>
                 <th className="border border-black px-4 py-2">PRESENT</th>
@@ -527,136 +596,86 @@ const Attendance = () => {
               </tr>
             </thead>
             <tbody>
-              {[...paginatedData].flatMap((admin, index) => {
-                const breakTypes = [
-                  "LOGIN",
-                  "TEA BREAK IN-1",
-                  "TEA BREAK OUT-1",
-                  "LUNCH BREAK IN",
-                  "LUNCH BREAK OUT",
-                  "TEA BREAK IN-2",
-                  "TEA BREAK OUT-2",
-                  "LOGOUT"
-                ];
-
-                // Convert to array of { admin, year, month, records } for sorting
-                const monthYearGroups = [];
-
-                Object.keys(admin.daily_records).forEach(year => {
-                  Object.keys(admin.daily_records[year]).forEach(month => {
-                    monthYearGroups.push({
-                      admin,
-                      year,
-                      month,
-                      records: admin.daily_records[year][month]
-                    });
-                  });
-                });
-
-                // Sort by year DESC, then month DESC
-                monthYearGroups.sort((a, b) => {
-                  const ya = parseInt(a.year);
-                  const yb = parseInt(b.year);
-                  const ma = parseInt(a.month);
-                  const mb = parseInt(b.month);
-                  return yb !== ya ? yb - ya : mb - ma;
-                });
-
-                let rowIndex = index + 1;
-
-                // Render
-                return monthYearGroups.map(({ admin, year, month, records }) => {
-                  const daysInMonth = getDaysInMonth(year, month);
-                  const presentCount = records.filter(r => r.first_login_time || r.last_logout_time).length;
-                  const leaveCount = records.length - presentCount;
-                  const leaveFrom = records.find(r => !r.first_login_time && !r.last_logout_time)?.date || "";
-                  const leaveTo = [...records].reverse().find(r => !r.first_login_time && !r.last_logout_time)?.date || "";
-
-                  return (
-                    <React.Fragment key={`${admin.emp_id}-${year}-${month}`}>
-                      {/* Month-Year Header Row */}
-                      <tr className="bg-yellow-100 text-center font-bold text-black">
+              {Object.entries(filteredData).flatMap(([year, monthArray]) =>
+                monthArray.flatMap(monthObj =>
+                  Object.entries(monthObj).flatMap(([month, admins], monthIndex) => {
+                    return [
+                      // 🟨 Render Month-Year Header Row Once
+                      <tr key={`header-${year}-${month}`} className="bg-yellow-100 text-center font-bold text-black">
                         <td colSpan={35} className="border border-black py-2 text-lg">
-                          ATTENDANCE SHEET — {admin.admin_name} ({admin.emp_id}) — {month.padStart(2, '0')}/{year}
+                          ATTENDANCE SHEET — {month.padStart(2, '0')}/{year}
                         </td>
-                      </tr>
+                      </tr>,
 
-                      {/* Attendance Rows */}
-                      {breakTypes.map((label, i) => (
-                        <tr key={`${admin.emp_id}-${label}-${year}-${month}`} className="text-center">
-                          {i === 0 && (
-                            <>
-                              <td rowSpan={breakTypes.length} className="border border-black">{rowIndex}</td>
-                              <td rowSpan={breakTypes.length} className="border border-black">{admin.emp_id}</td>
-                              <td rowSpan={breakTypes.length} className="border border-black">{admin.admin_name}</td>
-                            </>
-                          )}
-                          <td className="border border-black">{label}</td>
-                          {Array.from({ length: 31 }, (_, d) => {
-                            const day = d + 1;
-                            const record = records.find(r => new Date(r.date).getDate() === day);
-                            const key = label.toLowerCase();
-                            let value = "";
+                      // 👤 Render Admin Rows
+                      ...admins.map((admin, adminIndex) => {
+                        const breakTypes = [
+                          "LOGIN",
+                          "TEA BREAK IN-1",
+                          "TEA BREAK OUT-1",
+                          "LUNCH BREAK IN",
+                          "LUNCH BREAK OUT",
+                          "TEA BREAK IN-2",
+                          "TEA BREAK OUT-2",
+                          "LOGOUT"
+                        ];
 
-                            if (record) {
-                              if (label === "LOGIN") value = record.first_login_time;
-                              else if (label === "LOGOUT") value = record.last_logout_time;
-                              else value = record.break_times?.[key];
-                            }
+                        const monthRecords = admin.daily_records[year]?.[month] || [];
+                        const presentCount = monthRecords.filter(r => r.first_login_time || r.last_logout_time).length;
+                        const leaveCount = monthRecords.length - presentCount;
+                        const leaveFrom = monthRecords.find(r => !r.first_login_time && !r.last_logout_time)?.date || "";
+                        const leaveTo = [...monthRecords].reverse().find(r => !r.first_login_time && !r.last_logout_time)?.date || "";
 
-                            return (
-                              <td key={d} className="border border-black text-xs px-2 py-1">
-                                {formatDate(value)}
-                              </td>
-                            );
-                          })}
-                          {i === 0 && (
-                            <>
-                              <td rowSpan={breakTypes.length} className="border border-black">{leaveCount}</td>
-                              <td rowSpan={breakTypes.length} className="border border-black">{presentCount}</td>
-                              <td rowSpan={breakTypes.length} className="border border-black">
-                                {leaveFrom ? formatDate2(leaveFrom) : ""}
-                              </td>
-                              <td rowSpan={breakTypes.length} className="border border-black">
-                                {leaveTo ? formatDate2(leaveTo) : ""}
-                              </td>
-                            </>
-                          )}
-                        </tr>
-                      ))}
-                    </React.Fragment>
-                  );
-                });
-              })}
+                        return breakTypes.map((label, i) => (
+                          <tr key={`${admin.emp_id}-${label}-${year}-${month}`} className="text-center">
+                            {i === 0 && (
+                              <>
+                                <td rowSpan={breakTypes.length} className="border border-black">{adminIndex + 1}</td>
+                                <td rowSpan={breakTypes.length} className="border border-black">{admin.emp_id}</td>
+                                <td rowSpan={breakTypes.length} className="border border-black">{admin.admin_name}</td>
+                              </>
+                            )}
+                            <td className="border border-black">{label}</td>
+                            {Array.from({ length: 31 }, (_, d) => {
+                              const day = d + 1;
+                              const record = monthRecords.find(r => new Date(r.date).getDate() === day);
+                              const key = label.toLowerCase();
+                              let value = "";
+
+                              if (record) {
+                                if (label === "LOGIN") value = record.first_login_time;
+                                else if (label === "LOGOUT") value = record.last_logout_time;
+                                else value = record.break_times?.[key];
+                              }
+
+                              return (
+                                <td key={d} className="border border-black text-xs px-2 py-1">
+                                  {formatDate(value)}
+                                </td>
+                              );
+                            })}
+                            {i === 0 && (
+                              <>
+                                <td rowSpan={breakTypes.length} className="border border-black">{leaveCount}</td>
+                                <td rowSpan={breakTypes.length} className="border border-black">{presentCount}</td>
+                                <td rowSpan={breakTypes.length} className="border border-black">
+                                  {leaveFrom ? formatDate2(leaveFrom) : ""}
+                                </td>
+                                <td rowSpan={breakTypes.length} className="border border-black">
+                                  {leaveTo ? formatDate2(leaveTo) : ""}
+                                </td>
+                              </>
+                            )}
+                          </tr>
+                        ));
+                      })
+                    ];
+                  })
+                )
+              )}
 
             </tbody>
           </table>
-        </div>
-
-
-
-
-
-
-        {/* Pagination */}
-        <div className="flex justify-between items-center mt-4">
-          <button
-            onClick={() => handlePageChange(currentPage - 1)}
-            disabled={currentPage === 1}
-            className="px-4 py-2 bg-gray-300 text-gray-600 rounded hover:bg-gray-400"
-          >
-            Previous
-          </button>
-          <span className="text-gray-700">
-            Page {currentPage} of {totalPages}
-          </span>
-          <button
-            onClick={() => handlePageChange(currentPage + 1)}
-            disabled={currentPage === totalPages}
-            className="px-4 py-2 bg-gray-300 text-gray-600 rounded hover:bg-gray-400"
-          >
-            Next
-          </button>
         </div>
       </div>
     </div>
