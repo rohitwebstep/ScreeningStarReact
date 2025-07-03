@@ -503,32 +503,30 @@ const Attendance = () => {
               />
             </div>
 
-            {/* Date Range */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* From Date */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">From Date</label>
-                <DatePicker
-                  selected={startDate ? parseISO(startDate) : null}
-                  onChange={(date) => setStartDate(date ? format(date, "yyyy-MM-dd") : "")}
-                  dateFormat="dd-MM-yyyy"
-                  placeholderText="DD-MM-YYYY"
-                  className="w-full border px-4 py-2 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm uppercase"
-                />
+            {/*
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">From Date</label>
+                  <DatePicker
+                    selected={startDate ? parseISO(startDate) : null}
+                    onChange={(date) => setStartDate(date ? format(date, "yyyy-MM-dd") : "")}
+                    dateFormat="dd-MM-yyyy"
+                    placeholderText="DD-MM-YYYY"
+                    className="w-full border px-4 py-2 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm uppercase"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">To Date</label>
+                  <DatePicker
+                    selected={endDate ? parseISO(endDate) : null}
+                    onChange={(date) => setEndDate(date ? format(date, "yyyy-MM-dd") : "")}
+                    dateFormat="dd-MM-yyyy"
+                    placeholderText="DD-MM-YYYY"
+                    className="w-full border px-4 py-2 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm uppercase"
+                  />
+                </div>
               </div>
-
-              {/* To Date */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">To Date</label>
-                <DatePicker
-                  selected={endDate ? parseISO(endDate) : null}
-                  onChange={(date) => setEndDate(date ? format(date, "yyyy-MM-dd") : "")}
-                  dateFormat="dd-MM-yyyy"
-                  placeholderText="DD-MM-YYYY"
-                  className="w-full border px-4 py-2 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm uppercase"
-                />
-              </div>
-            </div>
+            */}
 
             {/* Month & Year Dropdowns */}
             <div className="grid grid-cols-2 sm:grid-cols-2 gap-4">
