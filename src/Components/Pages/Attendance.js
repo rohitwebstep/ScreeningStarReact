@@ -21,8 +21,8 @@ const Attendance = () => {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
-  const [selectedMonth, setSelectedMonth] = useState("");
-  const [selectedYear, setSelectedYear] = useState("");
+  const [fromMonthYear, setFromMonthYear] = useState(""); // '06/2025'
+  const [toMonthYear, setToMonthYear] = useState("");     // '07/2025'
 
   const [loading, setLoading] = useState(true);
   const [tableData, setTableData] = useState([]);
@@ -142,7 +142,7 @@ const Attendance = () => {
     return result;
   }
 
-  const fetchData = useCallback((month, year) => {
+  const fetchData = useCallback((from, to) => {
     setLoading(true);
     setApiLoading(true);
     const admin_id = JSON.parse(localStorage.getItem("admin"))?.id;
@@ -159,8 +159,8 @@ const Attendance = () => {
     let url = `https://api.screeningstar.co.in/personal-manager/attendance-list?admin_id=${admin_id}&_token=${storedToken}`;
 
     // ✅ Append optional parameters if provided
-    if (month) url += `&month=${month}`;
-    if (year) url += `&year=${year}`;
+    if (from) url += `&from=${from}`;
+    if (to) url += `&to=${to}`;
 
     fetch(url, {
       method: "GET",
@@ -350,7 +350,7 @@ const Attendance = () => {
 
   const handleFilter = async () => {
     console.log("Filter triggered");
-    await fetchData(selectedMonth, selectedYear);
+    await fetchData(fromMonthYear, toMonthYear);
   };
   console.log('setFiltredDataRaw', filtredDataRaw)
 
@@ -484,6 +484,26 @@ const Attendance = () => {
     return new Date(year, parseInt(month), 0).getDate(); // month = "07" → 7
   }
 
+  // Helper: convert 'MM/yyyy' to Date
+  const parseMonthYearString = (str) => {
+    if (!str) return null;
+    const [month, year] = str.split("/");
+    return new Date(parseInt(year), parseInt(month) - 1);
+  };
+
+  // Single handler for both
+  const handleMonthYearChange = (date, setState) => {
+    if (date instanceof Date && !isNaN(date)) {
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const year = date.getFullYear();
+      setState(`${month}/${year}`);
+    } else {
+      setState("");
+    }
+  };
+
+  console.log(`filteredData - `, filteredData);
+
   return (
     <div className="bg-[#c1dff2] border border-black">
       <div className="bg-white p-12 w-full mx-auto">
@@ -530,40 +550,30 @@ const Attendance = () => {
 
             {/* Month & Year Dropdowns */}
             <div className="grid grid-cols-2 sm:grid-cols-2 gap-4">
-              {/* Month */}
+              {/* From Picker */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Month</label>
-                <select
-                  value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                <label className="block text-sm font-semibold text-gray-700 mb-1">From</label>
+                <DatePicker
+                  selected={parseMonthYearString(fromMonthYear)}
+                  onChange={(date) => handleMonthYearChange(date, setFromMonthYear)}
+                  dateFormat="MM/yyyy"
+                  showMonthYearPicker
                   className="w-full border px-4 py-2 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
-                >
-                  <option value="">Select Month</option>
-                  {[
-                    'January', 'February', 'March', 'April', 'May', 'June',
-                    'July', 'August', 'September', 'October', 'November', 'December'
-                  ].map((name, index) => (
-                    <option key={index} value={index + 1}>{name}</option>
-                  ))}
-                </select>
+                  placeholderText="Select From"
+                />
               </div>
 
-              {/* Year */}
+              {/* To Picker */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Year</label>
-                <select
-                  value={selectedYear}
-                  onChange={(e) => setSelectedYear(Number(e.target.value))}
+                <label className="block text-sm font-semibold text-gray-700 mb-1">To</label>
+                <DatePicker
+                  selected={parseMonthYearString(toMonthYear)}
+                  onChange={(date) => handleMonthYearChange(date, setToMonthYear)}
+                  dateFormat="MM/yyyy"
+                  showMonthYearPicker
                   className="w-full border px-4 py-2 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
-                >
-                  <option value="">Select Year</option>
-                  {Array.from({ length: 5 }, (_, i) => {
-                    const year = new Date().getFullYear() - 2 + i;
-                    return (
-                      <option key={year} value={year}>{year}</option>
-                    );
-                  })}
-                </select>
+                  placeholderText="Select To"
+                />
               </div>
             </div>
 
@@ -675,34 +685,59 @@ const Attendance = () => {
                               <>
                                 <td rowSpan={breakTypes.length} className="border border-black">{leaveCount}</td>
                                 <td rowSpan={breakTypes.length} className="border border-black">{presentCount}</td>
+                                {/* Leave From Date */}
+                                {/* Leave From Date */}
                                 <td rowSpan={breakTypes.length} className="border border-black text-xs leading-tight text-left px-2 py-1">
-                                  {adminLeaveSummary.length > 0
-                                    ? adminLeaveSummary.map((leave, idx) => (
-                                      <div key={idx}>
+                                  {adminLeaveSummary.length > 0 ? (
+                                    adminLeaveSummary.map((leave, idx) => (
+                                      <div
+                                        key={`from-${idx}`}
+                                        className={`${idx !== 0 ? "border-t border-dashed border-gray-300 mt-1 pt-1" : ""}`}
+                                      >
                                         {formatDate2(leave.from_date)}
                                       </div>
                                     ))
-                                    : "-"}
+                                  ) : (
+                                    "-"
+                                  )}
                                 </td>
+
+                                {/* Leave To Date */}
                                 <td rowSpan={breakTypes.length} className="border border-black text-xs leading-tight text-left px-2 py-1">
-                                  {adminLeaveSummary.length > 0
-                                    ? adminLeaveSummary.map((leave, idx) => (
-                                      <div key={idx}>
+                                  {adminLeaveSummary.length > 0 ? (
+                                    adminLeaveSummary.map((leave, idx) => (
+                                      <div
+                                        key={`to-${idx}`}
+                                        className={`${idx !== 0 ? "border-t border-dashed border-gray-300 mt-1 pt-1" : ""}`}
+                                      >
                                         {formatDate2(leave.to_date)}
                                       </div>
                                     ))
-                                    : "-"}
+                                  ) : (
+                                    "-"
+                                  )}
                                 </td>
 
+                                {/* Purpose of Leave & Remarks */}
                                 <td rowSpan={breakTypes.length} className="border border-black text-xs leading-tight text-left px-2 py-1">
-                                  {adminLeaveSummary.length > 0
-                                    ? adminLeaveSummary.map((leave, idx) => (
-                                      <div key={idx}>
-                                        <strong>{leave.purpose_of_leave}</strong><br />
-                                        <span className="italic text-gray-600">“{leave.remarks}”</span>
+                                  {adminLeaveSummary.length > 0 ? (
+                                    adminLeaveSummary.map((leave, idx) => (
+                                      <div
+                                        key={`reason-${idx}`}
+                                        className={`mb-1 ${idx !== 0 ? "border-t border-dashed border-gray-300 mt-1 pt-1" : ""}`}
+                                      >
+                                        <strong>{leave.purpose_of_leave}</strong> <br />
+                                        <span className="text-gray-700 text-[11px]">
+                                          ({formatDate2(leave.from_date)} - {formatDate2(leave.to_date)})
+                                        </span>
+                                        {leave.remarks && (
+                                          <div className="italic text-gray-500 text-[11px] mt-0.5">“{leave.remarks}”</div>
+                                        )}
                                       </div>
                                     ))
-                                    : "-"}
+                                  ) : (
+                                    "-"
+                                  )}
                                 </td>
 
                               </>
