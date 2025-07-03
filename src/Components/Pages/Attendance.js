@@ -352,7 +352,6 @@ const Attendance = () => {
     console.log("Filter triggered");
     await fetchData(fromMonthYear, toMonthYear);
   };
-  console.log('setFiltredDataRaw', filtredDataRaw)
 
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
   const paginatedData = Array.isArray(filteredData)
@@ -366,99 +365,53 @@ const Attendance = () => {
   };
 
   const exportToExcel = () => {
-    const date = new Date();
-    const daysInMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+    // console.log("🔍 Step 1: Fetching table element...");
+    const table = document.getElementById("attendance-table");
 
-    const headers = [
-      "SL NO",
-      "EMPLOYEE ID",
-      "NAME OF THE EMPLOYEE",
-      "ATTENDANCE",
-    ];
-    for (let i = 1; i <= daysInMonth; i++) headers.push(i.toString());
-    headers.push("LEAVE", "PRESENT", "LEAVE FROM", "LEAVE TO");
+    if (!table) {
+      console.error("❌ Table with ID 'attendance-table' not found.");
+      return;
+    }
 
-    const attendanceTypes = [
-      { label: "LOGIN", key: "login" },
-      { label: "TEA BREAK IN-1", key: "tea break in-1" },
-      { label: "TEA BREAK OUT-1", key: "tea break out-1" },
-      { label: "LUNCH BREAK IN", key: "lunch break in" },
-      { label: "LUNCH BREAK OUT", key: "lunch break out" },
-      { label: "TEA BREAK IN-2", key: "tea break in-2" },
-      { label: "TEA BREAK OUT-2", key: "tea break out-2" },
-      { label: "LOGOUT", key: "logout" },
-    ];
+    // console.log("✅ Table found. Converting HTML table to worksheet...");
+    const ws = XLSX.utils.table_to_sheet(table);
 
-    const exportData = [headers];
-    const merges = [];
+    // console.log("🛠️ Decoding sheet range to iterate over rows...");
+    const range = XLSX.utils.decode_range(ws['!ref']);
+    // console.log("🧭 Sheet Range:", range);
 
-    let currentRow = 1;
+    // console.log("🎯 Looping through rows to find and style 'ATTENDANCE SHEET' rows...");
+    for (let R = range.s.r; R <= range.e.r; ++R) {
+      const cellAddress = XLSX.utils.encode_cell({ r: R, c: 0 });
+      const cell = ws[cellAddress];
 
-    paginatedData.forEach((emp, empIndex) => {
-      attendanceTypes.forEach((type, rowIndex) => {
-        const row = [];
-        row.push(rowIndex === 0 ? empIndex + 1 : ""); // SL NO
-        row.push(rowIndex === 0 ? emp.emp_id : ""); // EMPLOYEE ID
-        row.push(rowIndex === 0 ? emp.admin_name : ""); // NAME
-        row.push(type.label); // ATTENDANCE TYPE
+      if (cell && typeof cell.v === 'string' && cell.v.startsWith("ATTENDANCE SHEET")) {
+        // console.log(`🟨 Styling row ${R} for header: "${cell.v}"`);
 
-        for (let i = 1; i <= daysInMonth; i++) {
-          const currentDate = new Date(emp.date);
-          const isMatch = currentDate.getDate() === i;
-
-          let value = "";
-
-          if (isMatch) {
-            if (type.key === "login") {
-              value = emp.first_login_time;
-            } else if (type.key === "logout") {
-              value = emp.last_logout_time;
-            } else {
-              value = emp.break_times?.[type.key.toLowerCase()] || "";
-            }
-          }
-
-          row.push(value ? formatDate(value) : "");
-        }
-
-        // Add LEAVE/PRESENT/FROM/TO only for first attendanceType
-        if (rowIndex === 0) {
-          row.push(emp.status === "On Leave" ? 1 : 0); // LEAVE
-          row.push(emp.status === "Present" ? 1 : 0); // PRESENT
-          row.push(emp.from_date ? formatDate2(emp.from_date) : "");
-          row.push(emp.to_date ? formatDate2(emp.to_date) : "");
-        } else {
-          row.push("", "", "", ""); // empty if not first row
-        }
-
-        exportData.push(row);
-      });
-
-      // Add merges for SL NO, EMP ID, NAME, and LEAVE/PRESENT/FROM/TO
-      const startRow = currentRow;
-      const endRow = currentRow + attendanceTypes.length - 1;
-
-      const mergeColumns = [0, 1, 2]; // SL NO, EMP ID, NAME
-      mergeColumns.forEach((col) => {
-        merges.push({ s: { r: startRow, c: col }, e: { r: endRow, c: col } });
-      });
-
-      const summaryStartCol = 4 + daysInMonth; // after attendance dates
-      for (let col = summaryStartCol; col <= summaryStartCol + 3; col++) {
-        merges.push({ s: { r: startRow, c: col }, e: { r: endRow, c: col } });
+        const cellRef = XLSX.utils.encode_cell({ r: R, c: 0 });
+        ws[cellRef].s = {
+          fill: { fgColor: { rgb: "FFF9C4" } }, // Light yellow
+          font: { bold: true, color: { rgb: "000000" } },
+          alignment: { horizontal: "center", vertical: "center" }
+        };
       }
+    }
 
-      currentRow += attendanceTypes.length;
-    });
+    // console.log("📘 Creating new workbook...");
+    const wb = XLSX.utils.book_new();
 
-    const worksheet = XLSX.utils.aoa_to_sheet(exportData);
-    worksheet["!merges"] = merges;
+    // console.log("📎 Appending worksheet to workbook...");
+    XLSX.utils.book_append_sheet(wb, ws, "Attendance");
 
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Attendance");
+    // console.log("📤 Writing workbook to binary...");
+    const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array", cellStyles: true });
 
-    XLSX.writeFile(workbook, "Attendance.xlsx");
+    // console.log("💾 Triggering download...");
+    saveAs(new Blob([wbout], { type: "application/octet-stream" }), "AttendanceSheet_Styled.xlsx");
+
+    // console.log("✅ Export complete!");
   };
+
 
 
 
@@ -501,9 +454,7 @@ const Attendance = () => {
       setState("");
     }
   };
-
-  console.log(`filteredData - `, filteredData);
-
+  
   return (
     <div className="bg-[#c1dff2] border border-black">
       <div className="bg-white p-12 w-full mx-auto">
@@ -592,7 +543,7 @@ const Attendance = () => {
           <div className="w-full md:w-auto">
             <button
               onClick={exportToExcel}
-              className="w-full md:w-auto bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-2 rounded-md shadow-sm transition duration-150 hover:scale-105"
+              className="mb-4 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition"
             >
               Export to Excel
             </button>
@@ -602,7 +553,7 @@ const Attendance = () => {
 
         {/* Table */}
         <div className="overflow-x-auto">
-          <table className="min-w-full border-collapse border border-black rounded-lg whitespace-nowrap mb-4">
+          <table id="attendance-table" className="min-w-full border-collapse border border-black rounded-lg whitespace-nowrap mb-4">
             <thead>
               <tr className="bg-[#c1dff2] text-[#4d606b] text-center">
                 <th className="border border-black px-4 py-2">SL NO</th>
