@@ -21,12 +21,8 @@ const Attendance = () => {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
-  const [fromMonthYear, setFromMonthYear] = useState(""); // '06/2025'
-  const [toMonthYear, setToMonthYear] = useState("");     // '07/2025'
-
   const [loading, setLoading] = useState(true);
   const [tableData, setTableData] = useState([]);
-  const [leaveSummary, setLeaveSummary] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const optionsPerPage = [10, 50, 100, 200];
@@ -95,54 +91,8 @@ const Attendance = () => {
     return Object.values(grouped);
   }
 
-  function transformAttendanceData(data) {
-    const result = {};
 
-    data.forEach(admin => {
-      const {
-        admin_id,
-        admin_name,
-        profile_picture,
-        admin_email,
-        admin_mobile,
-        emp_id,
-        daily_records
-      } = admin;
-
-      Object.keys(daily_records).forEach(year => {
-        if (!result[year]) result[year] = [];
-
-        Object.keys(daily_records[year]).forEach(month => {
-          // Find if the month already exists in result[year]
-          let monthEntry = result[year].find(entry => entry[month]);
-
-          if (!monthEntry) {
-            monthEntry = { [month]: [] };
-            result[year].push(monthEntry);
-          }
-
-          // Push the current admin's month data to the month array
-          monthEntry[month].push({
-            admin_id,
-            admin_name,
-            profile_picture,
-            admin_email,
-            admin_mobile,
-            emp_id,
-            daily_records: {
-              [year]: {
-                [month]: daily_records[year][month]
-              }
-            }
-          });
-        });
-      });
-    });
-
-    return result;
-  }
-
-  const fetchData = useCallback((from, to) => {
+  const fetchData = useCallback(() => {
     setLoading(true);
     setApiLoading(true);
     const admin_id = JSON.parse(localStorage.getItem("admin"))?.id;
@@ -155,12 +105,7 @@ const Attendance = () => {
       return;
     }
 
-    // ✅ Construct base URL
-    let url = `https://api.screeningstar.co.in/personal-manager/attendance-list?admin_id=${admin_id}&_token=${storedToken}`;
-
-    // ✅ Append optional parameters if provided
-    if (from) url += `&from=${from}`;
-    if (to) url += `&to=${to}`;
+    const url = `https://api.screeningstar.co.in/personal-manager/attendance-list?admin_id=${admin_id}&_token=${storedToken}`;
 
     fetch(url, {
       method: "GET",
@@ -186,16 +131,16 @@ const Attendance = () => {
         if (newToken) {
           localStorage.setItem("_token", newToken);
         }
+        console.log(`client_spocs - `, result.client_spocs);
 
-        const groupedResult = groupByAdmin(result.data.attendance_records);
-        const transformed = transformAttendanceData(groupedResult);
+        const groupedResult = groupByAdmin(result.client_spocs);
+        console.log(`groupedResult - `, groupedResult);
 
-        setTableData(transformed || []);
-        setLeaveSummary(result.data.leave_summary || []);
+        setTableData(groupedResult || []);
       })
       .catch((error) => {
         console.error("Fetch error:", error);
-
+        setTableData([]);
       })
       .finally(() => {
         setApiLoading(false);
@@ -273,90 +218,90 @@ const Attendance = () => {
     return `${year}-${month}-${day}`; // Output: YYYY-MM-DD
   };
 
-  const normalizeString = (str) =>
-    str?.toLowerCase().replace(/\s+/g, " ").trim() || "";
+  const filteredData = (Array.isArray(tableData) ? tableData : []).filter(
+    (row) => {
+      const normalizeString = (str) => {
+        return str?.toLowerCase().replace(/\s+/g, " ").trim() || "";
+      };
 
-  const searchTermNormalized = normalizeString(searchTerm);
+      const searchTermNormalized = normalizeString(searchTerm);
+      const adminNameNormalized = normalizeString(row?.admin_name);
+      const adminEmailNormalized = normalizeString(row?.admin_email);
+      const adminMobileNormalized = normalizeString(
+        row?.admin_mobile?.toString()
+      );
 
-  // ✅ Maintain same structure as tableData
-  let filteredData = {};
+      const matchesSearchTerm =
+        adminNameNormalized.includes(searchTermNormalized) ||
+        adminEmailNormalized.includes(searchTermNormalized) ||
+        adminMobileNormalized.includes(searchTermNormalized);
 
-  if (!searchTermNormalized) {
-    // Return full data unfiltered
-    filteredData = tableData;
-  } else {
-    filteredData = {};
+      const matchesDateRange = (() => {
+        if (!startDate && !endDate) return true;
 
-    Object.entries(tableData || {}).forEach(([year, monthArray]) => {
-      monthArray.forEach(monthObj => {
-        Object.entries(monthObj).forEach(([month, admins]) => {
-          const matchedAdmins = [];
+        const loginDate = new Date(row.first_login_time);
+        const from = startDate ? new Date(startDate) : null;
+        const to = endDate ? new Date(endDate) : null;
 
-          admins.forEach(admin => {
-            const adminNameNormalized = normalizeString(admin.admin_name);
-            const adminEmailNormalized = normalizeString(admin.admin_email);
-            const adminMobileNormalized = normalizeString(admin.admin_mobile?.toString());
+        if (from && to) {
+          return loginDate >= from && loginDate <= to;
+        } else if (from) {
+          return loginDate >= from;
+        } else if (to) {
+          return loginDate <= to;
+        }
+      })();
 
-            const matchesSearchTerm =
-              adminNameNormalized.includes(searchTermNormalized) ||
-              adminEmailNormalized.includes(searchTermNormalized) ||
-              adminMobileNormalized.includes(searchTermNormalized);
+      return matchesSearchTerm && matchesDateRange;
+    }
+  );
 
-            const records = admin.daily_records?.[year]?.[month] || [];
-
-            const filteredRecords = records.filter(record => {
-              if (!startDate && !endDate) return true;
-
-              const loginDate = new Date(record.first_login_time);
-              const from = startDate ? new Date(startDate) : null;
-              const to = endDate ? new Date(endDate) : null;
-
-              if (from && to) return loginDate >= from && loginDate <= to;
-              if (from) return loginDate >= from;
-              if (to) return loginDate <= to;
-
-              return true;
-            });
-
-            if (matchesSearchTerm && filteredRecords.length > 0) {
-              const filteredAdmin = {
-                ...admin,
-                daily_records: {
-                  [year]: {
-                    [month]: filteredRecords
-                  }
-                }
-              };
-              matchedAdmins.push(filteredAdmin);
-            }
-          });
-
-          if (matchedAdmins.length > 0) {
-            if (!filteredData[year]) filteredData[year] = [];
-
-            // Find if month already exists
-            let existingMonth = filteredData[year].find(m => m[month]);
-            if (!existingMonth) {
-              filteredData[year].push({ [month]: matchedAdmins });
-            } else {
-              existingMonth[month] = matchedAdmins;
-            }
-          }
-        });
-      });
-    });
-  }
-
-
-  const handleFilter = async () => {
+  const handleFilter = () => {
     console.log("Filter triggered");
-    await fetchData(fromMonthYear, toMonthYear);
+
+    if (!startDate || !endDate) {
+      console.log("Start or End date missing:", { startDate, endDate });
+      return;
+    }
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    console.log("Parsed Dates:", { start, end });
+
+    const filteredData = tableData.filter((item, index) => {
+      if (!item.date) {
+        console.log(`Row ${index} skipped (no date)`, item);
+        return false;
+      }
+
+      const itemDate = new Date(item.date);
+      const inRange = itemDate >= start && itemDate <= end;
+
+      console.log(`Row ${index} - Date: ${item.date}, Parsed: ${itemDate}, In Range: ${inRange}`);
+      return inRange;
+    });
+
+    if (filteredData.length === 0) {
+      Swal.fire({
+        icon: "info",
+        title: "No Data Found",
+        text: "No records found in the selected date range.",
+      });
+      return;
+    }
+
+    setFiltredDataRaw(filteredData);
+    setCurrentPage(1);
+    console.log("Table data and current page updated");
   };
+  console.log('setFiltredDataRaw', filtredDataRaw)
 
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
-  const paginatedData = Array.isArray(filteredData)
-    ? filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
-    : [];
+  const paginatedData = filteredData.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+  console.log('paginatedData', paginatedData)
 
   const handlePageChange = (newPage) => {
     if (newPage > 0 && newPage <= totalPages) {
@@ -364,54 +309,102 @@ const Attendance = () => {
     }
   };
 
+
+
   const exportToExcel = () => {
-    // console.log("🔍 Step 1: Fetching table element...");
-    const table = document.getElementById("attendance-table");
+    const date = new Date();
+    const daysInMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
 
-    if (!table) {
-      console.error("❌ Table with ID 'attendance-table' not found.");
-      return;
-    }
+    const headers = [
+      "SL NO",
+      "EMPLOYEE ID",
+      "NAME OF THE EMPLOYEE",
+      "ATTENDANCE",
+    ];
+    for (let i = 1; i <= daysInMonth; i++) headers.push(i.toString());
+    headers.push("LEAVE", "PRESENT", "LEAVE FROM", "LEAVE TO");
 
-    // console.log("✅ Table found. Converting HTML table to worksheet...");
-    const ws = XLSX.utils.table_to_sheet(table);
+    const attendanceTypes = [
+      { label: "LOGIN", key: "login" },
+      { label: "TEA BREAK IN-1", key: "tea break in-1" },
+      { label: "TEA BREAK OUT-1", key: "tea break out-1" },
+      { label: "LUNCH BREAK IN", key: "lunch break in" },
+      { label: "LUNCH BREAK OUT", key: "lunch break out" },
+      { label: "TEA BREAK IN-2", key: "tea break in-2" },
+      { label: "TEA BREAK OUT-2", key: "tea break out-2" },
+      { label: "LOGOUT", key: "logout" },
+    ];
 
-    // console.log("🛠️ Decoding sheet range to iterate over rows...");
-    const range = XLSX.utils.decode_range(ws['!ref']);
-    // console.log("🧭 Sheet Range:", range);
+    const exportData = [headers];
+    const merges = [];
 
-    // console.log("🎯 Looping through rows to find and style 'ATTENDANCE SHEET' rows...");
-    for (let R = range.s.r; R <= range.e.r; ++R) {
-      const cellAddress = XLSX.utils.encode_cell({ r: R, c: 0 });
-      const cell = ws[cellAddress];
+    let currentRow = 1;
 
-      if (cell && typeof cell.v === 'string' && cell.v.startsWith("ATTENDANCE SHEET")) {
-        // console.log(`🟨 Styling row ${R} for header: "${cell.v}"`);
+    paginatedData.forEach((emp, empIndex) => {
+      attendanceTypes.forEach((type, rowIndex) => {
+        const row = [];
+        row.push(rowIndex === 0 ? empIndex + 1 : ""); // SL NO
+        row.push(rowIndex === 0 ? emp.emp_id : ""); // EMPLOYEE ID
+        row.push(rowIndex === 0 ? emp.admin_name : ""); // NAME
+        row.push(type.label); // ATTENDANCE TYPE
 
-        const cellRef = XLSX.utils.encode_cell({ r: R, c: 0 });
-        ws[cellRef].s = {
-          fill: { fgColor: { rgb: "FFF9C4" } }, // Light yellow
-          font: { bold: true, color: { rgb: "000000" } },
-          alignment: { horizontal: "center", vertical: "center" }
-        };
+        for (let i = 1; i <= daysInMonth; i++) {
+          const currentDate = new Date(emp.date);
+          const isMatch = currentDate.getDate() === i;
+
+          let value = "";
+
+          if (isMatch) {
+            if (type.key === "login") {
+              value = emp.first_login_time;
+            } else if (type.key === "logout") {
+              value = emp.last_logout_time;
+            } else {
+              value = emp.break_times?.[type.key.toLowerCase()] || "";
+            }
+          }
+
+          row.push(value ? formatDate(value) : "");
+        }
+
+        // Add LEAVE/PRESENT/FROM/TO only for first attendanceType
+        if (rowIndex === 0) {
+          row.push(emp.status === "On Leave" ? 1 : 0); // LEAVE
+          row.push(emp.status === "Present" ? 1 : 0); // PRESENT
+          row.push(emp.from_date ? formatDate2(emp.from_date) : "");
+          row.push(emp.to_date ? formatDate2(emp.to_date) : "");
+        } else {
+          row.push("", "", "", ""); // empty if not first row
+        }
+
+        exportData.push(row);
+      });
+
+      // Add merges for SL NO, EMP ID, NAME, and LEAVE/PRESENT/FROM/TO
+      const startRow = currentRow;
+      const endRow = currentRow + attendanceTypes.length - 1;
+
+      const mergeColumns = [0, 1, 2]; // SL NO, EMP ID, NAME
+      mergeColumns.forEach((col) => {
+        merges.push({ s: { r: startRow, c: col }, e: { r: endRow, c: col } });
+      });
+
+      const summaryStartCol = 4 + daysInMonth; // after attendance dates
+      for (let col = summaryStartCol; col <= summaryStartCol + 3; col++) {
+        merges.push({ s: { r: startRow, c: col }, e: { r: endRow, c: col } });
       }
-    }
 
-    // console.log("📘 Creating new workbook...");
-    const wb = XLSX.utils.book_new();
+      currentRow += attendanceTypes.length;
+    });
 
-    // console.log("📎 Appending worksheet to workbook...");
-    XLSX.utils.book_append_sheet(wb, ws, "Attendance");
+    const worksheet = XLSX.utils.aoa_to_sheet(exportData);
+    worksheet["!merges"] = merges;
 
-    // console.log("📤 Writing workbook to binary...");
-    const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array", cellStyles: true });
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Attendance");
 
-    // console.log("💾 Triggering download...");
-    saveAs(new Blob([wbout], { type: "application/octet-stream" }), "AttendanceSheet_Styled.xlsx");
-
-    // console.log("✅ Export complete!");
+    XLSX.writeFile(workbook, "Attendance.xlsx");
   };
-
 
 
 
@@ -437,123 +430,85 @@ const Attendance = () => {
     return new Date(year, parseInt(month), 0).getDate(); // month = "07" → 7
   }
 
-  // Helper: convert 'MM/yyyy' to Date
-  const parseMonthYearString = (str) => {
-    if (!str) return null;
-    const [month, year] = str.split("/");
-    return new Date(parseInt(year), parseInt(month) - 1);
-  };
+  const breakTypes = [
+    "LOGIN",
+    "TEA BREAK IN-1",
+    "TEA BREAK OUT-1",
+    "LUNCH BREAK IN",
+    "LUNCH BREAK OUT",
+    "TEA BREAK IN-2",
+    "TEA BREAK OUT-2",
+    "LOGOUT"
+  ];
 
-  // Single handler for both
-  const handleMonthYearChange = (date, setState) => {
-    if (date instanceof Date && !isNaN(date)) {
-      const month = String(date.getMonth() + 1).padStart(2, "0");
-      const year = date.getFullYear();
-      setState(`${month}/${year}`);
-    } else {
-      setState("");
-    }
-  };
-  
+
   return (
     <div className="bg-[#c1dff2] border border-black">
       <div className="bg-white p-12 w-full mx-auto">
         {/* Filter Section */}
-        <div className="flex flex-col md:flex-row justify-between items-start gap-6 mb-6 p-4 bg-white rounded-lg shadow-sm border">
-          {/* Left Filters */}
-          <div className="w-full md:w-2/3 space-y-4">
-            {/* Search */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Search by Name</label>
-              <input
-                type="text"
-                placeholder="Enter name, email or mobile"
-                value={searchTerm}
-                onChange={handleSearchChange}
-                className="w-full border rounded-md px-4 py-2 shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
+        <div className="flex justify-between items-start flex-wrap gap-4 mb-4">
+          <div className="w-full md:w-1/3 space-y-2">
+            <input
+              type="text"
+              placeholder="Search by Name"
+              value={searchTerm}
+              onChange={handleSearchChange}
+              className="border p-2 rounded w-full shadow-sm focus:ring-2 focus:ring-blue-400"
+            />
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-gray-600 w-16">From</label>
+              <DatePicker
+                selected={startDate ? parseISO(startDate) : null}
+                onChange={(date) => setStartDate(date ? format(date, "yyyy-MM-dd") : "")}
+                dateFormat="dd-MM-yyyy"
+                placeholderText="DD-MM-YYYY"
+                className="uppercase border p-2 rounded w-full shadow-sm focus:ring-2 focus:ring-blue-400"
               />
             </div>
 
-            {/*
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">From Date</label>
-                  <DatePicker
-                    selected={startDate ? parseISO(startDate) : null}
-                    onChange={(date) => setStartDate(date ? format(date, "yyyy-MM-dd") : "")}
-                    dateFormat="dd-MM-yyyy"
-                    placeholderText="DD-MM-YYYY"
-                    className="w-full border px-4 py-2 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm uppercase"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">To Date</label>
-                  <DatePicker
-                    selected={endDate ? parseISO(endDate) : null}
-                    onChange={(date) => setEndDate(date ? format(date, "yyyy-MM-dd") : "")}
-                    dateFormat="dd-MM-yyyy"
-                    placeholderText="DD-MM-YYYY"
-                    className="w-full border px-4 py-2 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm uppercase"
-                  />
-                </div>
-              </div>
-            */}
-
-            {/* Month & Year Dropdowns */}
-            <div className="grid grid-cols-2 sm:grid-cols-2 gap-4">
-              {/* From Picker */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">From</label>
-                <DatePicker
-                  selected={parseMonthYearString(fromMonthYear)}
-                  onChange={(date) => handleMonthYearChange(date, setFromMonthYear)}
-                  dateFormat="MM/yyyy"
-                  showMonthYearPicker
-                  className="w-full border px-4 py-2 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
-                  placeholderText="Select From"
-                />
-              </div>
-
-              {/* To Picker */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">To</label>
-                <DatePicker
-                  selected={parseMonthYearString(toMonthYear)}
-                  onChange={(date) => handleMonthYearChange(date, setToMonthYear)}
-                  dateFormat="MM/yyyy"
-                  showMonthYearPicker
-                  className="w-full border px-4 py-2 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
-                  placeholderText="Select To"
-                />
-              </div>
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-gray-600 w-16">To</label>
+              <DatePicker
+                selected={endDate ? parseISO(endDate) : null}
+                onChange={(date) => setEndDate(date ? format(date, "yyyy-MM-dd") : "")}
+                dateFormat="dd-MM-yyyy"
+                placeholderText="DD-MM-YYYY"
+                className="uppercase border p-2 rounded w-full shadow-sm focus:ring-2 focus:ring-blue-400"
+              />
             </div>
-
-            {/* Search Button */}
-            <div>
-              <button
-                onClick={handleFilter}
-                className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-2 rounded-md shadow-sm transition duration-150"
-              >
-                Apply Filters
-              </button>
-            </div>
-          </div>
-
-          {/* Right - Export */}
-          <div className="w-full md:w-auto">
             <button
-              onClick={exportToExcel}
-              className="mb-4 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition"
+              onClick={handleFilter}
+              className="bg-blue-500 text-white px-4 py-2 rounded shadow hover:bg-blue-600"
             >
-              Export to Excel
+              Search
             </button>
-          </div>
-        </div>
 
+            <select
+              value={itemsPerPage}
+              onChange={(e) => {
+                setItemsPerPage(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="border rounded-lg px-3 py-2 w-full bg-white shadow-sm focus:ring-2 focus:ring-blue-400"
+            >
+              {optionsPerPage.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button
+            onClick={exportToExcel}
+            className="bg-green-600 hover:bg-green-700 transition transform hover:scale-105 text-white px-6 py-2 rounded-lg shadow-sm"
+          >
+            Export to Excel
+          </button>
+        </div>
 
         {/* Table */}
         <div className="overflow-x-auto">
-          <table id="attendance-table" className="min-w-full border-collapse border border-black rounded-lg whitespace-nowrap mb-4">
+          <table className="min-w-full border-collapse border border-black rounded-lg whitespace-nowrap mb-4">
             <thead>
               <tr className="bg-[#c1dff2] text-[#4d606b] text-center">
                 <th className="border border-black px-4 py-2">SL NO</th>
@@ -561,148 +516,147 @@ const Attendance = () => {
                 <th className="border border-black px-4 py-2">NAME OF THE EMPLOYEE</th>
                 <th className="border border-black px-4 py-2">ATTENDANCE</th>
                 {Array.from({ length: 31 }, (_, i) => (
-                  <th key={i + 1} className="border border-black px-2 py-2">{i + 1}</th>
+                  <th key={i + 1} className="border border-black px-2 py-2">
+                    {i + 1}
+                  </th>
                 ))}
                 <th className="border border-black px-4 py-2">LEAVE</th>
                 <th className="border border-black px-4 py-2">PRESENT</th>
                 <th className="border border-black px-4 py-2">LEAVE FROM</th>
                 <th className="border border-black px-4 py-2">LEAVE TO</th>
-                <th className="border border-black px-4 py-2">LEAVE REMARKS</th>
               </tr>
             </thead>
             <tbody>
-              {Object.entries(filteredData).flatMap(([year, monthArray]) =>
-                monthArray.flatMap(monthObj =>
-                  Object.entries(monthObj).flatMap(([month, admins], monthIndex) => {
-                    return [
-                      // 🟨 Render Month-Year Header Row Once
-                      <tr key={`header-${year}-${month}`} className="bg-yellow-100 text-center font-bold text-black">
+              {[...paginatedData].flatMap((admin, index) => {
+                const breakTypes = [
+                  "LOGIN",
+                  "TEA BREAK IN-1",
+                  "TEA BREAK OUT-1",
+                  "LUNCH BREAK IN",
+                  "LUNCH BREAK OUT",
+                  "TEA BREAK IN-2",
+                  "TEA BREAK OUT-2",
+                  "LOGOUT"
+                ];
+
+                // Convert to array of { admin, year, month, records } for sorting
+                const monthYearGroups = [];
+
+                Object.keys(admin.daily_records).forEach(year => {
+                  Object.keys(admin.daily_records[year]).forEach(month => {
+                    monthYearGroups.push({
+                      admin,
+                      year,
+                      month,
+                      records: admin.daily_records[year][month]
+                    });
+                  });
+                });
+
+                // Sort by year DESC, then month DESC
+                monthYearGroups.sort((a, b) => {
+                  const ya = parseInt(a.year);
+                  const yb = parseInt(b.year);
+                  const ma = parseInt(a.month);
+                  const mb = parseInt(b.month);
+                  return yb !== ya ? yb - ya : mb - ma;
+                });
+
+                let rowIndex = index + 1;
+
+                // Render
+                return monthYearGroups.map(({ admin, year, month, records }) => {
+                  const daysInMonth = getDaysInMonth(year, month);
+                  const presentCount = records.filter(r => r.first_login_time || r.last_logout_time).length;
+                  const leaveCount = records.length - presentCount;
+                  const leaveFrom = records.find(r => !r.first_login_time && !r.last_logout_time)?.date || "";
+                  const leaveTo = [...records].reverse().find(r => !r.first_login_time && !r.last_logout_time)?.date || "";
+
+                  return (
+                    <React.Fragment key={`${admin.emp_id}-${year}-${month}`}>
+                      {/* Month-Year Header Row */}
+                      <tr className="bg-yellow-100 text-center font-bold text-black">
                         <td colSpan={35} className="border border-black py-2 text-lg">
-                          ATTENDANCE SHEET — {month.padStart(2, '0')}/{year}
+                          ATTENDANCE SHEET — {admin.admin_name} ({admin.emp_id}) — {month.padStart(2, '0')}/{year}
                         </td>
-                      </tr>,
+                      </tr>
 
-                      // 👤 Render Admin Rows
-                      ...admins.map((admin, adminIndex) => {
-                        const breakTypes = [
-                          "LOGIN",
-                          "TEA BREAK IN-1",
-                          "TEA BREAK OUT-1",
-                          "LUNCH BREAK IN",
-                          "LUNCH BREAK OUT",
-                          "TEA BREAK IN-2",
-                          "TEA BREAK OUT-2",
-                          "LOGOUT"
-                        ];
+                      {/* Attendance Rows */}
+                      {breakTypes.map((label, i) => (
+                        <tr key={`${admin.emp_id}-${label}-${year}-${month}`} className="text-center">
+                          {i === 0 && (
+                            <>
+                              <td rowSpan={breakTypes.length} className="border border-black">{rowIndex}</td>
+                              <td rowSpan={breakTypes.length} className="border border-black">{admin.emp_id}</td>
+                              <td rowSpan={breakTypes.length} className="border border-black">{admin.admin_name}</td>
+                            </>
+                          )}
+                          <td className="border border-black">{label}</td>
+                          {Array.from({ length: 31 }, (_, d) => {
+                            const day = d + 1;
+                            const record = records.find(r => new Date(r.date).getDate() === day);
+                            const key = label.toLowerCase();
+                            let value = "";
 
-                        const monthRecords = admin.daily_records[year]?.[month] || [];
-                        const presentCount = monthRecords.filter(r => r.first_login_time || r.last_logout_time).length;
-                        const leaveCount = monthRecords.length - presentCount;
-                        const leaveFrom = monthRecords.find(r => !r.first_login_time && !r.last_logout_time)?.date || "";
-                        const leaveTo = [...monthRecords].reverse().find(r => !r.first_login_time && !r.last_logout_time)?.date || "";
-                        const adminLeaveSummary = Array.isArray(leaveSummary[admin.admin_id])
-                          ? leaveSummary[admin.admin_id]
-                          : [];
+                            if (record) {
+                              if (label === "LOGIN") value = record.first_login_time;
+                              else if (label === "LOGOUT") value = record.last_logout_time;
+                              else value = record.break_times?.[key];
+                            }
 
-                        return breakTypes.map((label, i) => (
-                          <tr key={`${admin.emp_id}-${label}-${year}-${month}`} className="text-center">
-                            {i === 0 && (
-                              <>
-                                <td rowSpan={breakTypes.length} className="border border-black">{adminIndex + 1}</td>
-                                <td rowSpan={breakTypes.length} className="border border-black">{admin.emp_id}</td>
-                                <td rowSpan={breakTypes.length} className="border border-black">{admin.admin_name}</td>
-                              </>
-                            )}
-                            <td className="border border-black">{label}</td>
-                            {Array.from({ length: 31 }, (_, d) => {
-                              const day = d + 1;
-                              const record = monthRecords.find(r => new Date(r.date).getDate() === day);
-                              const key = label.toLowerCase();
-                              let value = "";
-
-                              if (record) {
-                                if (label === "LOGIN") value = record.first_login_time;
-                                else if (label === "LOGOUT") value = record.last_logout_time;
-                                else value = record.break_times?.[key];
-                              }
-
-                              return (
-                                <td key={d} className="border border-black text-xs px-2 py-1">
-                                  {formatDate(value)}
-                                </td>
-                              );
-                            })}
-                            {i === 0 && (
-                              <>
-                                <td rowSpan={breakTypes.length} className="border border-black">{leaveCount}</td>
-                                <td rowSpan={breakTypes.length} className="border border-black">{presentCount}</td>
-                                {/* Leave From Date */}
-                                {/* Leave From Date */}
-                                <td rowSpan={breakTypes.length} className="border border-black text-xs leading-tight text-left px-2 py-1">
-                                  {adminLeaveSummary.length > 0 ? (
-                                    adminLeaveSummary.map((leave, idx) => (
-                                      <div
-                                        key={`from-${idx}`}
-                                        className={`${idx !== 0 ? "border-t border-dashed border-gray-300 mt-1 pt-1" : ""}`}
-                                      >
-                                        {formatDate2(leave.from_date)}
-                                      </div>
-                                    ))
-                                  ) : (
-                                    "-"
-                                  )}
-                                </td>
-
-                                {/* Leave To Date */}
-                                <td rowSpan={breakTypes.length} className="border border-black text-xs leading-tight text-left px-2 py-1">
-                                  {adminLeaveSummary.length > 0 ? (
-                                    adminLeaveSummary.map((leave, idx) => (
-                                      <div
-                                        key={`to-${idx}`}
-                                        className={`${idx !== 0 ? "border-t border-dashed border-gray-300 mt-1 pt-1" : ""}`}
-                                      >
-                                        {formatDate2(leave.to_date)}
-                                      </div>
-                                    ))
-                                  ) : (
-                                    "-"
-                                  )}
-                                </td>
-
-                                {/* Purpose of Leave & Remarks */}
-                                <td rowSpan={breakTypes.length} className="border border-black text-xs leading-tight text-left px-2 py-1">
-                                  {adminLeaveSummary.length > 0 ? (
-                                    adminLeaveSummary.map((leave, idx) => (
-                                      <div
-                                        key={`reason-${idx}`}
-                                        className={`mb-1 ${idx !== 0 ? "border-t border-dashed border-gray-300 mt-1 pt-1" : ""}`}
-                                      >
-                                        <strong>{leave.purpose_of_leave}</strong> <br />
-                                        <span className="text-gray-700 text-[11px]">
-                                          ({formatDate2(leave.from_date)} - {formatDate2(leave.to_date)})
-                                        </span>
-                                        {leave.remarks && (
-                                          <div className="italic text-gray-500 text-[11px] mt-0.5">“{leave.remarks}”</div>
-                                        )}
-                                      </div>
-                                    ))
-                                  ) : (
-                                    "-"
-                                  )}
-                                </td>
-
-                              </>
-                            )}
-                          </tr>
-                        ));
-                      })
-                    ];
-                  })
-                )
-              )}
+                            return (
+                              <td key={d} className="border border-black text-xs px-2 py-1">
+                                {formatDate(value)}
+                              </td>
+                            );
+                          })}
+                          {i === 0 && (
+                            <>
+                              <td rowSpan={breakTypes.length} className="border border-black">{leaveCount}</td>
+                              <td rowSpan={breakTypes.length} className="border border-black">{presentCount}</td>
+                              <td rowSpan={breakTypes.length} className="border border-black">
+                                {leaveFrom ? formatDate2(leaveFrom) : ""}
+                              </td>
+                              <td rowSpan={breakTypes.length} className="border border-black">
+                                {leaveTo ? formatDate2(leaveTo) : ""}
+                              </td>
+                            </>
+                          )}
+                        </tr>
+                      ))}
+                    </React.Fragment>
+                  );
+                });
+              })}
 
             </tbody>
           </table>
+        </div>
+
+
+
+
+
+
+        {/* Pagination */}
+        <div className="flex justify-between items-center mt-4">
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className="px-4 py-2 bg-gray-300 text-gray-600 rounded hover:bg-gray-400"
+          >
+            Previous
+          </button>
+          <span className="text-gray-700">
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className="px-4 py-2 bg-gray-300 text-gray-600 rounded hover:bg-gray-400"
+          >
+            Next
+          </button>
         </div>
       </div>
     </div>

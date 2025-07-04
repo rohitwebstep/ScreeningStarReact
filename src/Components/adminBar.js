@@ -103,7 +103,9 @@ const AdminBar = () => {
       localStorage.setItem('subMenu', 'ServiceReportForms');
     } else if (linkName === 'Case Allocation') {
       localStorage.setItem('subMenu', 'CaseAllocation');
-    } else if (linkName === 'Human Resource') {
+    } else if (linkName === 'Integration Services') {
+      localStorage.setItem('subMenu', 'IntegrationServices');
+    }else if (linkName === 'Human Resource') {
       localStorage.setItem('subMenu', 'HumanResourceMenu');
     } else if (linkName === 'See More') {
       localStorage.setItem('subMenu', 'createUser');
@@ -424,7 +426,30 @@ const AdminBar = () => {
             </Link>
           </li>
 
-
+ <li
+              className={`flex justify-center mx-[30px] border border-[#7d7d7d] min-h-[130px] transition duration-300 transform ease-in-out ${activeTab === 'IntegrationServices' || localStorage.getItem('SideBarName') === 'IntegrationServices'
+                ? 'bg-[#c1dff2] text-gray-800 activeSubmenu scale-105' // Light blue background and slight zoom effect when selected
+                : 'bg-gradient-to-b from-gray-100 to-gray-300 text-[#4d606b] hover:bg-gradient-to-b hover:from-[#cde4f3] hover:to-[#cde4f3] hover:bg-[#cde4f3] hover:text-gray-800 hover:font-semibold hover:scale-105' // Light blue on hover with zoom effect
+                } rounded-md shadow-md hover:shadow-lg`}>
+              <Link
+                to="/admin-IntegrationServices"
+                className={`flex flex-wrap justify-center items-center p-2 ${activeTab === 'Integration Services' || localStorage.getItem('SideBarName') === 'Integration Services' ? 'font-semibold' : ''} ${apiLoading ? 'cursor-not-allowed opacity-50' : ''}`}
+                onClick={(e) => {
+                  if (apiLoading) {
+                    e.preventDefault(); // Prevent navigation if apiLoading is true
+                  } else {
+                    handleClick('Integration Services');
+                  }
+                }}
+              >
+                <div className="p-2 m-auto whitespace-nowrap text-center">
+                  <FaIdBadge className="text-4xl m-auto" />
+                 INTEGRATION 
+                 <br/>
+                 SERVICES
+                </div>
+              </Link>
+            </li>
 
           {(!roleByLocal || roleByLocal !== 'sub_user' && roleByLocal !== 'user') && (
             <li
@@ -763,6 +788,19 @@ const AdminBar = () => {
               <h5 className="text-sm">CASE ALLOCATION</h5>
             </Link>
           </li>
+             <li
+            className={`${apiLoading ? 'pointer-events-none opacity-50' : ''} flex items-center border border-gray-300 p-3 rounded-md transition duration-300 transform ${activeTab === 'Case Allocation' || localStorage.getItem('SideBarName') === 'Case Allocation' ? 'bg-gray-200 text-gray-800 font-semibold scale-105' : 'bg-white text-gray-600 hover:bg-gray-100 hover:scale-105'} shadow-md hover:shadow-lg`}
+          >
+            <Link
+              to="/admin-IntegrationServices"
+              className={` flex items-center space-x-2 w-full ${activeTab === 'Integration Services' || localStorage.getItem('SideBarName') === 'Integration Services' ? 'font-semibold' : ''}`}
+              onClick={() => handleClick('Integration Services')}
+            >
+              <FaTasks className="text-2xl" />
+              <h5 className="text-sm">Integration Services</h5>
+            </Link>
+          </li>
+          
           <li className={`${apiLoading ? 'pointer-events-none opacity-50' : ''} flex items-center border border-gray-300 p-3 rounded-md transition duration-300 transform ${activeTab === 'See More' || localStorage.getItem('SideBarName') === 'See More'
             ? 'bg-gray-200 text-gray-800 font-semibold scale-105'
             : 'bg-white text-gray-600 hover:bg-gray-100 hover:scale-105' // Hover effect for unselected item

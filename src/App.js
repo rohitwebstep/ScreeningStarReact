@@ -19,6 +19,7 @@ import CreateInvoice from "./Components/Pages/createInvoice";
 import AdminManager from "./Components/Pages/adminManager";
 import ReportMaster from "./Components/Pages/reportMaster";
 import ClientCredentials from "./Components/Pages/clientCredentials";
+import IntegrationServices from "./Components/Pages/IntegrationServices"
 import TATReminder from "./Components/Pages/tatReminder";
 import Acknowledgement from "./Components/Pages/acknowledgement";
 import CreateUser from "./Components/Pages/createUser";
@@ -213,6 +214,7 @@ const Layout = () => {
               <Route path="/admin-data-management" element={<DataManagement />} />
               <Route path="/admin-report-master" element={<ReportMaster />} />
               <Route path="/admin-client-credentials" element={<ClientCredentials />} />
+              <Route path="/admin-IntegrationServices" element={<IntegrationServices />} />
               <Route path="/admin-tat-reminder" element={<TATReminder />} />
               <Route path="/admin-acknowledgement" element={<Acknowledgement />} />
               <Route path="/admin-createUser" element={<CreateUser />} />

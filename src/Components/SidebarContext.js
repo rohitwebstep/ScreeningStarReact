@@ -163,7 +163,14 @@ export const SidebarProvider = ({ children }) => {
       href: "/admin-client-credentials"
     }
   ];
+ const IntegrationServices = [
+    {
+      name: "Integration Services",
 
+      key: "IntegrationServices",
+      href: "/admin-IntegrationServices"
+    }
+  ];
   const trashapplications = [
     {
       name: "Trash Applications",
@@ -572,6 +579,9 @@ export const SidebarProvider = ({ children }) => {
       } else if (section === "Attendance") {
         localStorage.setItem('inHome', 'no');
         tabs = HumanResourceMenu;
+      } else if (section === "Integration Services") {
+        localStorage.setItem('inHome', 'no');
+        tabs = IntegrationServices;
       }
 
       else if (section === "Client Credentials") {
