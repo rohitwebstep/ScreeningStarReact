@@ -1001,11 +1001,10 @@ const GenerateInvoice = () => {
       return Number.isInteger(num) ? num.toString() : num.toFixed(2);
     }
 
-    // Value Column (40% width)
-    const valueXPosition = startX + labelWidths + (valueWidths / 2) - (doc.getTextDimensions("0").w / 2); // Center the value text in the column
-    doc.rect(startX + labelWidths, tableStartYNew, valueWidths, headerHeight); // Draw the value column rectangle
-    // Convert overallApplicationsTotalPricingWithAdditionalFee to string, ensuring two decimal places
+    const valueXPosition = startX + labelWidths + (valueWidths / 2) - (doc.getTextDimensions(formatAmountInt(overallApplicationsTotalPricingWithAdditionalFee.toFixed(2))).w / 2); // Centered
+
     doc.setFillColor(193, 223, 242); // Sky blue
+    doc.rect(startX + labelWidths, tableStartYNew, valueWidths, headerHeight); // Draw value column
     doc.text(formatAmountInt(overallApplicationsTotalPricingWithAdditionalFee.toFixed(2)), valueXPosition, tableStartYNew + 7);
 
     const getRowHeight = (label, value) => {
