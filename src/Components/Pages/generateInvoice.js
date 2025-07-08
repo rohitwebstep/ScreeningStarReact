@@ -252,7 +252,6 @@ const GenerateInvoice = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('formData', formData);
     // Set loading state to true
     setLoading(true);
     // Validate form data
@@ -319,6 +318,7 @@ const GenerateInvoice = () => {
       setCustomer(data.customer || []);
       setApplications(data.applications);
 
+      /*
       setFormData({
         client_code: '',
         invoice_number: "",
@@ -326,6 +326,8 @@ const GenerateInvoice = () => {
         month: "",
         year: "",
       });
+      */
+
       if (applications.length > 0) {
         Swal.fire({
           icon: "success",
@@ -472,7 +474,7 @@ const GenerateInvoice = () => {
     let formattedLine1 = "";
     let formattedLine2 = "";
     let formattedLine3 = "";
-    console.log('addressLines', addressLines)
+
     // Loop through the address array
     for (let i = 0; i < addressLines.length; i++) {
       if (i <= 2) {
@@ -718,7 +720,6 @@ const GenerateInvoice = () => {
 
           return "0.00"; // Ensure the return value is formatted
         });
-        console.log(`servicePrices - `, servicePrices);
 
         const serviceAdditionalFee = serviceInfo.map((service) => {
           const matchedService = app.statusDetails.find(
@@ -787,8 +788,6 @@ const GenerateInvoice = () => {
         overallApplicationsTotalPriceWithTax +=
           parseFloat(appTotalPricing) + parseFloat(appTotalTax);
 
-        console.log(`serviceCodes - `, serviceCodes);
-
         // Create an object dynamically for each service code with corresponding service price
         const servicePriceDetails = serviceCodes.reduce((acc, code, index) => {
           acc[`serviceCode${code}`] = servicePrices[index] || "0.00"; // Default to "0.00" if price is missing
@@ -821,8 +820,6 @@ const GenerateInvoice = () => {
       });
     });
     const taxableValuess = result.taxableAmount;
-    console.log('taxableValuess', taxableValuess)
-
 
     let totalServiceQty = 0;
 
@@ -855,12 +852,14 @@ const GenerateInvoice = () => {
     });
 
 
+    const overallApplicationsTotalPricingWithAdditionalFee = overallApplicationsTotalPricing + overallApplicationsAdditionalFeeSum;
+
     // ✅ Add Sub Total Row after the map
     serviceTableBody.push({
       serviceDescription: "Sub Total",
       hsnCode: "",
-      qty: String(totalServiceQty),
-      rate: formatAmount(totalSubPrice),
+      qty: "", // String(totalServiceQty)
+      rate: "", // formatAmount(totalSubPrice)
       additionalFee: formatAmount(overallApplicationsAdditionalFeeSum),
       taxableAmount: formatAmount(overallApplicationsTotalPricing),
     });
@@ -919,11 +918,11 @@ const GenerateInvoice = () => {
 
     // Check if intra-state (same state, e.g., state_code "29")
     if (customer.state_code === "29") {
-      overAllCgstTax = totalSubPrice * (overAllCgstPercentage / 100);
-      overAllSgstTax = totalSubPrice * (overAllSgstPercentage / 100);
+      overAllCgstTax = overallApplicationsTotalPricingWithAdditionalFee * (overAllCgstPercentage / 100);
+      overAllSgstTax = overallApplicationsTotalPricingWithAdditionalFee * (overAllSgstPercentage / 100);
       overAllIGSTTax = 0; // No IGST for intra-state
     } else {
-      overAllIGSTTax = totalSubPrice * (overAllTotalTaxPercentage / 100); // IGST applied in inter-state
+      overAllIGSTTax = overallApplicationsTotalPricingWithAdditionalFee * (overallApplicationsTotalPricingWithAdditionalFee / 100); // IGST applied in inter-state
       overAllCgstTax = 0;
       overAllSgstTax = 0;
     }
@@ -932,7 +931,7 @@ const GenerateInvoice = () => {
     const overAllTotalTax = overAllCgstTax + overAllSgstTax + overAllIGSTTax;
 
     // Total amount including tax
-    const overAllAmountWithTax = totalSubPrice + overAllTotalTax;
+    const overAllAmountWithTax = overallApplicationsTotalPricingWithAdditionalFee + overAllTotalTax;
     setoverAllAmountWithTax(overAllAmountWithTax);
     const overAllAmountWithTaxs = overAllAmountWithTax;
 
@@ -943,7 +942,7 @@ const GenerateInvoice = () => {
       { label: 'Bank IFSC/ NEFT/ RTGS', value: String(companyInfo?.bank_ifsc || "N/A") },
       { label: 'MICR', value: String(companyInfo?.bank_micr || "N/A") },
     ];
-    console.log('customer.state_code', customer.state_code);
+
     // Ensure all values are strings
     const taxDetails = [
       { label: `CGST ${overAllCgstPercentage}%`, value: formatAmount(overAllCgstTax) },
@@ -956,9 +955,6 @@ const GenerateInvoice = () => {
       { label: 'Total Amount with Tax (Round off)', value: formatAmount(overAllAmountWithTax) },
     ];
 
-
-
-    console.log('overAllCgstTax=', overAllCgstTax, ',overAllCgstTax=', overAllCgstTax)
     const overAllCgstTaxs = overAllCgstTax;
     const overAllSgstTaxs = overAllSgstTax;
     const overAllIGSTTaxs = overAllIGSTTax;
@@ -978,14 +974,14 @@ const GenerateInvoice = () => {
     doc.setFillColor(193, 223, 242); // Sky blue
     doc.setDrawColor(77, 96, 107);   // Border color
     doc.setTextColor(77, 96, 107);   // Text color
-    doc.rect(leftMargin, tableStartYNew, bankDetailsWidth, 12 ,'FD'); // Bank Details Header
+    doc.rect(leftMargin, tableStartYNew, bankDetailsWidth, 12, 'FD'); // Bank Details Header
     doc.text("SCREENINGSTAR BANK ACCOUNT AND TAX DETAILS", leftMargin + 5, tableStartYNew + 7);
     // Defines the height of the header row
 
     doc.setDrawColor(0); // Black border (grayscale)
 
     doc.setFillColor(193, 223, 242); // Sky blue
-    doc.rect(leftMargin + bankDetailsWidth, tableStartYNew, taxDetailsWidth, 12 ,'FD'); // Tax Details Header
+    doc.rect(leftMargin + bankDetailsWidth, tableStartYNew, taxDetailsWidth, 12, 'FD'); // Tax Details Header
     const headerHeight = 12;
     const labelWidths = taxDetailsWidth * 0.6; // 60% width for the label
     const valueWidths = taxDetailsWidth * 0.4; // 40% width for the value
@@ -997,7 +993,7 @@ const GenerateInvoice = () => {
     doc.setTextColor(77, 96, 107);
     const totalBeforeTaxLabel = "TOTAL AMOUNT BEFORE TAX";
     const labelXPosition = startX + (labelWidths / 2) - (doc.getTextDimensions(totalBeforeTaxLabel).w / 2);
-    doc.rect(startX, tableStartYNew, labelWidths, headerHeight ,'FD');
+    doc.rect(startX, tableStartYNew, labelWidths, headerHeight, 'FD');
     doc.text(totalBeforeTaxLabel, labelXPosition, tableStartYNew + 7);
 
     function formatAmountInt(amount) {
@@ -1008,9 +1004,9 @@ const GenerateInvoice = () => {
     // Value Column (40% width)
     const valueXPosition = startX + labelWidths + (valueWidths / 2) - (doc.getTextDimensions("0").w / 2); // Center the value text in the column
     doc.rect(startX + labelWidths, tableStartYNew, valueWidths, headerHeight); // Draw the value column rectangle
-    // Convert totalSubPrice to string, ensuring two decimal places
+    // Convert overallApplicationsTotalPricingWithAdditionalFee to string, ensuring two decimal places
     doc.setFillColor(193, 223, 242); // Sky blue
-    doc.text(formatAmountInt(totalSubPrice.toFixed(2)), valueXPosition, tableStartYNew + 7);
+    doc.text(formatAmountInt(overallApplicationsTotalPricingWithAdditionalFee.toFixed(2)), valueXPosition, tableStartYNew + 7);
 
     const getRowHeight = (label, value) => {
       const labelHeight = doc.getTextDimensions(label).h;
@@ -1019,7 +1015,7 @@ const GenerateInvoice = () => {
     };
 
     const maxRows = Math.max(bankDetails.length, taxDetails.length);
- doc.setTextColor(0, 0, 0);
+    doc.setTextColor(0, 0, 0);
     for (let i = 0; i < maxRows; i++) {
       const bankItem = bankDetails[i] || { label: "", value: "" };
       const taxItem = taxDetails[i] || { label: "", value: "" };
@@ -1073,8 +1069,6 @@ const GenerateInvoice = () => {
       header: `${code}`,
       dataKey: `serviceCode${code}`
     }));
-
-    console.log('clientCode', ` if  clientCode == SS-OROC`)
 
     const annexureHeight = 6; // Background height
     const annexureY = topMargin + currentY - 5; // Position below the columns
@@ -1359,9 +1353,6 @@ const GenerateInvoice = () => {
     doc.rect(margin, notesYPosition - 5, headerWidth, notesSectionHeight);
 
     addFooter(doc);
-
-
-    console.log('companyInfo', companyInfo)
 
     const invoiceDate = new Date(formData.invoice_date);
     const monthNames = [
