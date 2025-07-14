@@ -873,8 +873,8 @@ const GenerateInvoice = () => {
       { header: 'ADDITIONAL FEE', dataKey: 'additionalFee' },
       { header: 'TAXABLE AMOUNT', dataKey: 'taxableAmount' },
     ];
+    let tablecontt = 0;
 
-    // Add the table
     doc.autoTable({
       columns: columns,
       body: serviceTableBody,
@@ -886,12 +886,11 @@ const GenerateInvoice = () => {
         lineColor: "#4d606b",
         lineWidth: 0.4,
       },
-
       bodyStyles: {
-        halign: 'center', // Center align text in body cells
+        halign: 'center',
         lineColor: "#4d606b",
-        textColor: "#000", // Border color for body cells
-        lineWidth: 0.4, // Border width for body cells
+        textColor: "#000",
+        lineWidth: 0.4,
       },
       didParseCell: function (data) {
         const rowIndex = data.row.index;
@@ -903,14 +902,32 @@ const GenerateInvoice = () => {
           data.cell.styles.halign = 'left';
         }
       },
-      margin: { top: tableStartY, left: leftMargin, right: leftMargin }, // Set Y position below the previous section
+      // Apply startY only to the first page
+      startY: tableStartY, // For example: 40
+      margin: { left: leftMargin, right: leftMargin }, // remove top margin override
       tableWidth: 'auto',
       tableLineColor: "#4d606b",
-      tableLineWidth: 0.4
-    });// Constants for layout
+      tableLineWidth: 0.4,
+
+      // 👇 This controls page layout on each new page
+      didDrawPage: function (data) {
+        if (data.pageNumber > 1) {
+          tablecontt = 0;
+          doc.setFontSize(12);
+        }
+        else if (data.pageNumber == 1) {
+          tablecontt = 1;
+        }
+      }
+    });
+
+    if (tablecontt == 1) {
+      doc.addPage();
+    }
+    // Constants for layout
     // addFooter(doc); // Add footer for this page
 
-    doc.addPage();
+    // doc.addPage();
     // addFooter(doc); // Add footer for this page
     let overAllCgstTax = 0;
     let overAllSgstTax = 0;
@@ -963,9 +980,14 @@ const GenerateInvoice = () => {
 
     const bankDetailsWidth = (pageWidth - leftMargin * 2) * 0.4; // 40% width for Bank Details
     const taxDetailsWidth = (pageWidth - leftMargin * 2) * 0.6; // 60% width for Tax Details
-    const tableStartYNew = 10; // Starting Y position right below the page margin
+    let tableStartYNew = doc.lastAutoTable.finalY + 10; // Starting Y position right below the page margin
     let currentY = tableStartYNew + 12; // Starting position after headers
 
+    if (tablecontt == 1) {
+      console.log('tablecontt', tablecontt)
+      currentY = 32; // Starting position after headers
+      tableStartYNew = 20;
+    }
 
     // Title
     doc.setFont("helvetica", "bold");
@@ -1070,7 +1092,7 @@ const GenerateInvoice = () => {
     }));
 
     const annexureHeight = 6; // Background height
-    const annexureY = topMargin + currentY - 5; // Position below the columns
+    let annexureY = topMargin + currentY - 5; // Position below the columns
 
     // Draw background rectangle
     doc.setFillColor(193, 223, 242);
@@ -1153,6 +1175,7 @@ const GenerateInvoice = () => {
       columns: header,
       body: tableBody2,
       theme: 'grid',
+      startY: annexureY += 10, // Only for the first table position
       headStyles: {
         fillColor: [193, 223, 242],
         textColor: "#4d606b",
@@ -1166,33 +1189,24 @@ const GenerateInvoice = () => {
         lineWidth: 0.4,
         textColor: "#000",
       },
-      margin: { top: annexureY + 10, left: leftMargin, right: leftMargin },
+      margin: { left: leftMargin, right: leftMargin },
       tableWidth: 'auto',
       tableLineColor: "#4d606b",
       tableLineWidth: 0.4,
+
       didParseCell: function (data) {
         if (data.row.raw === grandTotalRow) {
-          // Merge the first 4 cells to display "Grand Total:"
           if (data.column.dataKey === 'serviceDescription') {
             data.cell.colSpan = 4;
             data.cell.styles.fontStyle = 'bold';
-            // data.cell.styles.fillColor = [240, 240, 240]; // optional light gray
           }
-
-          // Hide the next 3 cells to simulate merge
-          if (
-            ['hsnCode', 'qty', 'rate'].includes(data.column.dataKey)
-          ) {
+          if (['hsnCode', 'qty', 'rate'].includes(data.column.dataKey)) {
             data.cell.colSpan = 0;
           }
+
         }
       }
-
     });
-
-    // addFooter(doc); // Add footer for this page
-
-    doc.addPage();
     // addFooter(doc); // Add footer for this page
 
     let services = [];
@@ -1245,39 +1259,54 @@ const GenerateInvoice = () => {
     }
 
 
-
-
-
     // Constants
     const margin = 10;
-
+    const headerHeightNew = 8;
     const annexureText = "ANNEXURE - SCOPE OF SERVICES NAME AND CODES";
-    const textYNew = 14; // Increase Y position to add padding above the text
-    const headerHeightNew = 6; // Increased height to accommodate padding
+    const estimatedTableHeight = row2.length * 8 + 20; // estimate ~8px per row + padding
+    const totalHeightNeeded = headerHeightNew + estimatedTableHeight;
+
+    const previousTable = doc.lastAutoTable;
+    const previousFinalY = previousTable ? previousTable.finalY : 20;
+
+    let myheight = previousFinalY + 10;
+    let remainingSpace = pageHeight - myheight;
+
+    // If not enough space for both header + table, add a new page
+    if (remainingSpace < totalHeightNeeded) {
+      doc.addPage();
+      myheight = 20; // reset top margin
+      currentY = 20;
+      annexureY = 0;
+    }
+
+    // === Draw Header ===
+    const headerTopY = myheight;
+    console.log('headerTopY:', headerTopY);
+
+    const headerBottomY = headerTopY + headerHeightNew;
+    const textYNew = headerTopY + headerHeightNew / 2 + 1.5;
     const headerWidth = pageWidth - margin * 2;
-    doc.setTextColor("#4d606b"); // Dark gray-blue text
+
+    doc.setTextColor("#4d606b");
     doc.setFillColor(193, 223, 242);
-    doc.rect(margin, textYNew - headerHeightNew / 2, headerWidth, headerHeightNew, "F");
+    doc.rect(margin, headerTopY, headerWidth, headerHeightNew, "F"); // Filled rectangle
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.5);
+    doc.rect(margin, headerTopY, headerWidth, headerHeightNew); // Border
 
-    // Add border to the header
-    doc.setDrawColor(0, 0, 0); // Border color (black)
-    doc.setLineWidth(0.5);     // Border width
-    doc.rect(margin, textYNew - headerHeightNew / 2, headerWidth, headerHeightNew); // Border rectangle
-
-    // Add heading text with padding
-    const textPaddingTop = 1; // Add extra padding above the text
-    doc.setFont("helvetica", "normal");
+    doc.setFont("helvetica", "bold");
     doc.setFontSize(8);
-    doc.text(annexureText, pageWidth / 2, textYNew + textPaddingTop, { align: "center" });
+    doc.text(annexureText, pageWidth / 2, textYNew, { align: "center" });
+    doc.setFont("helvetica", "normal");
 
-    // Table
-    const tableMarginTop = textYNew + 3;
-
+    // === Draw Table ===
     doc.autoTable({
+      startY: headerBottomY,
       columns: header2,
       body: row2,
       theme: 'grid',
-      showHead: 'everyPage',
+      showHead: 'firstPage',
       headStyles: {
         fillColor: [193, 223, 242],
         textColor: "#4d606b",
@@ -1296,18 +1325,18 @@ const GenerateInvoice = () => {
       styles: {
         fontSize: 8,
       },
-      margin: { top: tableMarginTop, left: margin, right: margin },
+      margin: { left: margin, right: margin },
       tableWidth: headerWidth,
       tableLineColor: "#4d606b",
       tableLineWidth: 0.4,
     });
-    // addFooter(doc); // Add footer for this page
+
+    doc.addPage();
+    const headingYPosition = 10;
 
     // New Page for Notes
-    doc.addPage();
     // addFooter(doc); // Add footer for this page
 
-    const headingYPosition = 10;
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
     doc.text("SPECIAL NOTES, TERMS AND CONDITIONS", pageWidth / 2, headingYPosition + 5, { align: "center" });

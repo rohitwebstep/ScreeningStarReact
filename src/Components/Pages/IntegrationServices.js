@@ -41,7 +41,12 @@ const InactiveClients = () => {
     const [searchTerm, setSearchTerm] = useState('');
 
     const [activeId, setActiveId] = useState(null);
-
+    const formatDate = (date = new Date()) => {
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0'); // months are 0-based
+        const year = date.getFullYear();
+        return `${day}/${month}/${year}`;
+    };
     const [currentPage, setCurrentPage] = useState(1);
     const [entriesPerPage, setEntriesPerPage] = useState(10);
     const optionsPerPage = [10, 50, 100, 200];
@@ -114,9 +119,10 @@ const InactiveClients = () => {
 
         // Advocate Details
         const advocateDetails = [
+            "NAVA NAYANA LEGAL CHEMBERS",
             "MANJUNATHA H S",
             "ADVOCATE, BBM, LLB",
-            "ENROLL NO - KAR (P) 4765/2023",
+            "ENROLL NO - KAR 4765/2023",
             "MOBILE NO: 9738812694",
             "MANJUNATH.9738812694@GMAIL.COM",
         ];
@@ -134,7 +140,7 @@ const InactiveClients = () => {
 
         // Horizontal line under block
         const hrY = blockY + blockHeight + 5;
-        doc.line(20, hrY - 3, pageWidth - 20, hrY - 3);
+        doc.line(20, hrY - 2, pageWidth - 20, hrY - 2);
 
         // Return updated Y for next content
         return hrY + 10;
@@ -265,7 +271,9 @@ const InactiveClients = () => {
         const doc = new jsPDF();
         const pageWidth = doc.internal.pageSize.getWidth();
         const lineHeight = 5;
-
+        const marginLeft = 20;
+        const marginRight = 20;
+        const maxWidth = pageWidth - marginLeft - marginRight;
         // ---- IMAGE + | + ADVOCATE DETAILS ----
         const blockY = 2;
         const imgWidth = 35;
@@ -289,9 +297,10 @@ const InactiveClients = () => {
 
         doc.setFontSize(10);
         const advocateDetails = [
+               "NAVA NAYANA LEGAL CHEMBERS",
             "MANJUNATHA H S",
             "ADVOCATE, BBM, LLB",
-            "ENROLL NO - KAR (P) 4765/2023",
+            "ENROLL NO - KAR 4765/2023",
             "MOBILE NO: 9738812694",
             "MANJUNATH.9738812694@GMAIL.COM",
         ];
@@ -304,7 +313,8 @@ const InactiveClients = () => {
 
         // Horizontal line below the block
         const hrY = blockY + blockHeight + 5;
-        doc.line(20, hrY - 3, pageWidth - 20, hrY - 3);
+              doc.line(20, hrY - 2, pageWidth - 20, hrY - 2);
+
 
         let y = hrY + 7;
 
@@ -321,8 +331,8 @@ const InactiveClients = () => {
         doc.setFontSize(14);
         const intro = `This is with regard to the search conducted in the Police Station referred below with regard to any criminal cases filed against the person detailed below.`;
         const introLines = doc.splitTextToSize(intro, pageWidth - 30);
-        doc.text(introLines, 20, y - 3, { align: 'left' });
-        y += introLines.length * lineHeight + 5;
+        doc.text(introLines, 20, y - 6, { align: 'left' });
+        y += introLines.length * lineHeight ;
 
         // ---- DATA TABLE ----
         doc.setFontSize(12);
@@ -347,18 +357,30 @@ const InactiveClients = () => {
             ['Overall Track Records Status', policeData.overall_track_records_status || ''],
         ];
         doc.setLineWidth(0.1);
+        const mymaxwidth = colWidth - 4;
         entries.forEach(([label, value]) => {
-            // Draw borders
-            doc.rect(tableX, y - 6, colWidth, rowHeight);
-            doc.rect(tableX + colWidth, y - 6, colWidth, rowHeight);
+            const wrappedLabel = doc.splitTextToSize(label, mymaxwidth);
+            const wrappedValue = doc.splitTextToSize(String(value), mymaxwidth);
+
+            const linesCount = Math.max(wrappedLabel.length, wrappedValue.length);
+            const dynamicRowHeight = linesCount * 7; // 7 is approx line height
+
+            // Borders
+            doc.rect(tableX, y - 6, colWidth, dynamicRowHeight);
+            doc.rect(tableX + colWidth, y - 6, colWidth, dynamicRowHeight);
 
             // Text
-            doc.text(label, tableX + 2, y + rowHeight - 8);
-            doc.text(String(value), tableX + colWidth + 2, y + rowHeight - 8);
+            wrappedLabel.forEach((line, idx) => {
+                doc.text(line, tableX + 2, y + (idx * 7));
+            });
 
-            y += rowHeight;
+            wrappedValue.forEach((line, idx) => {
+                doc.text(line, tableX + colWidth + 2, y + (idx * 7));
+            });
 
-            // New page if needed
+            y += dynamicRowHeight;
+
+            // Page break logic
             if (y > doc.internal.pageSize.getHeight() - 30) {
                 doc.addPage();
                 y = 20;
@@ -392,7 +414,7 @@ const InactiveClients = () => {
                 { text: '', }
             ],
             [
-                { text: '“Manjunath Nava Nayana Legal Chambers”', bold: true },
+                { text: '“Nava Nayana Legal Chambers”', bold: true },
                 { text: ' does not guarantee the completeness, accuracy, or finality of the information and shall not be held liable for any decisions or actions taken by third parties based on this report.', bold: false },
             ],
             [
@@ -401,15 +423,13 @@ const InactiveClients = () => {
         ];
 
         doc.setFontSize(12);
-        const marginLeft = 20;
-        const marginRight = 20;
-        const maxWidth = pageWidth - marginLeft - marginRight;
+
         const wordSpacing = 1.5; // adjust as needed
 
         noteLines.forEach(lineArray => {
             // If blank line, add vertical space
             if (lineArray.length === 1 && lineArray[0].text.trim() === '') {
-                y += lineHeight;
+                y += lineHeight - 4;
                 return;
             }
 
@@ -529,7 +549,8 @@ const InactiveClients = () => {
 
         // Horizontal line below the block
         const hrY = blockY + blockHeight + 5;
-        doc.line(20, hrY - 3, pageWidth - 20, hrY - 3);
+              doc.line(20, hrY - 2, pageWidth - 20, hrY - 2);
+
 
         let y = hrY + 7;
 
@@ -641,21 +662,33 @@ const InactiveClients = () => {
 
         ];
         doc.setLineWidth(0.1);
+        const mymaxwidth = colWidth - 4;
+
         entries.forEach(([label, value]) => {
-            // Draw borders
-            doc.rect(tableX, y - 6, colWidth, rowHeight);
-            doc.rect(tableX + colWidth, y - 6, colWidth, rowHeight);
+            const wrappedLabel = doc.splitTextToSize(label, mymaxwidth);
+            const wrappedValue = doc.splitTextToSize(String(value), mymaxwidth);
+
+            const linesCount = Math.max(wrappedLabel.length, wrappedValue.length);
+            const dynamicRowHeight = linesCount * 7; // 7 is approx line height
+
+            // Borders
+            doc.rect(tableX, y - 6, colWidth, dynamicRowHeight);
+            doc.rect(tableX + colWidth, y - 6, colWidth, dynamicRowHeight);
 
             // Text
-            doc.text(label, tableX + 2, y + rowHeight - 8);
-            doc.text(String(value), tableX + colWidth + 2, y + rowHeight - 8);
+            wrappedLabel.forEach((line, idx) => {
+                doc.text(line, tableX + 2, y + (idx * 7));
+            });
 
-            y += rowHeight;
+            wrappedValue.forEach((line, idx) => {
+                doc.text(line, tableX + colWidth + 2, y + (idx * 7));
+            });
 
-            // New page if needed
+            y += dynamicRowHeight;
+
+            // Page break logic
             if (y > doc.internal.pageSize.getHeight() - 30) {
                 doc.addPage();
-                navbar(doc)
                 y = 20;
             }
         });
@@ -730,18 +763,17 @@ const InactiveClients = () => {
             tableWidth: tableWidth, // this is optional since margin already controls it
         });
 
-        if (y > doc.internal.pageSize.getHeight() - 30) {
-            doc.addPage();
-            navbar(doc)
-            y = hrY + 5;
-        }
 
-        y = doc.lastAutoTable.finalY + 20;
+
+        doc.addPage();
+        navbar(doc)
+        y = hrY + 5;
 
 
 
         doc.setFontSize(12);
         doc.setFont('helvetica', 'bold');
+
         doc.text('DISCLAIMER', pageWidth / 2, y, { align: 'center' });
 
 
@@ -766,8 +798,7 @@ const InactiveClients = () => {
                 { text: '', }
             ],
             [
-                { text: 'No adverse court records were found against the applicant as of 25/06/2025.', bold: false },
-            ],
+                { text: `No adverse court records were found against the applicant as of ${courtData.date_of_verification}.`, bold: false },],
             [
                 { text: '', }
             ],
@@ -785,7 +816,7 @@ const InactiveClients = () => {
                 { text: '', }
             ],
             [
-                { text: '“Manjunath Nava Nayana Legal Chambers” ', bold: true },
+                { text: '“Nava Nayana Legal Chambers” ', bold: true },
                 { text: 'does not guarantee the completeness or finality of the information and shall not be held liable for any actions taken by third parties based on this report.', bold: false },
             ],
             [
@@ -931,9 +962,10 @@ const InactiveClients = () => {
     }
     const generateCourtDOCX = async (courtData) => {
         const advocateDetails = [
+               "NAVA NAYANA LEGAL CHEMBERS",
             "MANJUNATHA H S",
             "ADVOCATE, BBM, LLB",
-            "ENROLL NO - KAR (P) 4765/2023",
+            "ENROLL NO - KAR 4765/2023",
             "MOBILE NO: 9738812694",
             "MANJUNATH.9738812694@GMAIL.COM",
         ];
@@ -1166,10 +1198,10 @@ const InactiveClients = () => {
                     // === DISCLAIMER PARAGRAPHS ===
                     ...[
                         ["It has been verified that the above individual has ", "no case pending or disposed of", " in his/her name within the jurisdiction of the court, as per available data."],
-                        ["No adverse court records were found against the applicant as of 25/06/2025."],
+                        [{ text: `No adverse court records were found against the applicant as of ${courtData.date_of_verification_at_station}.` }]
                         ["If certified or physical records are required, the same can be obtained through the appropriate legal process as per the relevant court or authority."],
                         ["This report is issued based on data retrieved from ", "public domain sources, e-Courts portals, and/or officially permitted access."],
-                        ["“Manjunath Nava Nayana Legal Chambers” ", "does not guarantee the completeness or finality of the information and shall not be held liable for any actions taken by third parties based on this report."],
+                        ["“Nava Nayana Legal Chambers” ", "does not guarantee the completeness or finality of the information and shall not be held liable for any actions taken by third parties based on this report."],
                         ["This document is confidential and intended solely for the authorized recipient. Any unauthorized sharing, copying, or reliance is not permitted without prior written consent."]
                     ].map(parts => new Paragraph({
                         children: parts.map((part, i) =>
@@ -1199,9 +1231,10 @@ const InactiveClients = () => {
 
     const generatePoliceDOCX = async (policeData) => {
         const advocateDetails = [
+               "NAVA NAYANA LEGAL CHEMBERS",
             "MANJUNATHA H S",
             "ADVOCATE, BBM, LLB",
-            "ENROLL NO - KAR (P) 4765/2023",
+            "ENROLL NO - KAR 4765/2023",
             "MOBILE NO: 9738812694",
             "MANJUNATH.9738812694@GMAIL.COM",
         ];
@@ -1379,7 +1412,7 @@ const InactiveClients = () => {
                     }),
                     new Paragraph({
                         children: [
-                            new TextRun({ text: "“Manjunath Nava Nayana Legal Chambers”", bold: true, size: 20 }),
+                            new TextRun({ text: "“Nava Nayana Legal Chambers”", bold: true, size: 20 }),
                             new TextRun({ text: " does not guarantee the completeness, accuracy, or finality of the information and shall not be held liable for any decisions or actions taken by third parties based on this report.", size: 20 }),
                         ],
                         spacing: { after: 150 },
@@ -1617,7 +1650,7 @@ const InactiveClients = () => {
                                                 </table>
                                             </div>
                                             <div className="flex justify-left gap-4">
-                                                {(formData.court?.courtTable?.length || 0) < 15 && (
+                                                {(formData.court?.courtTable?.length || 0) < 5 && (
                                                     <button
                                                         type="button"
                                                         onClick={addRow}

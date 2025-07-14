@@ -110,6 +110,7 @@ import ClientBulkUpload from "./Components/UserPages/ClientBulkUpload.js"
 import CandidateBulkUpload from "./Components/UserPages/CandidateBulkUpload.js"
 import UserListing from "./Components/UserPages/User-Listing.js"
 import ViewUserTicket from "./Components/UserPages/viewUserTicket.js"
+import ExpenseMaster from "./Components/Pages/ExpenseMaster.js";
 
 
 
@@ -249,7 +250,7 @@ const Layout = () => {
 
               <Route path="/admin-GenerateServiceBGVForm" element={<GenerateServiceBGVForm/>} />
               <Route path="/admin-TimeManagement" element={<TimeManagement/>} />
-
+              <Route path="/admin-expense-master" element={<ExpenseMaster/>} />
  
               
               

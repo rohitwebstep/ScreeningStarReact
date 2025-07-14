@@ -151,6 +151,10 @@ export const SidebarProvider = ({ children }) => {
       name: "Invoice Master ",
       key: "enterSaleData",
       href: "/admin-invoice-master"
+    },{
+      name: "Expense Master ",
+      key: "expenseMaster",
+      href: "/admin-expense-master"
     },
 
   ];
