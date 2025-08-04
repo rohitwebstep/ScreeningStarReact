@@ -939,7 +939,7 @@ const GenerateInvoice = () => {
       overAllSgstTax = overallApplicationsTotalPricingWithAdditionalFee * (overAllSgstPercentage / 100);
       overAllIGSTTax = 0; // No IGST for intra-state
     } else {
-      overAllIGSTTax = overallApplicationsTotalPricingWithAdditionalFee * (overallApplicationsTotalPricingWithAdditionalFee / 100); // IGST applied in inter-state
+      overAllIGSTTax = overallApplicationsTotalPricingWithAdditionalFee * (18 / 100); // IGST applied in inter-state
       overAllCgstTax = 0;
       overAllSgstTax = 0;
     }
