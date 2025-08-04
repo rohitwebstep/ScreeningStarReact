@@ -4,6 +4,8 @@ import Swal from 'sweetalert2'
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf';
 import pdfjsWorker from 'pdfjs-dist/legacy/build/pdf.worker.entry';
 // import "pdfjs-dist/build/pdf.worker.entry";
+import Signature from "../../imgs/Signature.png";
+
 import {
     Packer,
     Paragraph,
@@ -118,14 +120,14 @@ const InactiveClients = () => {
         doc.line(lineX, blockY + 5, lineX, blockY + blockHeight - 5);
 
         // Advocate Details
-        const advocateDetails = [
-            "NAVA NAYANA LEGAL CHEMBERS",
-            "MANJUNATHA H S",
-            "ADVOCATE, BBM, LLB",
-            "ENROLL NO - KAR 4765/2023",
-            "MOBILE NO: 9738812694",
+           const advocateDetails = [
+            "NAVA NAYANA LEGAL CHAMBERS",
+            "MANJUNATHA H S (HSM), B.B.M., LL.B.",
+            "ADVOCATE AND LEGAL CONSULTANT",
+            "ENROLLMENT NUMBER: KAR/4765/2023",
+            "MOBILE NUMBER : +91 9738812694",
             "MANJUNATH.9738812694@GMAIL.COM",
-        ];
+            ];
 
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
@@ -296,14 +298,14 @@ const InactiveClients = () => {
         let advocateY = blockY;
 
         doc.setFontSize(10);
-        const advocateDetails = [
-               "NAVA NAYANA LEGAL CHEMBERS",
-            "MANJUNATHA H S",
-            "ADVOCATE, BBM, LLB",
-            "ENROLL NO - KAR 4765/2023",
-            "MOBILE NO: 9738812694",
+           const advocateDetails = [
+            "NAVA NAYANA LEGAL CHAMBERS",
+            "MANJUNATHA H S (HSM), B.B.M., LL.B.",
+            "ADVOCATE AND LEGAL CONSULTANT",
+            "ENROLLMENT NUMBER: KAR/4765/2023",
+            "MOBILE NUMBER : +91 9738812694",
             "MANJUNATH.9738812694@GMAIL.COM",
-        ];
+            ];
 
         advocateDetails.forEach(line => {
             doc.text(line, advocateX, advocateY + 10, { align: 'right' });
@@ -313,7 +315,7 @@ const InactiveClients = () => {
 
         // Horizontal line below the block
         const hrY = blockY + blockHeight + 5;
-              doc.line(20, hrY - 2, pageWidth - 20, hrY - 2);
+        doc.line(20, hrY - 2, pageWidth - 20, hrY - 2);
 
 
         let y = hrY + 7;
@@ -332,7 +334,7 @@ const InactiveClients = () => {
         const intro = `This is with regard to the search conducted in the Police Station referred below with regard to any criminal cases filed against the person detailed below.`;
         const introLines = doc.splitTextToSize(intro, pageWidth - 30);
         doc.text(introLines, 20, y - 6, { align: 'left' });
-        y += introLines.length * lineHeight ;
+        y += introLines.length * lineHeight;
 
         // ---- DATA TABLE ----
         doc.setFontSize(12);
@@ -371,11 +373,11 @@ const InactiveClients = () => {
 
             // Text
             wrappedLabel.forEach((line, idx) => {
-                doc.text(line, tableX + 2, y + (idx * 7));
+                doc.text(line, tableX + 2, y - 1 + (idx * 7));
             });
 
             wrappedValue.forEach((line, idx) => {
-                doc.text(line, tableX + colWidth + 2, y + (idx * 7));
+                doc.text(line, tableX + colWidth + 2, y - 1 + (idx * 7));
             });
 
             y += dynamicRowHeight;
@@ -496,9 +498,19 @@ const InactiveClients = () => {
             });
         });
 
+        const imgHeightt = 25;
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const marginBottom = 0; // Optional: add a little buffer
 
-        const qrCodeBase64w = "https://webstepdev.com/screeningstarAssets/stamp.png";
-        doc.addImage(qrCodeBase64w, "PNG", imgX, y, 60, 25);
+        // Check if the image would overflow the current page
+        if (y + imgHeightt + marginBottom > pageHeight) {
+            doc.addPage();
+            y = 10; // Reset Y for new page (or your desired top margin)
+        }
+
+        const qrCodeBase64w = Signature;
+        doc.addImage(qrCodeBase64w, "PNG", imgX, y, 60, imgHeightt);
+
 
         if (shouldSave) {
             doc.save('Police_Record_Report.pdf');
@@ -510,7 +522,7 @@ const InactiveClients = () => {
     const generateCourtPDF = async (courtData, shouldSave = true) => {
         const doc = new jsPDF();
         const pageWidth = doc.internal.pageSize.getWidth();
-        const lineHeight = 5;
+        const lineHeight = 6;
 
         // ---- IMAGE + | + ADVOCATE DETAILS ----
         const blockY = 2;
@@ -534,13 +546,14 @@ const InactiveClients = () => {
         let advocateY = blockY;
 
         doc.setFontSize(10);
-        const advocateDetails = [
-            // "MANJUNATHA H S",
-            // "ADVOCATE, BBM, LLB",
-            // "ENROLL NO - KAR (P) 4765/2023",
-            // "MOBILE NO: 9738812694",
+           const advocateDetails = [
+            // "NAVA NAYANA LEGAL CHAMBERS",
+            // "MANJUNATHA H S (HSM), B.B.M., LL.B.",
+            // "ADVOCATE AND LEGAL CONSULTANT",
+            // "ENROLLMENT NUMBER: KAR/4765/2023",
+            // "MOBILE NUMBER : +91 9738812694",
             // "MANJUNATH.9738812694@GMAIL.COM",
-        ];
+            ];
 
         advocateDetails.forEach(line => {
             doc.text(line, advocateX, advocateY + 10, { align: 'right' });
@@ -549,7 +562,7 @@ const InactiveClients = () => {
 
         // Horizontal line below the block
         const hrY = blockY + blockHeight + 5;
-              doc.line(20, hrY - 2, pageWidth - 20, hrY - 2);
+        doc.line(20, hrY - 2, pageWidth - 20, hrY - 2);
 
 
         let y = hrY + 7;
@@ -559,14 +572,14 @@ const InactiveClients = () => {
         doc.setFontSize(15);
         doc.text('COURT RECORD REPORT', pageWidth / 2, y, { align: 'center' });
 
-        y += lineHeight * 3 - 3;
+        y += lineHeight * 3 - 5;
 
 
 
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(14);
         // Intro
-        const intro = `This is with regard to the search conducted in the Police Station referred below with regard to any criminal cases filed against the person detailed below.`;
+        const intro = `This information is given with regard to search conducted at the Jurisdictional Court. `;
         const introLines = doc.splitTextToSize(intro, pageWidth - 30);
         doc.text(introLines, 20, y);
         y += introLines.length * lineHeight + 5;
@@ -677,11 +690,11 @@ const InactiveClients = () => {
 
             // Text
             wrappedLabel.forEach((line, idx) => {
-                doc.text(line, tableX + 2, y + (idx * 7));
+                doc.text(line, tableX + 2, y - 1 + (idx * 7));
             });
 
             wrappedValue.forEach((line, idx) => {
-                doc.text(line, tableX + colWidth + 2, y + (idx * 7));
+                doc.text(line, tableX + colWidth + 2, y - 1 + (idx * 7));
             });
 
             y += dynamicRowHeight;
@@ -942,7 +955,7 @@ const InactiveClients = () => {
         });
 
 
-        const qrCodeBase64w = "https://webstepdev.com/screeningstarAssets/stamp.png";
+        const qrCodeBase64w = Signature;
         doc.addImage(qrCodeBase64w, "PNG", imgX, y, 60, 25);
         if (y > doc.internal.pageSize.getHeight() - 30) {
             doc.addPage();
@@ -961,17 +974,20 @@ const InactiveClients = () => {
         }
     }
     const generateCourtDOCX = async (courtData) => {
-        const advocateDetails = [
-               "NAVA NAYANA LEGAL CHEMBERS",
-            "MANJUNATHA H S",
-            "ADVOCATE, BBM, LLB",
-            "ENROLL NO - KAR 4765/2023",
-            "MOBILE NO: 9738812694",
-            "MANJUNATH.9738812694@GMAIL.COM",
-        ];
+      const advocateDetails = [
+    "NAVA NAYANA LEGAL CHAMBERS",
+    "MANJUNATHA H S (HSM), B.B.M., LL.B.",
+    "ADVOCATE AND LEGAL CONSULTANT",
+    "ENROLLMENT NUMBER: KAR/4765/2023",
+    "MOBILE NUMBER : +91 9738812694",
+    "MANJUNATH.9738812694@GMAIL.COM",
+    ];
+
+
+
 
         const headerImageUrl = "https://webstepdev.com/screeningstarAssets/advocate.png";
-        const stampImageUrl = "https://webstepdev.com/screeningstarAssets/stamp.png";
+        const stampImageUrl = Signature;
 
         const fetchImageBuffer = async url => {
             const res = await fetch(url);
@@ -1097,7 +1113,7 @@ const InactiveClients = () => {
                     new Paragraph({
                         children: [
                             new TextRun({
-                                text: "This is with regard to the search conducted in the Police Station referred below with regard to any criminal cases filed against the person detailed below.",
+                                text: "This information is given with regard to search conducted at the Jurisdictional Court. ",
                                 size: 22,
                             }),
                         ],
@@ -1140,8 +1156,16 @@ const InactiveClients = () => {
                         rows: tableEntries.map(([label, value]) =>
                             new TableRow({
                                 children: [
-                                    new TableCell({ children: [new Paragraph(label)] }),
-                                    new TableCell({ children: [new Paragraph(String(value || ''))] }),
+                                    new TableCell({
+                                        width: { size: 50, type: WidthType.PERCENTAGE },
+                                        margins: { left: 100, right: 100 },
+                                        children: [new Paragraph(label)],
+                                    }),
+                                    new TableCell({
+                                        width: { size: 50, type: WidthType.PERCENTAGE },
+                                        margins: { left: 100, right: 100 },
+                                        children: [new Paragraph(String(value || ''))],
+                                    }),
                                 ],
                             })
                         ),
@@ -1168,21 +1192,39 @@ const InactiveClients = () => {
                             insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
                         },
                         rows: [
+                            // Header row with padding
                             new TableRow({
                                 children: ["COURT/CHECK TYPE", "JURISDICTION", "LOCATION", "VERIFICATION RESULT"].map(
-                                    heading => new TableCell({
-                                        children: [new Paragraph({ text: heading, bold: true })],
-                                    })
+                                    heading =>
+                                        new TableCell({
+                                            margins: { left: 100, right: 100 },
+                                            children: [new Paragraph({ text: heading, bold: true })],
+                                        })
                                 ),
                             }),
-                            ...(courtData.courtTable || []).map(row => new TableRow({
-                                children: [
-                                    new TableCell({ children: [new Paragraph(row.courtCheckType || '')] }),
-                                    new TableCell({ children: [new Paragraph(row.jurisdiction || '')] }),
-                                    new TableCell({ children: [new Paragraph(row.location || '')] }),
-                                    new TableCell({ children: [new Paragraph(row.verificationResult || '')] }),
-                                ],
-                            })),
+                            // Data rows with padding
+                            ...(courtData.courtTable || []).map(row =>
+                                new TableRow({
+                                    children: [
+                                        new TableCell({
+                                            margins: { left: 100, right: 100 },
+                                            children: [new Paragraph(row.courtCheckType || '')],
+                                        }),
+                                        new TableCell({
+                                            margins: { left: 100, right: 100 },
+                                            children: [new Paragraph(row.jurisdiction || '')],
+                                        }),
+                                        new TableCell({
+                                            margins: { left: 100, right: 100 },
+                                            children: [new Paragraph(row.location || '')],
+                                        }),
+                                        new TableCell({
+                                            margins: { left: 100, right: 100 },
+                                            children: [new Paragraph(row.verificationResult || '')],
+                                        }),
+                                    ],
+                                })
+                            ),
                         ],
                     }),
 
@@ -1204,7 +1246,7 @@ const InactiveClients = () => {
                         ["“Nava Nayana Legal Chambers” ", "does not guarantee the completeness or finality of the information and shall not be held liable for any actions taken by third parties based on this report."],
                         ["This document is confidential and intended solely for the authorized recipient. Any unauthorized sharing, copying, or reliance is not permitted without prior written consent."]
                     ].map(parts => new Paragraph({
-                        children: parts.map((part, i) =>
+                        children: parts?.map((part, i) =>
                             new TextRun({ text: part, bold: i === 1 })
                         ),
                         spacing: { after: 150 },
@@ -1215,7 +1257,7 @@ const InactiveClients = () => {
                         children: [
                             new ImageRun({
                                 data: stampImage,
-                                transformation: { width: 100, height: 40 },
+                                transformation: { width: 150, height: 70 },
                             }),
                         ],
                         spacing: { before: 300 },
@@ -1230,17 +1272,17 @@ const InactiveClients = () => {
 
 
     const generatePoliceDOCX = async (policeData) => {
-        const advocateDetails = [
-               "NAVA NAYANA LEGAL CHEMBERS",
-            "MANJUNATHA H S",
-            "ADVOCATE, BBM, LLB",
-            "ENROLL NO - KAR 4765/2023",
-            "MOBILE NO: 9738812694",
+           const advocateDetails = [
+            "NAVA NAYANA LEGAL CHAMBERS",
+            "MANJUNATHA H S (HSM), B.B.M., LL.B.",
+            "ADVOCATE AND LEGAL CONSULTANT",
+            "ENROLLMENT NUMBER: KAR/4765/2023",
+            "MOBILE NUMBER : +91 9738812694",
             "MANJUNATH.9738812694@GMAIL.COM",
-        ];
+            ];
 
         const headerImageUrl = "https://webstepdev.com/screeningstarAssets/advocate.png";
-        const stampImageUrl = "https://webstepdev.com/screeningstarAssets/stamp.png";
+        const stampImageUrl = Signature;
 
         const fetchImageBuffer = async url => {
             const res = await fetch(url);
@@ -1427,7 +1469,7 @@ const InactiveClients = () => {
                     // Stamp image
                     new Paragraph({
                         children: [
-                            new ImageRun({ data: stampImage, transformation: { width: 120, height: 50 } }),
+                            new ImageRun({ data: stampImage, transformation: { width: 150, height: 70 } }),
                         ],
                     }),
                 ],
