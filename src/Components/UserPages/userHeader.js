@@ -257,7 +257,7 @@ const UserHeader = () => {
             </Link>
             <div className="border newBorderOrange  rounded-md p-2 shadow-md">
               <Link to="/user-dashboard" onClick={() => handleSectionClick('Home')}>
-                <img src={Logo} alt="Logo" className="h-10 md:h-[4.5rem] md:w-[17.5rem] w-auto" />
+                <img src={Logo} alt="Logo" className="h-10 md:h-[5.5rem] md:w-[13.5rem] w-auto " />
               </Link>
             </div>
             <span className="text-xs md:text-lg hidden  lg:block font-bold text-[#4d606b]">Hi User...</span>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import "../App.css";
-import Logo from "../imgs/track-master.png";
+import Logo from "../imgs/track-master2.png";
 import adminBG from "../imgs/admin-bg3.jpeg";
 import { Modal, Button, Form } from 'react-bootstrap';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -300,14 +300,14 @@ useEffect(() => {
         </div>
 
         {/* Right Section */}
-        <div className="flex-1 flex items-center justify-center bg-white lg:border-4 border-[#ee8f1b] py-[80px] px-6">
+        <div className="flex-1 flex items-center justify-center bg-white lg:border-4 border-[#ee8f1b] py-[50px] px-6">
           <form
             className="w-full max-w-sm sm:max-w-md bg-white rounded-lg"
             onSubmit={handleUserSubmit}
           >
             <img
               src={Logo}
-              className=" w-[350px] sm:w-[350px] mx-auto"
+              className=" w-[350px] sm:w-[350px] mb-4 mx-auto"
               alt="Logo"
             />
             {logoFromQuery && typeof logoFromQuery === "string" && logoFromQuery.trim() !== "" && (

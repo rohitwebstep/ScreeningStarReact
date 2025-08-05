@@ -16,6 +16,7 @@ const Attendance = () => {
   const { validateAdminLogin, setApiLoading, apiLoading } = useApiLoading();
   const [responseError, setResponseError] = useState(null);
   const [filtredDataRaw, setFiltredDataRaw] = useState([]);
+  const [searchName, setSearchName] = useState("");
 
   const [searchTerm, setSearchTerm] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -42,8 +43,13 @@ const Attendance = () => {
         date,
         first_login_time,
         last_logout_time,
-        break_times
+        break_times,
+        purpose_of_leave,
+        leave_from_date,
+        leave_to_date
       } = entry;
+
+      if (!date) return; // Skip if date is invalid/null
 
       if (!grouped[admin_id]) {
         grouped[admin_id] = {
@@ -57,7 +63,7 @@ const Attendance = () => {
         };
       }
 
-      const dt = new Date(date);
+      const dt = new Date(date + 'T00:00:00'); // Safe for IST
       const year = dt.getFullYear().toString();
       const month = String(dt.getMonth() + 1).padStart(2, '0');
 
@@ -73,23 +79,25 @@ const Attendance = () => {
         date,
         first_login_time,
         last_logout_time,
-        break_times
+        break_times,
+        purpose_of_leave,
+        leave_from_date,
+        leave_to_date
       });
     });
 
-    // Sort each month's records by date ASCENDING
+    // Sort by date ascending
     Object.values(grouped).forEach(admin => {
-      const yearKeys = Object.keys(admin.daily_records);
-      yearKeys.forEach(year => {
-        const monthKeys = Object.keys(admin.daily_records[year]);
-        monthKeys.forEach(month => {
-          admin.daily_records[year][month].sort((a, b) => new Date(a.date) - new Date(b.date));
+      Object.values(admin.daily_records).forEach(months => {
+        Object.values(months).forEach(records => {
+          records.sort((a, b) => new Date(a.date) - new Date(b.date));
         });
       });
     });
 
     return Object.values(grouped);
   }
+
 
 
   const fetchData = useCallback(() => {
@@ -131,11 +139,9 @@ const Attendance = () => {
         if (newToken) {
           localStorage.setItem("_token", newToken);
         }
-        console.log(`client_spocs - `, result.client_spocs);
 
-        const groupedResult = groupByAdmin(result.client_spocs);
+        const groupedResult = groupByAdmin(result.data.attendance_records);
         console.log(`groupedResult - `, groupedResult);
-
         setTableData(groupedResult || []);
       })
       .catch((error) => {
@@ -238,7 +244,7 @@ const Attendance = () => {
 
       const matchesDateRange = (() => {
         if (!startDate && !endDate) return true;
-
+        console.log('row', row)
         const loginDate = new Date(row.first_login_time);
         const from = startDate ? new Date(startDate) : null;
         const to = endDate ? new Date(endDate) : null;
@@ -256,58 +262,102 @@ const Attendance = () => {
     }
   );
 
-  const handleFilter = () => {
-    console.log("Filter triggered");
 
+  const handleFilter = async () => {
     if (!startDate || !endDate) {
-      console.log("Start or End date missing:", { startDate, endDate });
-      return;
-    }
-
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    console.log("Parsed Dates:", { start, end });
-
-    const filteredData = tableData.filter((item, index) => {
-      if (!item.date) {
-        console.log(`Row ${index} skipped (no date)`, item);
-        return false;
-      }
-
-      const itemDate = new Date(item.date);
-      const inRange = itemDate >= start && itemDate <= end;
-
-      console.log(`Row ${index} - Date: ${item.date}, Parsed: ${itemDate}, In Range: ${inRange}`);
-      return inRange;
-    });
-
-    if (filteredData.length === 0) {
       Swal.fire({
-        icon: "info",
-        title: "No Data Found",
-        text: "No records found in the selected date range.",
+        icon: "warning",
+        title: "Select Dates",
+        text: "Please select both start and end dates.",
       });
       return;
     }
 
-    setFiltredDataRaw(filteredData);
-    setCurrentPage(1);
-    console.log("Table data and current page updated");
-  };
-  console.log('setFiltredDataRaw', filtredDataRaw)
+    setLoading(true);
+    setApiLoading(true);
 
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
-  const paginatedData = filteredData.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-  console.log('paginatedData', paginatedData)
+    const admin_id = JSON.parse(localStorage.getItem("admin"))?.id;
+    const storedToken = localStorage.getItem("_token");
 
-  const handlePageChange = (newPage) => {
-    if (newPage > 0 && newPage <= totalPages) {
-      setCurrentPage(newPage);
+    if (!admin_id || !storedToken) {
+      console.error("Missing admin_id or _token");
+      setLoading(false);
+      setApiLoading(false);
+      return;
+    }
+
+    const from = format(startDate, "MM/yyyy");
+    const to = format(endDate, "MM/yyyy");
+
+    const url = `https://api.screeningstar.co.in/personal-manager/attendance-list?admin_id=${admin_id}&_token=${storedToken}&from=${from}&to=${to}`;
+
+    try {
+      const response = await fetch(url, { method: "GET", redirect: "follow" });
+      const result = await response.json();
+
+      if (result.status === false) {
+        console.error("API Error:", result.message);
+        Swal.fire("Error!", `${result.message}`, "error");
+        setResponseError(result.message);
+        throw new Error(result.message);
+      }
+
+      const newToken = result.token || result._token || storedToken || "";
+      if (newToken) {
+        localStorage.setItem("_token", newToken);
+      }
+
+      const attendanceRecords = result.data.attendance_records || [];
+
+      // Step 1: Filter by date
+      const filteredFlat = attendanceRecords.filter((entry) => {
+        if (entry?.date) {
+          const entryDate = new Date(entry.date);
+          const fromDate = new Date(startDate);
+          const toDate = new Date(endDate);
+
+          // Reset hours to compare only dates
+          entryDate.setHours(0, 0, 0, 0);
+          fromDate.setHours(0, 0, 0, 0);
+          toDate.setHours(0, 0, 0, 0);
+
+          return entryDate >= fromDate && entryDate <= toDate;
+        }
+        return false;
+      });
+
+      console.log('attendanceRecords', attendanceRecords)
+      if (filteredFlat.length === 0) {
+        Swal.fire({
+          icon: "info",
+          title: "No Data Found",
+          text: "No records found in the selected date range.",
+        });
+        setTableData([]);
+        setFiltredDataRaw([]);
+        return;
+      }
+
+      // Step 2: Group by admin
+      const groupedResult = groupByAdmin(filteredFlat); // Must match your UI format
+
+      setTableData(groupedResult || []);
+      setFiltredDataRaw(groupedResult || []);
+      setCurrentPage(1);
+    } catch (error) {
+      console.error("Fetch error:", error);
+      setTableData([]);
+    } finally {
+      setApiLoading(false);
+      setLoading(false);
     }
   };
+
+
+
+
+  console.log('setFiltredDataRaw', filtredDataRaw)
+
 
 
 
@@ -440,7 +490,44 @@ const Attendance = () => {
     "TEA BREAK OUT-2",
     "LOGOUT"
   ];
+  const adminMonthBlocks = [];
 
+  tableData.forEach(admin => {
+    Object.keys(admin.daily_records).forEach(year => {
+      Object.keys(admin.daily_records[year]).forEach(month => {
+        adminMonthBlocks.push({
+          admin,
+          year,
+          month,
+          records: admin.daily_records[year][month]
+        });
+      });
+    });
+  });
+
+  const filteredAdminBlocks = adminMonthBlocks.filter(({ admin }) =>
+    admin.admin_name.toLowerCase().includes(searchName.toLowerCase())
+  );
+  console.log('filteredAdminBlocks', filteredAdminBlocks)
+
+  const paginatedAdminBlocks = filteredAdminBlocks.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+
+  const totalPages = Math.ceil(filteredAdminBlocks.length / itemsPerPage);
+  const paginatedData = filteredAdminBlocks.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+  console.log('paginatedData', paginatedData)
+
+  const handlePageChange = (newPage) => {
+    if (newPage > 0 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+    }
+  };
 
   return (
     <div className="bg-[#c1dff2] border border-black">
@@ -450,30 +537,31 @@ const Attendance = () => {
           <div className="w-full md:w-1/3 space-y-2">
             <input
               type="text"
-              placeholder="Search by Name"
-              value={searchTerm}
-              onChange={handleSearchChange}
-              className="border p-2 rounded w-full shadow-sm focus:ring-2 focus:ring-blue-400"
+              placeholder="Search by employee name"
+              value={searchName}
+              onChange={(e) => setSearchName(e.target.value)}
+              className="mb-4 px-4 py-2 border rounded-lg w-full"
             />
+
             <div className="flex items-center gap-2">
               <label className="text-sm font-medium text-gray-600 w-16">From</label>
               <DatePicker
-                selected={startDate ? parseISO(startDate) : null}
-                onChange={(date) => setStartDate(date ? format(date, "yyyy-MM-dd") : "")}
-                dateFormat="dd-MM-yyyy"
-                placeholderText="DD-MM-YYYY"
-                className="uppercase border p-2 rounded w-full shadow-sm focus:ring-2 focus:ring-blue-400"
+                selected={startDate}
+                onChange={(date) => setStartDate(date)}
+                dateFormat="MM/yyyy"
+                showMonthYearPicker
+                className="border px-3 py-2 rounded-md"
               />
             </div>
 
             <div className="flex items-center gap-2">
               <label className="text-sm font-medium text-gray-600 w-16">To</label>
               <DatePicker
-                selected={endDate ? parseISO(endDate) : null}
-                onChange={(date) => setEndDate(date ? format(date, "yyyy-MM-dd") : "")}
-                dateFormat="dd-MM-yyyy"
-                placeholderText="DD-MM-YYYY"
-                className="uppercase border p-2 rounded w-full shadow-sm focus:ring-2 focus:ring-blue-400"
+                selected={endDate}
+                onChange={(date) => setEndDate(date)}
+                dateFormat="MM/yyyy"
+                showMonthYearPicker
+                className="border px-3 py-2 rounded-md"
               />
             </div>
             <button
@@ -527,109 +615,70 @@ const Attendance = () => {
               </tr>
             </thead>
             <tbody>
-              {[...paginatedData].flatMap((admin, index) => {
+              {paginatedAdminBlocks.map(({ admin, year, month, records }, index) => {
                 const breakTypes = [
-                  "LOGIN",
-                  "TEA BREAK IN-1",
-                  "TEA BREAK OUT-1",
-                  "LUNCH BREAK IN",
-                  "LUNCH BREAK OUT",
-                  "TEA BREAK IN-2",
-                  "TEA BREAK OUT-2",
-                  "LOGOUT"
+                  "LOGIN", "TEA BREAK IN-1", "TEA BREAK OUT-1", "LUNCH BREAK IN",
+                  "LUNCH BREAK OUT", "TEA BREAK IN-2", "TEA BREAK OUT-2", "LOGOUT"
                 ];
 
-                // Convert to array of { admin, year, month, records } for sorting
-                const monthYearGroups = [];
+                const daysInMonth = getDaysInMonth(year, month);
+                const presentCount = records.filter(r => r.first_login_time || r.last_logout_time).length;
+                const leaveCount = records.length - presentCount;
+                const leaveFrom = records.find(r => !r.first_login_time && !r.last_logout_time)?.date || "";
+                const leaveTo = [...records].reverse().find(r => !r.first_login_time && !r.last_logout_time)?.date || "";
 
-                Object.keys(admin.daily_records).forEach(year => {
-                  Object.keys(admin.daily_records[year]).forEach(month => {
-                    monthYearGroups.push({
-                      admin,
-                      year,
-                      month,
-                      records: admin.daily_records[year][month]
-                    });
-                  });
-                });
+                return (
+                  <React.Fragment key={`${admin.emp_id}-${year}-${month}`}>
+                    <tr className="bg-yellow-100 text-center font-bold text-black">
+                      <td colSpan={35} className="border border-black py-2 text-lg">
+                        ATTENDANCE SHEET — {admin.admin_name} ({admin.emp_id}) — {month.padStart(2, '0')}/{year}
+                      </td>
+                    </tr>
 
-                // Sort by year DESC, then month DESC
-                monthYearGroups.sort((a, b) => {
-                  const ya = parseInt(a.year);
-                  const yb = parseInt(b.year);
-                  const ma = parseInt(a.month);
-                  const mb = parseInt(b.month);
-                  return yb !== ya ? yb - ya : mb - ma;
-                });
+                    {breakTypes.map((label, i) => (
+                      <tr key={`${admin.emp_id}-${label}-${year}-${month}`} className="text-center">
+                        {i === 0 && (
+                          <>
+                            <td rowSpan={breakTypes.length} className="border border-black">{(currentPage - 1) * itemsPerPage + index + 1}</td>
+                            <td rowSpan={breakTypes.length} className="border border-black">{admin.emp_id}</td>
+                            <td rowSpan={breakTypes.length} className="border border-black">{admin.admin_name}</td>
+                          </>
+                        )}
+                        <td className="border border-black">{label}</td>
+                        {Array.from({ length: 31 }, (_, d) => {
+                          const day = d + 1;
+                          const record = records.find(r => new Date(r.date).getDate() === day);
+                          const key = label.toLowerCase();
+                          let value = "";
 
-                let rowIndex = index + 1;
+                          if (record) {
+                            if (label === "LOGIN") value = record.first_login_time;
+                            else if (label === "LOGOUT") value = record.last_logout_time;
+                            else value = record.break_times?.[key];
+                          }
 
-                // Render
-                return monthYearGroups.map(({ admin, year, month, records }) => {
-                  const daysInMonth = getDaysInMonth(year, month);
-                  const presentCount = records.filter(r => r.first_login_time || r.last_logout_time).length;
-                  const leaveCount = records.length - presentCount;
-                  const leaveFrom = records.find(r => !r.first_login_time && !r.last_logout_time)?.date || "";
-                  const leaveTo = [...records].reverse().find(r => !r.first_login_time && !r.last_logout_time)?.date || "";
-
-                  return (
-                    <React.Fragment key={`${admin.emp_id}-${year}-${month}`}>
-                      {/* Month-Year Header Row */}
-                      <tr className="bg-yellow-100 text-center font-bold text-black">
-                        <td colSpan={35} className="border border-black py-2 text-lg">
-                          ATTENDANCE SHEET — {admin.admin_name} ({admin.emp_id}) — {month.padStart(2, '0')}/{year}
-                        </td>
+                          return (
+                            <td key={d} className="border border-black text-xs px-2 py-1">
+                              {formatDate(value)}
+                            </td>
+                          );
+                        })}
+                        {i === 0 && (
+                          <>
+                            <td rowSpan={breakTypes.length} className="border border-black">{leaveCount}</td>
+                            <td rowSpan={breakTypes.length} className="border border-black">{presentCount}</td>
+                            <td rowSpan={breakTypes.length} className="border border-black">{leaveFrom ? formatDate2(leaveFrom) : ""}</td>
+                            <td rowSpan={breakTypes.length} className="border border-black">{leaveTo ? formatDate2(leaveTo) : ""}</td>
+                          </>
+                        )}
                       </tr>
-
-                      {/* Attendance Rows */}
-                      {breakTypes.map((label, i) => (
-                        <tr key={`${admin.emp_id}-${label}-${year}-${month}`} className="text-center">
-                          {i === 0 && (
-                            <>
-                              <td rowSpan={breakTypes.length} className="border border-black">{rowIndex}</td>
-                              <td rowSpan={breakTypes.length} className="border border-black">{admin.emp_id}</td>
-                              <td rowSpan={breakTypes.length} className="border border-black">{admin.admin_name}</td>
-                            </>
-                          )}
-                          <td className="border border-black">{label}</td>
-                          {Array.from({ length: 31 }, (_, d) => {
-                            const day = d + 1;
-                            const record = records.find(r => new Date(r.date).getDate() === day);
-                            const key = label.toLowerCase();
-                            let value = "";
-
-                            if (record) {
-                              if (label === "LOGIN") value = record.first_login_time;
-                              else if (label === "LOGOUT") value = record.last_logout_time;
-                              else value = record.break_times?.[key];
-                            }
-
-                            return (
-                              <td key={d} className="border border-black text-xs px-2 py-1">
-                                {formatDate(value)}
-                              </td>
-                            );
-                          })}
-                          {i === 0 && (
-                            <>
-                              <td rowSpan={breakTypes.length} className="border border-black">{leaveCount}</td>
-                              <td rowSpan={breakTypes.length} className="border border-black">{presentCount}</td>
-                              <td rowSpan={breakTypes.length} className="border border-black">
-                                {leaveFrom ? formatDate2(leaveFrom) : ""}
-                              </td>
-                              <td rowSpan={breakTypes.length} className="border border-black">
-                                {leaveTo ? formatDate2(leaveTo) : ""}
-                              </td>
-                            </>
-                          )}
-                        </tr>
-                      ))}
-                    </React.Fragment>
-                  );
-                });
+                    ))}
+                  </React.Fragment>
+                );
               })}
-
             </tbody>
+
+
           </table>
         </div>
 

@@ -475,8 +475,8 @@ const AdminHeader = () => {
               <FaHome className="text-3xl hover:text-[#004391] transition duration-200" />
             </Link>
             <Link to="/" onClick={() => handleSectionClick('Home')}>
-              <div className="border orangeBorder rounded-md p-2 shadow-md cursor-pointer">
-                <img src={Logo} alt="Logo" className="h-10 md:h-[4.5rem] md:w-[17.5rem] w-auto " />
+              <div className="border orangeBorder rounded-md p-1 shadow-md cursor-pointer">
+                <img src={Logo} alt="Logo" className="h-10 md:h-[5.5rem] md:w-[13.5rem] w-auto " />
               </div>
             </Link>
             <span className="text-xs md:text-lg hidden lg:block font-bold text-[#4d606b]">Hi {adminName}</span>
