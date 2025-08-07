@@ -96,6 +96,7 @@ const AddClient = () => {
         first_level_matrix_designation: "",
         first_level_matrix_mobile: "",
         custom_address: "",
+        disclaimer_emails: "",
         first_level_matrix_email: "",
         client_standard: "",
         username: "",
@@ -647,6 +648,7 @@ const AddClient = () => {
                 first_level_matrix_mobile: "",
                 custom_template: "",
                 custom_address: "",
+                disclaimer_emails: "",
                 first_level_matrix_email: "",
                 client_standard: "",
                 username: "",
@@ -1303,16 +1305,34 @@ const AddClient = () => {
 
                     {/* PDF Footer textarea - separate full-width line */}
                     {customTemplate === "yes" && (
-                        <div className="flex justify-center w-full">
-                            <div className="w-full">
-                                <label className="block mb-1 font-medium">PDF Footer</label>
-                                <textarea
-                                    name="custom_address"
-                                    placeholder="Enter PDF Footer"
-                                    onChange={handleChange}
-                                    className="w-full rounded-md p-2.5 mb-[20px] border border-gray-300 bg-[#f7f6fb]"
-                                    rows={2}
-                                ></textarea>
+                        <div className="grid md:grid-cols-2 mb-4 gap-4">
+                            <div className="flex justify-center w-full">
+                                <div className="w-full">
+                                    <label className="block mb-1 font-medium">PDF Footer</label>
+                                    <textarea
+                                        name="custom_address"
+                                        placeholder="Enter PDF Footer"
+                                        onChange={handleChange}
+                                        className="w-full rounded-md p-2.5 mb-[20px] border border-gray-300 bg-[#f7f6fb]"
+                                        rows={2}
+                                    ></textarea>
+                                </div>
+                            </div>
+                            <div className="flex justify-center w-full">
+                                <div className="w-full">
+                                    <label htmlFor="disclaimer_emails" className="block mb-1 font-medium">
+                                        Disclaimer Emails (for PDF)
+                                    </label>
+                                    <textarea
+                                        id="disclaimer_emails"
+                                        name="disclaimer_emails"
+                                        placeholder="Enter email addresses, separated by commas"
+                                        onChange={handleChange}
+                                        className="w-full rounded-md p-2.5 mb-[20px] border border-gray-300 bg-[#f7f6fb]"
+                                        rows={2}
+                                    ></textarea>
+                                </div>
+
                             </div>
                         </div>
                     )}

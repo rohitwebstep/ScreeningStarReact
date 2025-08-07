@@ -275,29 +275,29 @@ const EditClient = () => {
     const handleEmailInputChange = (value) => {
         setEmailsInput(value);
         console.log('value---', value);
-    
+
         // Split input by commas, trim spaces, and filter out empty strings
         const emailArray = value
             .split(',')
             .map(email => email.trim())
             .filter(email => email !== "");
-    
+
         // Basic email validation regex
         const emailRegex = /^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/;
-    
+
         // Find invalid emails
         const invalidEmails = emailArray.filter(email => !emailRegex.test(email));
-    
+
         if (invalidEmails.length > 0) {
             setEmailError(`Invalid email(s): ${invalidEmails.join(", ")}`);
         } else {
             setEmailError("");
         }
-    
+
         // Update state with valid emails
         setEmails(emailArray);
     };
-    
+
     const addEmailField = () => {
         setEmails([...emails, ""]);
     };
@@ -751,16 +751,16 @@ const EditClient = () => {
 
 
         return (<>
-                    {['jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff', 'webp', 'svg', 'heif', 'heic', 'avif', 'ico', 'jfif', 'raw', 'psd', 'ai', 'eps'].includes(fileExtension) ? (
-                        <img src={fileUrl} alt="Image File" className="w-20 h-20 object-cover rounded-md mx-auto" />
-                    ) : fileExtension === 'pdf' ? (
-                        <iframe src={fileUrl} title="PDF Viewer" className="w-40 h-20"></iframe>
-                    ) : fileExtension === 'zip' ? (
-                        <span>📦</span>
-                    ) : (
-                        <span>📄</span>
-                    )}
-                    </>
+            {['jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff', 'webp', 'svg', 'heif', 'heic', 'avif', 'ico', 'jfif', 'raw', 'psd', 'ai', 'eps'].includes(fileExtension) ? (
+                <img src={fileUrl} alt="Image File" className="w-20 h-20 object-cover rounded-md mx-auto" />
+            ) : fileExtension === 'pdf' ? (
+                <iframe src={fileUrl} title="PDF Viewer" className="w-40 h-20"></iframe>
+            ) : fileExtension === 'zip' ? (
+                <span>📦</span>
+            ) : (
+                <span>📄</span>
+            )}
+        </>
         );
     };
     return (
@@ -884,23 +884,22 @@ const EditClient = () => {
                             <div>
                                 <label className="block mb-1 font-medium">Date Of Service Agreement </label>
                                 <DatePicker
-    selected={selectedClient?.agreement_date ? new Date(selectedClient.agreement_date) : null}
-    onChange={(date) => {
-        const formattedDate = date ? format(date, "yyyy-MM-dd") : "";
-        handleChange({
-            target: {
-                name: "agreement_date",
-                value: formattedDate
-            }
-        });
-    }}
-    placeholderText="Select Service Agreement Date"
-    dateFormat="dd-MM-yyyy"
-    className={`w-full rounded-md p-2.5 mb-[20px] border ${
-        errors.agreement_date ? "border-red-500" : "border-gray-300"
-    } bg-[#f7f6fb]`}
-    required
-/>
+                                    selected={selectedClient?.agreement_date ? new Date(selectedClient.agreement_date) : null}
+                                    onChange={(date) => {
+                                        const formattedDate = date ? format(date, "yyyy-MM-dd") : "";
+                                        handleChange({
+                                            target: {
+                                                name: "agreement_date",
+                                                value: formattedDate
+                                            }
+                                        });
+                                    }}
+                                    placeholderText="Select Service Agreement Date"
+                                    dateFormat="dd-MM-yyyy"
+                                    className={`w-full rounded-md p-2.5 mb-[20px] border ${errors.agreement_date ? "border-red-500" : "border-gray-300"
+                                        } bg-[#f7f6fb]`}
+                                    required
+                                />
                                 {errors.agreement_date && <span className="text-red-500">{errors.agreement_date}</span>}
                             </div>
 
@@ -963,7 +962,7 @@ const EditClient = () => {
                                     name="agr_upload"
                                     onChange={(e) => handleFileChange('agr_upload', e)} className="w-full rounded-md p-2.5 mb-[20px] border border-gray-300 bg-[#f7f6fb]" />
                                 {selectedClient?.agreement && (
-                                    <FileViewer  fileUrl={selectedClient?.agreement} className=" w-15 h-15 object-cover rounded-md" />
+                                    <FileViewer fileUrl={selectedClient?.agreement} className=" w-15 h-15 object-cover rounded-md" />
 
 
                                 )}
@@ -1055,7 +1054,7 @@ const EditClient = () => {
                             </div>
 
                             {/* Client SPOC */}
-                         
+
 
                             {/* Billing SPOC */}
                             <h2 className="text-lg font-semibold">Billing SPOC</h2>
@@ -1270,17 +1269,36 @@ const EditClient = () => {
 
                             {/* PDF Footer textarea - separate full-width line */}
                             {selectedClient?.custom_template === "yes" && (
-                                <div className="flex justify-center w-full">
-                                    <div className="w-full">
-                                        <label className="block mb-1 font-medium">PDF Footer</label>
-                                        <textarea
-                                            name="custom_address"
-                                            placeholder="Enter PDF Footer"
-                                            onChange={handleChange}
-                                            value={selectedClient?.custom_address}
-                                            className="w-full rounded-md p-2.5 mb-[20px] border border-gray-300 bg-[#f7f6fb]"
-                                            rows={2}
-                                        ></textarea>
+                                <div className="grid md:grid-cols-2 mb-4 gap-4">
+                                    <div className="flex justify-center w-full">
+                                        <div className="w-full">
+                                            <label className="block mb-1 font-medium">PDF Footer</label>
+                                            <textarea
+                                                name="custom_address"
+                                                placeholder="Enter PDF Footer"
+                                                onChange={handleChange}
+                                                value={selectedClient?.custom_address}
+                                                className="w-full rounded-md p-2.5 mb-[20px] border border-gray-300 bg-[#f7f6fb]"
+                                                rows={2}
+                                            ></textarea>
+                                        </div>
+                                    </div>
+                                    <div className="flex justify-center w-full">
+                                        <div className="w-full">
+                                            <label htmlFor="disclaimer_emails" className="block mb-1 font-medium">
+                                                Disclaimer Emails (for PDF)
+                                            </label>
+                                            <textarea
+                                                id="disclaimer_emails"
+                                                name="disclaimer_emails"
+                                                value={selectedClient?.disclaimer_emails}
+                                                placeholder="Enter email addresses, separated by commas"
+                                                onChange={handleChange}
+                                                className="w-full rounded-md p-2.5 mb-[20px] border border-gray-300 bg-[#f7f6fb]"
+                                                rows={2}
+                                            ></textarea>
+                                        </div>
+
                                     </div>
                                 </div>
                             )}

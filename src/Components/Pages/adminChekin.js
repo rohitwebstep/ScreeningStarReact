@@ -685,52 +685,52 @@ const AdminChekin = () => {
 
 
         // === 4. NAME (centered below profile)
-      // === 4. NAME (centered below profile)
-      
-const nameText = applicationInfo.name || "Name";
-const nameY = profileY + 45;
-doc.setFontSize(nameFontSize);
-doc.setTextColor(0);
-doc.setFont("TimesNewRoman", "bold");
-const lines = doc.splitTextToSize(nameText, 120); // 100 is max width
-doc.text(lines, centerX + 20, nameY, { align: "center" });
-// === 5. COMPANY NAME BAR (adaptive split based on name and company)
-const barY = nameY + 20;
-const companyFontSize = 15;
-doc.setFontSize(companyFontSize);
+        // === 4. NAME (centered below profile)
 
-const totalAvailable = pageWidth - 20;
-const profileImageWidth = 45;
-const imageX = 30;
+        const nameText = applicationInfo.name || "Name";
+        const nameY = profileY + 45;
+        doc.setFontSize(nameFontSize);
+        doc.setTextColor(0);
+        doc.setFont("TimesNewRoman", "bold");
+        const lines = doc.splitTextToSize(nameText, 120); // 100 is max width
+        doc.text(lines, centerX + 20, nameY, { align: "center" });
+        // === 5. COMPANY NAME BAR (adaptive split based on name and company)
+        const barY = nameY + 20;
+        const companyFontSize = 15;
+        doc.setFontSize(companyFontSize);
 
-// === Measure text widths
-const companyTextWidth = doc.getTextWidth(companyName) + 40; // padding
-const rightBarMinWidth = Math.max(companyTextWidth, totalAvailable / 2);
-const leftBarWidth = totalAvailable - rightBarMinWidth;
-const rightBarWidth = totalAvailable - leftBarWidth;
+        const totalAvailable = pageWidth - 20;
+        const profileImageWidth = 45;
+        const imageX = 30;
 
-// === Draw Left Bar (from x=10)
-doc.setFillColor(...cyan);
-doc.rect(10, barY, leftBarWidth, companyBarHeight, "F");
+        // === Measure text widths
+        const companyTextWidth = doc.getTextWidth(companyName) + 40; // padding
+        const rightBarMinWidth = Math.max(companyTextWidth, totalAvailable / 2);
+        const leftBarWidth = totalAvailable - rightBarMinWidth;
+        const rightBarWidth = totalAvailable - leftBarWidth;
 
-// === Draw Right Bar (next to left bar)
-doc.setFillColor(145, 203, 215);
-doc.rect(10 + leftBarWidth, barY, rightBarWidth, companyBarHeight, "F");
+        // === Draw Left Bar (from x=10)
+        doc.setFillColor(...cyan);
+        doc.rect(10, barY, leftBarWidth, companyBarHeight, "F");
 
-// === Draw Profile Image (on top of left bar)
-const roundedImage = await getRoundedImage(profilePhoto, 100);
-doc.addImage(roundedImage, "PNG", imageX, profileY + 30, profileImageWidth, profileImageWidth);
+        // === Draw Right Bar (next to left bar)
+        doc.setFillColor(145, 203, 215);
+        doc.rect(10 + leftBarWidth, barY, rightBarWidth, companyBarHeight, "F");
 
-// === Company Name Text (centered in right bar)
-doc.setFontSize(companyFontSize);
-doc.setTextColor(255);
-doc.setFont("TimesNewRoman", "bold");
-doc.text(
-    companyName,
-    10 + leftBarWidth + rightBarWidth / 2,
-    barY + 9,
-    { align: "center" }
-);
+        // === Draw Profile Image (on top of left bar)
+        const roundedImage = await getRoundedImage(profilePhoto, 100);
+        doc.addImage(roundedImage, "PNG", imageX, profileY + 30, profileImageWidth, profileImageWidth);
+
+        // === Company Name Text (centered in right bar)
+        doc.setFontSize(companyFontSize);
+        doc.setTextColor(255);
+        doc.setFont("TimesNewRoman", "bold");
+        doc.text(
+            companyName,
+            10 + leftBarWidth + rightBarWidth / 2,
+            barY + 9,
+            { align: "center" }
+        );
 
 
 
@@ -762,7 +762,7 @@ doc.text(
             theme: 'grid',
             headStyles: {
                 fillColor: [85, 179, 194],
-                
+
                 textColor: [255, 255, 255],
                 fontStyle: 'bold',
             },
@@ -865,7 +865,7 @@ doc.text(
 
         // === Draw background rectangle for image row ===
         doc.setFillColor(85, 179, 194);
-        
+
         doc.rect(10, imageRowY, pageWidth - 20, imageRowHeight, 'F');
 
         // === Load and place image icons with custom sizes ===
@@ -972,7 +972,7 @@ doc.text(
         // Set background color and border for the rectangle
         doc.setFillColor(85, 179, 194);
         doc.setDrawColor(62, 118, 165);
-          doc.setLineWidth(0.4);
+        doc.setLineWidth(0.4);
         doc.rect(xsPosition, newYPosition + 10, fullWidth, rectHeight, 'FD');
 
 
@@ -1044,7 +1044,6 @@ doc.text(
             ],
             body: servicesData
                 .filter(service => service?.annexureData?.status) // Filter out rows with no status
-                .slice(0, 10)
                 .map(service => {
                     const colorMapping = {
                         Yellow: 'yellow',
@@ -1169,7 +1168,7 @@ doc.text(
             tableLineWidth: 0.2,
             font: "TimesNewRoman",
             textColor: [0, 0, 0],
-            margin: { left: 10, right: 10 },
+            margin: { left: 10, right: 10, bottom: 25, },
             tableWidth: 'auto',
             columnStyles: {
                 0: { cellWidth: 'auto', halign: 'center' },
@@ -1181,180 +1180,6 @@ doc.text(
 
 
 
-
-
-        const remainingServices = servicesData
-            .filter(service => service?.annexureData?.status) // Filter out rows with no status value
-            .slice(10); // Get the remaining services (from 11 onwards)
-
-        if (remainingServices.length > 0) {
-            // console.log('remainingServices', remainingServices)
-            doc.autoTable({
-                head: [
-                    [
-                        {
-                            content: 'SCOPE OF SERVICES / COMPONENT',
-                            styles: {
-                                font: "TimesNewRoman",
-                                halign: 'center',
-                                valign: 'middle',
-                                fontStyle: 'bold',
-                                whiteSpace: 'nowrap',
-                                cellWidth: 'auto'
-                            }
-                        },
-                        {
-                            content: 'INFORMATION VERIFIED BY',
-                            styles: {
-                                font: "TimesNewRoman",
-                                halign: 'center',
-                                valign: 'middle',
-                                fontStyle: 'bold',
-                                whiteSpace: 'nowrap',
-                                cellWidth: 'auto'
-                            }
-                        },
-                        {
-                            content: 'VERIFIED DATE',
-                            styles: {
-                                font: "TimesNewRoman",
-                                halign: 'center',
-                                valign: 'middle',
-                                fontStyle: 'bold',
-                                whiteSpace: 'nowrap',
-                                cellWidth: 'auto'
-                            }
-                        },
-                        {
-                            content: 'VERIFICATION STATUS'.toUpperCase(),
-                            styles: {
-                                font: "TimesNewRoman",
-                                halign: 'center',
-                                valign: 'middle',
-                                fontStyle: 'bold',
-                                whiteSpace: 'nowrap',
-                                cellWidth: 'auto'
-                            }
-                        },
-                    ]
-                ],
-
-                body: remainingServices
-                    .filter(service => service?.annexureData?.status !== 'nil') // <-- Filter here
-                    .map(service => {
-                        const colorMapping = {
-                            Yellow: 'yellow',
-                            Red: 'red',
-                            Blue: 'blue',
-                            Green: 'green',
-                            Orange: 'orange',
-                            Pink: 'pink',
-                        };
-
-                        const notstatusContent = service?.annexureData?.status || "Not Verified";
-                        const statusContent = notstatusContent
-                            .replace(/_/g, ' ')
-                            .replace(/[^a-zA-Z0-9 ]/g, '')
-                            .replace(/\b\w/g, char => char.toUpperCase());
-
-                        let textColorr = 'black';
-                        for (let color in colorMapping) {
-                            if (statusContent.includes(color)) {
-                                textColorr = colorMapping[color];
-                            }
-                        }
-
-                        return [
-                            {
-                                content: service?.reportFormJson?.json
-                                    ? JSON.parse(service.reportFormJson.json)?.heading
-                                    : null,
-                                styles: {
-                                    fontStyle: 'bold',
-                                    halign: 'left',
-                                },
-                            },
-                            {
-                                content:
-                                    service?.annexureData &&
-                                        Object.keys(service.annexureData).find(
-                                            key =>
-                                                key.endsWith('info_source') ||
-                                                key.endsWith('information_source') ||
-                                                key.startsWith('info_source') ||
-                                                key.startsWith('information_source')
-                                        )
-                                        ? service.annexureData[
-                                        Object.keys(service.annexureData).find(
-                                            key =>
-                                                key.endsWith('info_source') ||
-                                                key.endsWith('information_source') ||
-                                                key.startsWith('info_source') ||
-                                                key.startsWith('information_source')
-                                        )
-                                        ]
-                                        : null,
-                                styles: {
-                                    fontStyle: 'bold',
-                                    halign: 'left',
-                                },
-                            },
-                            {
-                                content: service?.annexureData?.created_at
-                                    ? new Date(service.annexureData.created_at)
-                                        .toLocaleDateString('en-GB')
-                                        .replace(/\//g, '-')
-                                    : 'N/A',
-                                styles: {
-                                    fontStyle: 'bold',
-                                },
-                            },
-                            {
-                                content: formatStatus(statusContent).toUpperCase(),
-                                styles: {
-                                    font: 'TimesNewRoman',
-                                    fontStyle: 'bold',
-                                    textColor: textColorr,
-                                },
-                            },
-                        ];
-                    }),
-
-                startY: doc.previousAutoTable ? doc.previousAutoTable.finalY + 20 : 20,
-                styles: {
-                    fontSize: 9,
-                    font: "TimesNewRoman",
-                    cellPadding: 2,
-                    halign: 'center',
-                    valign: 'middle',
-                    lineWidth: 0.2,
-                    lineColor: [62, 118, 165],
-                    textColor: [0, 0, 0],
-                },
-                theme: 'grid',
-                headStyles: {
-                    fillColor: backgroundColor,
-                    textColor: [0, 0, 0],
-                    fontStyle: 'bold',
-                    font: "TimesNewRoman",
-                    halign: 'center',
-                    valign: 'middle',
-                },
-                tableLineColor: [62, 118, 165],
-                tableLineWidth: 0.2,
-                textColor: [0, 0, 0],
-                margin: { left: 10, right: 10 },
-                tableWidth: 'auto',
-                columnStyles: {
-                    0: { cellWidth: 'auto', halign: 'center' },
-                    1: { cellWidth: 'auto', halign: 'center' },
-                    2: { cellWidth: 'auto', halign: 'center' },
-                    3: { cellWidth: 'auto', halign: 'center' },
-                },
-            });
-
-
-        }
         addFooter(doc);
 
 
@@ -1896,12 +1721,25 @@ doc.text(
 
         // Line 1
         doc.setFont("TimesNewRoman", "normal");
-        doc.text("This is a computer-generated document issued by", startXNew, yPosition);
+        // Base sentence
+        const baseText = "This is a computer-generated document issued by";
+        doc.text(baseText, startXNew, yPosition);
 
+        // Choose company name based on template
+        const customCompanyName = applicationInfo.custom_template === "yes"
+            ? applicationInfo.customer_name
+            : "Screeningstar Solutions Private Limited";
+
+        // Print company name after base sentence
         doc.setFont("TimesNewRoman", "bold");
-        doc.text("Screeningstar Solutions Private Limited", startXNew + doc.getTextWidth("This is a computer-generated document issued by"), yPosition);
+        const baseTextWidth = doc.getTextWidth(baseText);
+        doc.text(customCompanyName, startXNew + baseTextWidth, yPosition);
+
+        // Print "and does not" after the full sentence
         doc.setFont("TimesNewRoman", "normal");
-        doc.text("and does not", startXNew + doc.getTextWidth("This is a computer-generated document issued by Screeningstar Solutions Private Limited") + 7, yPosition);
+        const fullLineWidth = baseTextWidth + doc.getTextWidth(customCompanyName) + 7;
+        doc.text("and does not", startXNew + fullLineWidth, yPosition);
+
 
         doc.setFont("TimesNewRoman", "normal");
         yPosition += 6;
@@ -1981,27 +1819,48 @@ doc.text(
 
         yPosition += 8;
         doc.text("For queries or customizations, please contact:", startXNew, yPosition);
-        let anchorText = "compliance@screeningstar.com";
-        let bgvEmail = "bgv@screeningstar.com";
+        // Example: disclaimer_emails = ["email1@example.com", "email2@example.com"]
+        let disclaimer_emails = [];
+        function validateEmail(email) {
+            const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return re.test(email);
+        }
 
         if (applicationInfo.custom_template == "yes") {
-            anchorText = modifiedNames[0] || anchorText;
-            bgvEmail = modifiedNames[1] || bgvEmail;
+            disclaimer_emails = applicationInfo.disclaimer_emails
+                .split(',')                                // Split by comma
+                .map(email => email.trim())                // Trim each email
+                .filter(email => validateEmail(email));    // Keep only valid emails
         } else {
-            anchorText = "compliance@screeningstar.com";
-            bgvEmail = "bgv@screeningstar.com";
+            disclaimer_emails = ["compliance@screeningstar.com", "bgv@screeningstar.com"];
         }
+
         yPosition += 10;
+        let currentDisclaimerX = startXNew;
 
+        disclaimer_emails.forEach((email, index) => {
+            // Show icon before the second email (index === 1)
+            if (index === 0 && emailIconGreen) {
+                doc.addImage(emailIconGreen, 'PNG', currentDisclaimerX, yPosition - 4, 5, 5);
+                currentDisclaimerX += 7; // Add space after the icon
+            }
 
-        // Email 1 - green envelope + blue text
-        doc.addImage(emailIconGreen, 'PNG', startXNew, yPosition - 4, 5, 5); // Optional icon
-        doc.setTextColor(0, 0, 255);
-        doc.text(anchorText, startXNew + 7, yPosition);
+            // Add separator before emails with index > 0
+            if (index > 0) {
+                const separator = " | ";
+                doc.setTextColor(0, 0, 255);
+                doc.text(separator, currentDisclaimerX, yPosition);
+                currentDisclaimerX += doc.getTextWidth(separator);
+            }
 
-        // Email 2 - next to the first
-        doc.text("| " + bgvEmail, startXNew + 7 + doc.getTextWidth(anchorText + " "), yPosition);
-        doc.setTextColor(0, 0, 0); // Reset text color for anything that follows
+            // Draw the email text
+            doc.setTextColor(0, 0, 255);
+            doc.text(email, currentDisclaimerX, yPosition);
+            currentDisclaimerX += doc.getTextWidth(email + " ");
+        });
+
+        // Reset color after emails
+        doc.setTextColor(0, 0, 0);
 
         // Update Company Details Y (aligned with the same paragraph block)
         let companyDetailsY = yPosition + disclaimerTextTopMargin - 4;
