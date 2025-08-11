@@ -1826,13 +1826,20 @@ const AdminChekin = () => {
             return re.test(email);
         }
 
-        if (applicationInfo.custom_template == "yes") {
-            disclaimer_emails = applicationInfo.disclaimer_emails
-                .split(',')                                // Split by comma
-                .map(email => email.trim())                // Trim each email
-                .filter(email => validateEmail(email));    // Keep only valid emails
+        if (applicationInfo.custom_template === "yes") {
+            if (applicationInfo.disclaimer_emails && typeof applicationInfo.disclaimer_emails === "string") {
+                disclaimer_emails = applicationInfo.disclaimer_emails
+                    .split(",")                              // Split by comma
+                    .map(email => email.trim())              // Trim each email
+                    .filter(email => validateEmail(email));  // Keep only valid emails
+            } else {
+                disclaimer_emails = []; // Or a default list if needed
+            }
         } else {
-            disclaimer_emails = ["compliance@screeningstar.com", "bgv@screeningstar.com"];
+            disclaimer_emails = [
+                "compliance@screeningstar.com",
+                "bgv@screeningstar.com"
+            ];
         }
 
         yPosition += 10;
