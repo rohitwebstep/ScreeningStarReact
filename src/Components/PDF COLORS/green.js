@@ -13,14 +13,14 @@ import PDFuserGirl from "../../imgs/PDFuserGirl.png"
 import isoLogo from "../../imgs/iso.png"
 import isoLogo2 from "../../imgs/iso2.png"
 import screeningStarLogo from "../../imgs/screeningLogoNew.png"
-import logo3 from "../../imgs/3.png"
-import logo4 from "../../imgs/4.png"
-import logo5 from "../../imgs/5.png"
-import logo6 from "../../imgs/6.png"
-import logo9 from "../../imgs/8.png"
-import aadhaarIcon from "../../imgs/1.png"
-import logo8 from "../../imgs/7.png"
-import emblemIcon from "../../imgs/2.png";
+import logo3 from "../../imgs/logo-3.png"
+import logo4 from "../../imgs/logo-4.png"
+import logo5 from "../../imgs/logo-5.png"
+import logo6 from "../../imgs/logo-6.png"
+import logo9 from "../../imgs/logo-8.png"
+import aadhaarIcon from "../../imgs/aadhaarIcon.png"
+import logo8 from "../../imgs/logo8.png"
+import emblemIcon from "../../imgs/emblemIcon.png";
 import colored from "../../imgs/colored.png";
 import greenShield from "../../imgs/greenShield.png";
 import yellowShield from "../../imgs/yellowShield.png";
@@ -515,7 +515,7 @@ const AdminChekin = () => {
 
             const pageWidth = doc.internal.pageSize.getWidth();
             const pageHeight = doc.internal.pageSize.getHeight();
-            doc.setFillColor(255);
+
             const leftText = 'ISO QTY MGT - 9001:2015';
             const centerText = `PAGE ${i} OF ${totalPages}`;
             const rightText = '(ISO) IMSS - 27001:2013';
@@ -537,7 +537,7 @@ const AdminChekin = () => {
 
             // Draw top border of footer
 
-            doc.setDrawColor(46, 93, 172);
+               doc.setDrawColor(39, 115, 58);
 
             // #3d75a6
             doc.setLineWidth(0.4);
@@ -639,14 +639,15 @@ const AdminChekin = () => {
         let yPosition;
         const centerX = pageWidth / 2;
         const sideMargin = 10;
-        const cyan = [67, 133, 246];
-        //    const cyan = [67, 133, 246];  /*  Green  */
+        const cyan = [57, 165, 83];
+    //    const cyan = [57, 165, 83];  /*  Green  */
         // const cyan = [252, 187, 5];   /*Yellow  */
         // const cyan = [231, 65, 54];  /*Red  */
         // const cyan = [67, 133, 246]; /* Blue  */
         const profileSize = 50;
         const profileY = 45;
-        const nameFontSize = 16;
+        const nameFontSize = 34;
+        const companyBarHeight = 15;
 
         // === 1. LOGO ===
         const screeningLogo = screeningStarLogo;
@@ -661,10 +662,9 @@ const AdminChekin = () => {
         const mainTitle = applicationInfo?.generate_report_type || "CONFIDENTIAL BACKGROUND SCREENING REPORT";
 
         const titleY = 39;
-        doc.setFillColor(...cyan); // [67, 133, 246]
-        doc.setDrawColor(46, 93, 172);
-        // Default thin line
-
+        doc.setFillColor(...cyan); // [57, 165, 83]
+           doc.setDrawColor(39, 115, 58);
+        doc.setLineWidth(0.4); // Default thin line
 
 
         doc.rect(10, titleY, pageWidth - 20, 15, "FD"); // Now border will show
@@ -692,30 +692,11 @@ const AdminChekin = () => {
         const nameText = applicationInfo.name || "Name";
         const nameY = profileY + 45;
         doc.setFontSize(nameFontSize);
+        doc.setTextColor(0);
         doc.setFont("TimesNewRoman", "bold");
-        doc.setTextColor(0, 0, 0); // text color white
-
-        // Split text into lines
-        const lines = doc.splitTextToSize(nameText, 100);
-        const lineHeight = nameFontSize * 0.3528; // approximate line height in mm
-        const textHeight = lines.length * lineHeight;
-
-        // Optional: add slight shadow for blur effect
-        doc.setDrawColor(0, 0, 0, 0.1); // light shadow
-        doc.setFillColor(255); // blue background   onchange
-
-        // Draw rounded rectangle with slight blur/shadow effect
-        const rectX = centerX + 20 - 60; // adjust for center
-        const rectY = nameY - lineHeight;
-        const rectWidth = 120;
-        const rectHeightt = textHeight + 4;
-        const borderRadius = 3; // small rounded corners
-
-        doc.roundedRect(rectX, rectY, rectWidth, rectHeightt, borderRadius, borderRadius, 'F');
-
-        // Draw text on top
-        doc.text(lines, centerX + 2, nameY + 8, { align: "left" });
-
+        const lines = doc.splitTextToSize(nameText, 120); // 100 is max width
+        doc.text(lines, centerX + 20, nameY, { align: "center" });
+        // === 5. COMPANY NAME BAR (adaptive split based on name and company)
         const barY = nameY + 20;
         const companyFontSize = 15;
         doc.setFontSize(companyFontSize);
@@ -726,58 +707,36 @@ const AdminChekin = () => {
 
         // === Measure text widths
         const companyTextWidth = doc.getTextWidth(companyName) + 40; // padding
-        const rightBarMinWidth = Math.max(totalAvailable / 2);
+        const rightBarMinWidth = Math.max(companyTextWidth, totalAvailable / 2);
         const leftBarWidth = totalAvailable - rightBarMinWidth;
         const rightBarWidth = totalAvailable - leftBarWidth;
-        const wrappedText = doc.splitTextToSize(companyName, rightBarWidth);
-        const companyLineHeight = companyFontSize * 0.3528; // in mm (approx conversion from pt to mm)
-        const companyTextHeight = wrappedText.length * companyLineHeight;
-        const paddingY = 9;
-        const companyBarHeight = companyTextHeight + paddingY;
+
+        // === Draw Left Bar (from x=10)
         doc.setFillColor(...cyan);
         doc.rect(10, barY, leftBarWidth, companyBarHeight, "F");
 
         // === Draw Right Bar (next to left bar)
-        doc.setFillColor(161, 194, 250);
-        // 156, 210, 169 Green COLor Light 
+        doc.setFillColor(156, 210, 169);
         // 156, 210, 169
         doc.rect(10 + leftBarWidth, barY, rightBarWidth, companyBarHeight, "F");
-        const borderColorr = [67, 133, 246]; // RGB for border
-        let borderThickness  // "bold" border thickness
-        if (!applicationInfo?.photo) {
-            borderThickness = 2;
-        } else {
-            borderThickness = 5;
-        }
-        const borderRadiuss = profileImageWidth / 2; // circle border
-        const centerXx = imageX + profileImageWidth / 2;
-        const centerY = profileY + 30 + profileImageWidth / 2;
+
         // === Draw Profile Image (on top of left bar)
-        doc.setLineWidth(borderThickness);
-        doc.setDrawColor(...borderColorr);
-        doc.circle(centerXx, centerY, borderRadiuss, "S"); // "S" = stroke only
         const roundedImage = await getRoundedImage(profilePhoto, 100);
-        doc.addImage(
-            roundedImage,
-            "PNG",
-            imageX,
-            profileY + 30,
-            profileImageWidth,
-            profileImageWidth
-        );
+        doc.addImage(roundedImage, "PNG", imageX, profileY + 30, profileImageWidth, profileImageWidth);
+
         // === Company Name Text (centered in right bar)
         doc.setFontSize(companyFontSize);
         doc.setTextColor(255);
         doc.setFont("TimesNewRoman", "bold");
         doc.text(
-            wrappedText,
-            leftBarWidth + rightBarWidth / 2 - 35,
+            companyName,
+            10 + leftBarWidth + rightBarWidth / 2,
             barY + 9,
-            { align: "left" }
+            { align: "center" }
         );
 
 
-        doc.setLineWidth(0.5);
+
         doc.autoTable({
             body: headerTableDataOne,
             startY: 54,
@@ -787,7 +746,7 @@ const AdminChekin = () => {
                 cellPadding: 2,
                 textColor: [0, 0, 0],
                 lineWidth: 0.2,
-                lineColor: [67, 133, 246],
+                lineColor: [57, 165, 83],
                 overflow: 'visible',
             },
             columnStyles: {
@@ -805,12 +764,12 @@ const AdminChekin = () => {
             },
             theme: 'grid',
             headStyles: {
-                fillColor: [67, 133, 246],
+                fillColor: [57, 165, 83],
 
                 textColor: [255, 255, 255],
                 fontStyle: 'bold',
             },
-            tableLineColor: [67, 133, 246],
+            tableLineColor: [57, 165, 83],
             tableLineWidth: 0.2,
             margin: { left: sideMargin, right: sideMargin, bottom: 20 },
             didParseCell: function (data) {
@@ -887,19 +846,18 @@ const AdminChekin = () => {
                 cellPadding: 2,
                 textColor: [0, 0, 0],
                 lineWidth: 0.2,
-                lineColor: [67, 133, 246],
+                lineColor: [57, 165, 83],
             },
             theme: 'grid',
             headStyles: {
-                fillColor: [67, 133, 246],
+                fillColor: [57, 165, 83],
                 textColor: [255, 255, 255],
                 fontStyle: 'bold',
             },
-            tableLineColor: [67, 133, 246],
+            tableLineColor: [57, 165, 83],
             tableLineWidth: 0.2,
             margin: { left: sideMargin, right: sideMargin, bottom: 20 }
         });
-
         // === Calculate finalY after tables ===
         const { finalY } = doc.lastAutoTable || { finalY: 10 };
 
@@ -909,41 +867,33 @@ const AdminChekin = () => {
         const imageRowY = ysPosition; // Push it down a bit after table
 
         // === Draw background rectangle for image row ===
-        doc.setFillColor(67, 133, 246);
+        doc.setFillColor(57, 165, 83);
+
+        doc.rect(10, imageRowY, pageWidth - 20, imageRowHeight, 'F');
+
         // === Load and place image icons with custom sizes ===
         const images = [
-            { src: aadhaarIcon, width: 12, height: 10 }, // +5 width
+            { src: aadhaarIcon, width: 16, height: 11 }, // +5 width
             { src: emblemIcon, width: 9, height: 11 },
             { src: logo3, width: 12, height: 11 },
-            { src: logo4, width: 12, height: 13 },
+            { src: logo4, width: 11, height: 11 },
             { src: logo5, width: 13, height: 11 },
             { src: logo6, width: 11, height: 11 },
-            { src: logo8, width: 13, height: 14 },
-            { src: logo9, width: 12, height: 13 },
-
+            { src: logo8, width: 13, height: 12 },
+            { src: logo9, width: 11, height: 11 },
+            // Add more with custom sizes if needed
         ];
-        const gap = 12.3; // spacing between circles
-        const startX = 10;
+
+        const gap = 10;       // Spacing between icons
+        const startX = 19;    // Starting x position
         let currentX = startX;
-        const circleRadius = 10; // adjust based on max img size
-        const iconY = imageRowY + imageRowHeight / 2; // vertical center
+        const iconY = imageRowY + (imageRowHeight - 11) / 2; // Vertically center assuming max height = 11
 
         images.forEach((img) => {
-            const centerX = currentX + circleRadius;
-            const centerY = iconY;
-
-            // Draw white filled circle with black border
-            doc.setFillColor(255, 255, 255);   // white fill
-            doc.setDrawColor(67, 133, 246);         // black border
-            doc.circle(centerX, centerY, circleRadius, "FD"); // Fill + Draw
-
-            // Place the image inside (centered in circle)
-            const imgX = centerX - img.width / 2;
-            const imgY = centerY - img.height / 2;
-            doc.addImage(img.src, "PNG", imgX, imgY, img.width, img.height);
-
-            currentX += circleRadius * 1.2 + gap; // move to next circle
+            doc.addImage(img.src, 'PNG', currentX, iconY, img.width, img.height);
+            currentX += img.width + gap;
         });
+
         const afterImageBoxY = imageRowY + imageRowHeight + 5; // Add 10 for some spacing
 
 
@@ -963,7 +913,7 @@ const AdminChekin = () => {
                             font: "TimesNewRomanBold",
                             fontStyle: 'bold',
                             textColor: [255],
-                            fillColor: [67, 133, 246],
+                            fillColor: [57, 165, 83],
                         }
                     }
                 ],
@@ -999,7 +949,7 @@ const AdminChekin = () => {
                 lineWidth: 0.2,
                 textColor: [0, 0, 0],
                 fontStyle: 'bold',
-                lineColor: [67, 133, 246],
+                lineColor: [57, 165, 83],
             },
             headStyles: {
                 textColor: [0, 0, 0],
@@ -1015,16 +965,16 @@ const AdminChekin = () => {
         doc.addPage();
         let newYPosition = 5;
         const SummaryTitle = "SUMMARY OF THE VERIFICATION CONDUCTED";
-        const backgroundColor = (67, 133, 246);
+        const backgroundColor = (57, 165, 83);
         const borderColor = '#3d75a6';
         const xsPosition = 10;
-        doc.setTextColor(255);
+  doc.setTextColor(255);
         const fullWidth = pageWidth - 20;
         const rectHeight = 13;
 
         // Set background color and border for the rectangle
-        doc.setFillColor(67, 133, 246);
-        doc.setDrawColor(46, 93, 172);
+        doc.setFillColor(57, 165, 83);
+           doc.setDrawColor(39, 115, 58);
         doc.setLineWidth(0.4);
         doc.rect(xsPosition, newYPosition + 10, fullWidth, rectHeight, 'FD');
 
@@ -1205,7 +1155,7 @@ const AdminChekin = () => {
                 halign: 'center',
                 valign: 'middle',
                 lineWidth: 0.2,
-                lineColor: [67, 133, 246],
+                lineColor: [57, 165, 83],
                 textColor: [0, 0, 0],
             },
             theme: 'grid',
@@ -1217,7 +1167,7 @@ const AdminChekin = () => {
                 halign: 'center',
                 valign: 'middle',
             },
-            tableLineColor: [67, 133, 246],
+            tableLineColor: [57, 165, 83],
             tableLineWidth: 0.2,
             font: "TimesNewRoman",
             textColor: [0, 0, 0],
@@ -1362,9 +1312,9 @@ const AdminChekin = () => {
                         const rectHeight = 8;
 
                         doc.setLineWidth(0.2); // Set border thickness to 0.2
-                        doc.setFillColor(67, 133, 246);
-                        doc.setTextColor(255);
-                        doc.setDrawColor(46, 93, 172);
+                        doc.setFillColor(57, 165, 83);
+  doc.setTextColor(255);
+                           doc.setDrawColor(39, 115, 58);
 
                         doc.rect(xsPosition, yPosition, pageWidth - 20, rectHeight, "FD");
 
@@ -1447,7 +1397,7 @@ const AdminChekin = () => {
                                 fontSize: 10,
                                 cellPadding: 2,
                                 lineWidth: 0.2,
-                                lineColor: [67, 133, 246]
+                                lineColor: [57, 165, 83]
                             },
                             columnStyles: isTwoColumnBody
                                 ? {
@@ -1587,7 +1537,7 @@ const AdminChekin = () => {
 
                                                     // Draw image box
                                                     const padding = 5;
-                                                    doc.setDrawColor(46, 93, 172);
+                                                       doc.setDrawColor(39, 115, 58);
                                                     doc.setLineWidth(0.2);
                                                     doc.rect(10, yPosition, maxBoxWidth, maxBoxHeight);
 
@@ -1662,7 +1612,7 @@ const AdminChekin = () => {
                                                 doc.text(text, pageWidth / 2, yPosition, { align: "center" }); // Centered text
                                                 yPosition += 5;
 
-                                                doc.setDrawColor(46, 93, 172);
+                                                   doc.setDrawColor(39, 115, 58);
                                                 doc.setLineWidth(0.2);
                                                 doc.rect(10, yPosition, maxBoxWidth, maxBoxHeight);
 
@@ -1749,8 +1699,8 @@ const AdminChekin = () => {
         const disclaimerButtonTextWidth = doc.getTextWidth('DISCLAIMER :');
         const buttonTextHeight = doc.getFontSize();
         const disclaimerButtonXPosition = (doc.internal.pageSize.width - disclaimerButtonWidth) / 2;
-        doc.setDrawColor(46, 93, 172); // Border color
-        doc.setFillColor(67, 133, 246); // Fill color
+           doc.setDrawColor(39, 115, 58); // Border color
+        doc.setFillColor(57, 165, 83); // Fill color
         doc.rect(disclaimerButtonXPosition, disclaimerY, disclaimerButtonWidth, disclaimerButtonHeight, 'F'); // Fill
         doc.rect(disclaimerButtonXPosition, disclaimerY, disclaimerButtonWidth, disclaimerButtonHeight, 'D'); // Border
         doc.setTextColor(255);// Black text
@@ -2736,7 +2686,6 @@ const AdminChekin = () => {
                                 <th className="uppercase border border-black px-4 py-2">Report Data</th>
                                 <th className="uppercase border border-black px-4 py-2">Download Status</th>
                                 <th className="uppercase border border-black px-4 py-2">View More</th>
-
                                 <th className="uppercase border border-black px-4 py-2">Overall Status</th>
                                 <th className="uppercase border border-black px-4 py-2">Report Type</th>
                                 <th className="uppercase border border-black px-4 py-2">Report Date</th>
@@ -2746,25 +2695,7 @@ const AdminChekin = () => {
                                 <th className="uppercase border border-black px-4 py-2">Completed IN</th>
                                 <th className="uppercase border border-black px-4 py-2">Days Delayed</th>
                                 <th className="uppercase border border-black px-4 py-2 ">HIGHLIGHT</th>
-                                {expandedRow && expandedRow.headingsAndStatuses?.map((item, idx) =>
-                                    item.heading && item.heading !== "null" ? (
-                                        <th key={idx} className="border border-black px-4 py-2 capitalize">
-                                            {sanitizeText(item.heading)}
-                                        </th>
-                                    ) : null
-                                )}
-                                {expandedRow && (
-                                    <>
-                                        <th className="border border-black px-4 py-2">First Level Insuff</th>
-                                        <th className="border border-black px-4 py-2">First Insuff Date</th>
-                                        <th className="border border-black px-4 py-2">First Insuff Reopen</th>
-                                        <th className="border border-black px-4 py-2">Second Level Insuff</th>
-                                        <th className="border border-black px-4 py-2">Second Insuff Date</th>
-                                        <th className="border border-black px-4 py-2">Third Level Insuff</th>
-                                        <th className="border border-black px-4 py-2">Third Insuff Date</th>
-                                        <th className="border border-black px-4 py-2">Reason for Delay</th>
-                                    </>
-                                )}
+
 
                             </tr>
                         </thead>
@@ -2787,14 +2718,12 @@ const AdminChekin = () => {
                                     {paginatedData.map((data, index) => {
                                         const actualIndex = (currentPage - 1) * rowsPerPage + index;
                                         const isDownloadable = data.id;
-                                        const isExpanded = expandedRow && expandedRow.index === index;
                                         return (
 
 
                                             <React.Fragment key={data.id}>
                                                 <tr
-                                                    className={`text-center  ${isExpanded ? "bg-gray-100" : "" // selected row bg gray
-                                                        }  ${data.is_highlight === 1 ? 'highlight' : ''}`}
+                                                    className={`text-center ${data.is_highlight === 1 ? 'highlight' : ''}`}
                                                     style={{
                                                         borderColor: data.is_highlight === 1 ? 'yellow' : 'transparent',
                                                     }}
@@ -2925,15 +2854,15 @@ const AdminChekin = () => {
 
                                                     <td className="border border-black px-4  py-2" >
                                                         <button
-                                                            className="bg-orange-500 text-white px-4 py-2 rounded hover:bg-white hover:text-orange-500"
+                                                            className={`bg-orange-500 hover:scale-105 *:uppercase border border-white hover:border-orange-500 text-white px-4 py-2 
+    ${loadingIndex === index ? 'opacity-50 cursor-not-allowed' : ''} rounded hover:bg-white hover:text-orange-500`}
                                                             onClick={() => handleViewMore(index)}
+                                                            disabled={loadingIndex === index} // Disable the button only for the loading row
                                                         >
-                                                            {isExpanded ? "Less" : "View"}
+                                                            {expandedRow && expandedRow.index === index ? 'Less' : 'View'}
                                                         </button>
 
                                                     </td>
-
-
                                                     <td className="border border-black px-4 uppercase py-2">{(data.overall_status || 'WIP').replace(/_/g, ' ')}
                                                     </td>
                                                     <td className="border border-black px-4 uppercase py-2">{data.report_type?.replace(/_/g, " ") || 'N/A'}</td>
@@ -3000,36 +2929,83 @@ const AdminChekin = () => {
                                                             )}
                                                         </div>
                                                     </td>
-                                                    {isExpanded &&
-                                                        expandedRow.headingsAndStatuses?.map((item, idx) =>
-                                                            item.heading && item.heading !== "null" ? (
-                                                                <td
-                                                                    key={`col-${idx}`}
-                                                                    className="border border-black px-4 py-2 font-bold uppercase"
-                                                                    style={getColorStyle(item.status)}
-                                                                >
-                                                                    {isValidDate(item.status)
-                                                                        ? formatDate(item.status)
-                                                                        : sanitizeText(removeColorNames(item.status))}
-                                                                </td>
-                                                            ) : null
-                                                        )}
-                                                    {isExpanded && (
-                                                        <>
-                                                            <td className="border border-black px-4 py-2 font-bold">{formatedJson(data.first_insufficiency_marks) || ""}</td>
-                                                            <td className="border border-black px-4 py-2 font-bold">{formatDate(data.first_insuff_date)}</td>
-                                                            <td className="border border-black px-4 py-2 font-bold">{formatDate(data.first_insuff_reopened_date)}</td>
-                                                            <td className="border border-black px-4 py-2 font-bold">{formatedJson(data.second_insufficiency_marks) || ""}</td>
-                                                            <td className="border border-black px-4 py-2 font-bold">{formatDate(data.second_insuff_date)}</td>
-                                                            <td className="border border-black px-4 py-2 font-bold">{formatedJson(data.third_insufficiency_marks) || ""}</td>
-                                                            <td className="border border-black px-4 py-2 font-bold">{formatDate(data.third_insuff_date)}</td>
-                                                            <td className="border border-black px-4 py-2 font-bold">{formatedJson(data.delay_reason) || ""}</td>
-                                                        </>
-                                                    )}
 
                                                 </tr>
 
-                                               
+                                                {expandedRow && expandedRow.index === index && (
+                                                    <>
+                                                        <tr>
+                                                            <td colSpan="100%" className="text-center p-4 w-1/4">
+                                                                {/* Table structure to display headings in the first column and statuses in the second column */}
+                                                                <table className="w-1/4">
+                                                                    <tbody>
+
+                                                                        {expandedRow.headingsAndStatuses &&
+                                                                            expandedRow.headingsAndStatuses.map((item, idx) => (
+                                                                                <>
+                                                                                    {item.heading && item.heading !== "null" ? ( // Exclude string "null"
+                                                                                        <tr key={`row-${idx}`}>
+                                                                                            <td className="text-left p-2 border border-black capitalize bg-gray-200">
+                                                                                                {sanitizeText(item.heading)}
+                                                                                            </td>
+                                                                                            <td
+                                                                                                className="text-left p-2 border font-bold border-black uppercase"
+                                                                                                style={getColorStyle(item.status)}
+                                                                                            >
+                                                                                                {isValidDate(item.status) ?
+                                                                                                    formatDate(item.status) :
+                                                                                                    sanitizeText(removeColorNames(item.status))
+                                                                                                }                                                                                            </td>
+                                                                                        </tr>
+                                                                                    ) : null // Skip rendering if heading is null, undefined, or the string "null"
+                                                                                    }
+
+                                                                                </>
+                                                                            ))
+                                                                        }
+                                                                        <tr>
+                                                                            <td className="text-left p-2 border border-black uppercase bg-gray-200  ref={clientSubmitRef}" id="clientSubmit">First Level Insuff</td>
+                                                                            <td className="text-left p-2 border border-black capitalize font-bold">{formatedJson(data.first_insufficiency_marks) || ''}</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td className="text-left p-2 border border-black uppercase bg-gray-200">First Level Insuff Date</td>
+                                                                            <td className="text-left p-2 border border-black capitalize font-bold">{formatDate(data.first_insuff_date)}</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td className="text-left p-2 border border-black uppercase bg-gray-200">First Level Insuff Reopen Date</td>
+                                                                            <td className="text-left p-2 border border-black capitalize font-bold">{formatDate(data.first_insuff_reopened_date)}</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td className="text-left p-2 border border-black uppercase bg-gray-200">Second Level Insuff</td>
+                                                                            <td className="text-left p-2 border border-black capitalize font-bold">{formatedJson(data.second_insufficiency_marks) || ''}</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td className="text-left p-2 border border-black uppercase bg-gray-200">Second Level Insuff Date</td>
+                                                                            <td className="text-left p-2 border border-black capitalize font-bold">{formatDate(data.second_insuff_date)}</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td className="text-left p-2 border border-black uppercase bg-gray-200">Third Level Insuff Marks</td>
+                                                                            <td className="text-left p-2 border border-black capitalize font-bold">{formatedJson(data.third_insufficiency_marks) || ''}</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td className="text-left p-2 border border-black uppercase bg-gray-200">Third Level Insuff Date</td>
+                                                                            <td className="text-left p-2 border border-black capitalize font-bold">{formatDate(data.third_insuff_date)}</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td className="text-left p-2 border border-black uppercase bg-gray-200">Third Level Insuff Reopen Date</td>
+                                                                            <td className="text-left p-2 border border-black capitalize font-bold">{formatDate(data.third_insuff_reopened_date)}</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td className="text-left p-2 border border-black uppercase bg-gray-200">Reason For Delay</td>
+                                                                            <td className="text-left p-2 border border-black capitalize font-bold">{formatedJson(data.delay_reason) || ''}</td>
+                                                                        </tr>
+
+                                                                    </tbody>
+                                                                </table>
+                                                            </td>
+                                                        </tr>
+                                                    </>
+                                                )}
                                             </React.Fragment>
                                         )
                                     })}
@@ -3062,4 +3038,6 @@ const AdminChekin = () => {
     );
 };
 export default AdminChekin;
+
+
 // DONE

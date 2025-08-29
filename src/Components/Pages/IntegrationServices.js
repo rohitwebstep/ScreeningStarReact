@@ -281,7 +281,10 @@ const InactiveClients = () => {
         const imgWidth = 35;
         const imgHeight = 35;
         const imgX = 20;
-
+        const fontSizeSmall = 8; 
+        const fontSizeHeading = 13; 
+        const fontSizeParagraph = 10; 
+        
         const qrCodeBase64 = "https://webstepdev.com/screeningstarAssets/advocate.png";
         doc.addImage(qrCodeBase64, "PNG", imgX, blockY, imgWidth, imgHeight);
 
@@ -297,7 +300,8 @@ const InactiveClients = () => {
         const advocateX = pageWidth - 20;
         let advocateY = blockY;
 
-        doc.setFontSize(10);
+        // old is 10
+        doc.setFontSize(9); 
            const advocateDetails = [
             "NAVA NAYANA LEGAL CHAMBERS",
             "MANJUNATHA H S (HSM), B.B.M., LL.B.",
@@ -318,11 +322,11 @@ const InactiveClients = () => {
         doc.line(20, hrY - 2, pageWidth - 20, hrY - 2);
 
 
-        let y = hrY + 7;
+        let y = hrY + 4;
 
         // ---- TITLE ----
         doc.setFont('helvetica', 'bold'); // closest to semibold
-        doc.setFontSize(15);
+        doc.setFontSize(fontSizeHeading);
         doc.text('POLICE RECORD REPORT [LAW FIRM]', pageWidth / 2, y, { align: 'center' });
 
         y += lineHeight * 3 - 3;
@@ -330,14 +334,14 @@ const InactiveClients = () => {
         // ---- INTRO ----
         // ---- TITLE ----
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(14);
+        doc.setFontSize(fontSizeParagraph);
         const intro = `This is with regard to the search conducted in the Police Station referred below with regard to any criminal cases filed against the person detailed below.`;
-        const introLines = doc.splitTextToSize(intro, pageWidth - 30);
+        const introLines = doc.splitTextToSize(intro, pageWidth - 35);
         doc.text(introLines, 20, y - 6, { align: 'left' });
         y += introLines.length * lineHeight;
 
         // ---- DATA TABLE ----
-        doc.setFontSize(12);
+        doc.setFontSize(fontSizeParagraph);
         const colWidth = (pageWidth - 40) / 2;
         const rowHeight = lineHeight + 1;
         const tableX = 20;
@@ -365,19 +369,19 @@ const InactiveClients = () => {
             const wrappedValue = doc.splitTextToSize(String(value), mymaxwidth);
 
             const linesCount = Math.max(wrappedLabel.length, wrappedValue.length);
-            const dynamicRowHeight = linesCount * 7; // 7 is approx line height
+            const dynamicRowHeight = linesCount * 6; // 7 is approx line height
 
             // Borders
-            doc.rect(tableX, y - 6, colWidth, dynamicRowHeight);
-            doc.rect(tableX + colWidth, y - 6, colWidth, dynamicRowHeight);
+            doc.rect(tableX, y - 8, colWidth, dynamicRowHeight);
+            doc.rect(tableX + colWidth, y - 8, colWidth, dynamicRowHeight);
 
             // Text
             wrappedLabel.forEach((line, idx) => {
-                doc.text(line, tableX + 2, y - 1 + (idx * 7));
+                doc.text(line, tableX + 2, y - 4 + (idx * 5));
             });
 
             wrappedValue.forEach((line, idx) => {
-                doc.text(line, tableX + colWidth + 2, y - 1 + (idx * 7));
+                doc.text(line, tableX + colWidth + 2, y - 4 + (idx * 5));
             });
 
             y += dynamicRowHeight;
@@ -390,8 +394,8 @@ const InactiveClients = () => {
         });
 
         // ---- DISCLAIMER ----
-        y += 2;
-        doc.setFontSize(12);
+        y -= 2;
+        doc.setFontSize(fontSizeParagraph);
         const disclaimer = `The search results are based on the available registers maintained in respect of criminal case/s and suit registers in respect of civil case/s maintained in the above-mentioned Court / Police Station having jurisdiction over the address where the candidate was said to be residing. Due care has been taken in conducting the search. The records are public records and the search has been conducted on behalf of your good self and the undersigned is not responsible for any errors, inaccuracies, omissions or deletions if any in the said court or police records. The above report is based on the verbal confirmation of the concerned authority as on the date on which it is confirmed, hence this verification is subjective. Please do contact the Local Police for Candidate Police Clearance Certificate (PCC) / Police Verification Certificate.`;
         // adjust spacing after
 
@@ -402,7 +406,7 @@ const InactiveClients = () => {
         addJustifiedText(doc, disclaimer, 20, y, 170, 5); // x, y, maxWidth, lineHeight
 
         y += disclaimerLines.length * 5 + 6; // adjust y for next block
-        doc.setFontSize(12);
+        doc.setFontSize(fontSizeParagraph);
         doc.setFont('helvetica', 'bold');
         doc.text('DISCLAIMER', pageWidth / 2, y - 5, { align: 'center' });
         y += 1;
@@ -424,7 +428,7 @@ const InactiveClients = () => {
             ],
         ];
 
-        doc.setFontSize(12);
+        doc.setFontSize(fontSizeParagraph);
 
         const wordSpacing = 1.5; // adjust as needed
 
@@ -1654,21 +1658,34 @@ const InactiveClients = () => {
                                                     <tbody>
                                                         {(formData.court?.courtTable || []).map((row, index) => (
                                                             <tr key={index} className="bg-white">
-                                                                {["courtCheckType", "jurisdiction", "location", "verificationResult"].map(
-                                                                    (fieldKey) => (
-                                                                        <td key={fieldKey} className="border px-2 py-2">
-                                                                            <input
-                                                                                type="text"
-                                                                                placeholder="Enter"
-                                                                                value={row[fieldKey]}
-                                                                                onChange={(e) =>
-                                                                                    handleRowChange(index, fieldKey, e.target.value)
-                                                                                }
-                                                                                className="w-full rounded-md p-2 border border-gray-300 bg-[#f7f6fb]"
-                                                                            />
-                                                                        </td>
-                                                                    )
-                                                                )}
+                                                               {["courtCheckType", "jurisdiction", "location", "verificationResult"].map(
+  (fieldKey) => (
+    <td key={fieldKey} className="border px-2 py-2">
+      {fieldKey === "verificationResult" ? (
+        <select
+          value={row[fieldKey]}
+          onChange={(e) => handleRowChange(index, fieldKey, e.target.value)}
+          className="w-full rounded-md p-2 border border-gray-300 bg-[#f7f6fb]"
+        >
+          <option value="">Select</option>
+          <option value="Records Found">Records Found</option>
+          <option value="No Records Found">No Records Found</option>
+        </select>
+      ) : (
+        <input
+          type="text"
+          placeholder="Enter"
+          value={row[fieldKey]}
+          onChange={(e) =>
+            handleRowChange(index, fieldKey, e.target.value)
+          }
+          className="w-full rounded-md p-2 border border-gray-300 bg-[#f7f6fb]"
+        />
+      )}
+    </td>
+  )
+)}
+
                                                                 <td className="border px-2 py-2 text-center">
                                                                     <button
                                                                         type="button"

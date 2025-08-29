@@ -266,9 +266,9 @@ const DigitalAddressVerification = () => {
             customerLogoFormData.append("branch_id", branch_id);
             customerLogoFormData.append("customer_id", customer_id);
             customerLogoFormData.append("application_id", candidate_application_id);
+            customerLogoFormData.append("upload_category", key);
             for (const file of value) {
                 customerLogoFormData.append("images", file);
-                customerLogoFormData.append("upload_category", key);
             }
 
             customerLogoFormData.append("send_mail", 1);
@@ -540,8 +540,8 @@ const DigitalAddressVerification = () => {
 
                             <div className="md:grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className=" my-3 form-group">
-                                    <label htmlFor="id_proof" className="block text-sm font-medium text-gray-700">Upload ID:</label>
-                                    <input type="file" className="mt-1 block w-full border-gray-300 rounded-md border p-2" id="id_proof" name="id_proof"
+                                    <label htmlFor="id_proof" className="block text-sm font-medium text-gray-700">Upload ID:<span className="text-red-500 text-xl" >*</span></label>
+                                    <input type="file" required className="mt-1 block w-full border-gray-300 rounded-md border p-2" id="id_proof" name="id_proof"
                                         onChange={(e) => handleFileChange('identity_proof', e)}
                                         accept=".jpg,.jpeg,.png,.pdf,.docx,.xlsx"
                                         multiple
@@ -549,15 +549,15 @@ const DigitalAddressVerification = () => {
                                 </div>
 
                                 <div className=" my-3 form-group">
-                                    <label htmlFor="locality_proof" className="block text-sm font-medium text-gray-700">Home Photos:</label>
-                                    <input type="file" className="mt-1 block w-full border-gray-300 rounded-md border p-2" id="locality_proof" name="home_photos" onChange={(e) => handleFileChange('home_photo', e)}
+                                    <label htmlFor="locality_proof" className="block text-sm font-medium text-gray-700">Home Photos:<span className="text-red-500 text-xl" >*</span></label>
+                                    <input type="file" required className="mt-1 block w-full border-gray-300 rounded-md border p-2" id="locality_proof" name="home_photos" onChange={(e) => handleFileChange('home_photo', e)}
                                         accept=".jpg,.jpeg,.png,.pdf,.docx,.xlsx" multiple />
                                 </div>
                             </div>
                             <div className="md:grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className=" my-3 form-group">
-                                    <label htmlFor="locality_proof" className="block text-sm font-medium text-gray-700">Locality Photos:</label>
-                                    <input type="file" className="mt-1 block w-full border-gray-300 rounded-md border p-2" id="locality_proof" name="locality_proof" onChange={(e) => handleFileChange('locality', e)}
+                                    <label htmlFor="locality_proof" className="block text-sm font-medium text-gray-700">Locality Photos:<span className="text-red-500 text-xl" >*</span></label>
+                                    <input type="file" required className="mt-1 block w-full border-gray-300 rounded-md border p-2" id="locality_proof" name="locality_proof" onChange={(e) => handleFileChange('locality', e)}
                                         accept=".jpg,.jpeg,.png,.pdf,.docx,.xlsx" multiple />
                                 </div>
                                 <div className="form-group my-3">
