@@ -559,11 +559,26 @@ const AdminChekin = () => {
         }
     };
 
+    function changeLabel(label, generate_report_type) {
 
+        if (generate_report_type !== 'VENDOR CONFIDENTIAL SCREENING REPORT') {
+            return label;
+        }
 
+        const labelChangeAsPerVendorOrBGV = {
+            "name of the applicant:": "Name of the Organization:",
+            "date of birth:": "Date of Incorporation:",
+            "applicant details": "ORGANISATION DETAILS"
+        };
 
-
-
+        if (label && typeof label === "string" && label.trim() !== "") {
+            const lowerLabel = label.trim().toLowerCase();
+            if (labelChangeAsPerVendorOrBGV.hasOwnProperty(lowerLabel)) {
+                return labelChangeAsPerVendorOrBGV[lowerLabel];
+            }
+        }
+        return label;
+    }
 
     const generatePDF = async (index, maindata, returnInBlob = false) => {
         let isFirstLoad = true;
@@ -838,7 +853,7 @@ const AdminChekin = () => {
             ];
         } else if (generate_report_type == 'VENDOR CONFIDENTIAL SCREENING REPORT') {
             headerTableData = [
-                ["REFERENCE ID", String(applicationInfo.application_id).toUpperCase(), "INCORPORATED DATE", formatDate(applicationInfo.dob) || "N/A"],
+                ["REFERENCE ID", String(applicationInfo.application_id).toUpperCase(), "DATE OF INCORPORATION", formatDate(applicationInfo.dob) || "N/A"],
                 ["EMPLOYEE ID", String(applicationInfo.employee_id || "N/A").toUpperCase(), "INSUFF CLEARED", formatDate(applicationInfo.first_insuff_reopened_date) || "N/A"],
                 ["VERIFICATION INITIATED", formatDate(applicationInfo.initiation_date).toUpperCase() || "N/A", "FINAL REPORT DATE", formatDate(applicationInfo.report_date) || "N/A"],
                 // This row has only 2 cells (spans full row)
@@ -1308,14 +1323,7 @@ const AdminChekin = () => {
                             const finalValue = rawValue !== undefined ? rawValue : verified;
 
                             if (name == 'additional_fee_police_verification_pa') {
-                                console.log('data index', index, data);
-                                console.log(`--- Processing item ${index} ---`);
-                                console.log("Raw data:", data);
 
-                                console.log("data.values:", data.values);
-                                console.log("Raw Value:", rawValue);
-                                console.log("Verified:", verified);
-                                console.log("Final Value:", finalValue);
                             }
 
                             const formatDate = (dateStr) => {
@@ -1391,7 +1399,7 @@ const AdminChekin = () => {
                         };
 
                         const dynamicHead = Myheaders.map(header => ({
-                            content: header,
+                            content: changeLabel(header, generate_report_type),
                             styles: { halign: "left", fontStyle: "bold" }
                         }));
                         const isTwoColumnBody = dynamicHead.length < 3;
@@ -1410,7 +1418,7 @@ const AdminChekin = () => {
                                     if (isTwoColumnBody) {
                                         // Use only 2 columns in body
                                         return [
-                                            { content: row[0], styles: { halign: "left", fontStyle: "bold" } },
+                                            { content: changeLabel(row[0], generate_report_type), styles: { halign: "left", fontStyle: "bold" } },
                                             {
                                                 content: isColourCodeRow ? formatContent(row[1]).toUpperCase() : formatContent(row[1]),
                                                 styles: isColourCodeRow ? { ...getStyle(row[1], isColourCodeRow) } : {}
@@ -1420,7 +1428,7 @@ const AdminChekin = () => {
                                         // Normal 3-column body
                                         return row.length === 2
                                             ? [
-                                                { content: row[0], styles: { halign: "left", fontStyle: "bold" } },
+                                                { content: changeLabel(row[0], generate_report_type), styles: { halign: "left", fontStyle: "bold" } },
                                                 {
                                                     content: isColourCodeRow ? formatContent(row[1]).toUpperCase() : formatContent(row[1]),
                                                     colSpan: 2,
@@ -1428,7 +1436,7 @@ const AdminChekin = () => {
                                                 }
                                             ]
                                             : [
-                                                { content: row[0], styles: { halign: "left", fontStyle: "bold" } },
+                                                { content: changeLabel(row[0], generate_report_type), styles: { halign: "left", fontStyle: "bold" } },
                                                 {
                                                     content: isColourCodeRow ? formatContent(row[1]).toUpperCase() : formatContent(row[1]),
                                                     styles: isColourCodeRow ? { ...getStyle(row[1], isColourCodeRow) } : {}
@@ -2736,7 +2744,6 @@ const AdminChekin = () => {
                                 <th className="uppercase border border-black px-4 py-2">Report Data</th>
                                 <th className="uppercase border border-black px-4 py-2">Download Status</th>
                                 <th className="uppercase border border-black px-4 py-2">View More</th>
-
                                 <th className="uppercase border border-black px-4 py-2">Overall Status</th>
                                 <th className="uppercase border border-black px-4 py-2">Report Type</th>
                                 <th className="uppercase border border-black px-4 py-2">Report Date</th>
@@ -2746,25 +2753,7 @@ const AdminChekin = () => {
                                 <th className="uppercase border border-black px-4 py-2">Completed IN</th>
                                 <th className="uppercase border border-black px-4 py-2">Days Delayed</th>
                                 <th className="uppercase border border-black px-4 py-2 ">HIGHLIGHT</th>
-                                {expandedRow && expandedRow.headingsAndStatuses?.map((item, idx) =>
-                                    item.heading && item.heading !== "null" ? (
-                                        <th key={idx} className="border border-black px-4 py-2 capitalize">
-                                            {sanitizeText(item.heading)}
-                                        </th>
-                                    ) : null
-                                )}
-                                {expandedRow && (
-                                    <>
-                                        <th className="border border-black px-4 py-2">First Level Insuff</th>
-                                        <th className="border border-black px-4 py-2">First Insuff Date</th>
-                                        <th className="border border-black px-4 py-2">First Insuff Reopen</th>
-                                        <th className="border border-black px-4 py-2">Second Level Insuff</th>
-                                        <th className="border border-black px-4 py-2">Second Insuff Date</th>
-                                        <th className="border border-black px-4 py-2">Third Level Insuff</th>
-                                        <th className="border border-black px-4 py-2">Third Insuff Date</th>
-                                        <th className="border border-black px-4 py-2">Reason for Delay</th>
-                                    </>
-                                )}
+
 
                             </tr>
                         </thead>
@@ -2787,14 +2776,12 @@ const AdminChekin = () => {
                                     {paginatedData.map((data, index) => {
                                         const actualIndex = (currentPage - 1) * rowsPerPage + index;
                                         const isDownloadable = data.id;
-                                        const isExpanded = expandedRow && expandedRow.index === index;
                                         return (
 
 
                                             <React.Fragment key={data.id}>
                                                 <tr
-                                                    className={`text-center  ${isExpanded ? "bg-gray-100" : "" // selected row bg gray
-                                                        }  ${data.is_highlight === 1 ? 'highlight' : ''}`}
+                                                    className={`text-center ${data.is_highlight === 1 ? 'highlight' : ''}`}
                                                     style={{
                                                         borderColor: data.is_highlight === 1 ? 'yellow' : 'transparent',
                                                     }}
@@ -2925,15 +2912,15 @@ const AdminChekin = () => {
 
                                                     <td className="border border-black px-4  py-2" >
                                                         <button
-                                                            className="bg-orange-500 text-white px-4 py-2 rounded hover:bg-white hover:text-orange-500"
+                                                            className={`bg-orange-500 hover:scale-105 *:uppercase border border-white hover:border-orange-500 text-white px-4 py-2 
+    ${loadingIndex === index ? 'opacity-50 cursor-not-allowed' : ''} rounded hover:bg-white hover:text-orange-500`}
                                                             onClick={() => handleViewMore(index)}
+                                                            disabled={loadingIndex === index} // Disable the button only for the loading row
                                                         >
-                                                            {isExpanded ? "Less" : "View"}
+                                                            {expandedRow && expandedRow.index === index ? 'Less' : 'View'}
                                                         </button>
 
                                                     </td>
-
-
                                                     <td className="border border-black px-4 uppercase py-2">{(data.overall_status || 'WIP').replace(/_/g, ' ')}
                                                     </td>
                                                     <td className="border border-black px-4 uppercase py-2">{data.report_type?.replace(/_/g, " ") || 'N/A'}</td>
@@ -3000,36 +2987,83 @@ const AdminChekin = () => {
                                                             )}
                                                         </div>
                                                     </td>
-                                                    {isExpanded &&
-                                                        expandedRow.headingsAndStatuses?.map((item, idx) =>
-                                                            item.heading && item.heading !== "null" ? (
-                                                                <td
-                                                                    key={`col-${idx}`}
-                                                                    className="border border-black px-4 py-2 font-bold uppercase"
-                                                                    style={getColorStyle(item.status)}
-                                                                >
-                                                                    {isValidDate(item.status)
-                                                                        ? formatDate(item.status)
-                                                                        : sanitizeText(removeColorNames(item.status))}
-                                                                </td>
-                                                            ) : null
-                                                        )}
-                                                    {isExpanded && (
-                                                        <>
-                                                            <td className="border border-black px-4 py-2 font-bold">{formatedJson(data.first_insufficiency_marks) || ""}</td>
-                                                            <td className="border border-black px-4 py-2 font-bold">{formatDate(data.first_insuff_date)}</td>
-                                                            <td className="border border-black px-4 py-2 font-bold">{formatDate(data.first_insuff_reopened_date)}</td>
-                                                            <td className="border border-black px-4 py-2 font-bold">{formatedJson(data.second_insufficiency_marks) || ""}</td>
-                                                            <td className="border border-black px-4 py-2 font-bold">{formatDate(data.second_insuff_date)}</td>
-                                                            <td className="border border-black px-4 py-2 font-bold">{formatedJson(data.third_insufficiency_marks) || ""}</td>
-                                                            <td className="border border-black px-4 py-2 font-bold">{formatDate(data.third_insuff_date)}</td>
-                                                            <td className="border border-black px-4 py-2 font-bold">{formatedJson(data.delay_reason) || ""}</td>
-                                                        </>
-                                                    )}
 
                                                 </tr>
 
-                                               
+                                                {expandedRow && expandedRow.index === index && (
+                                                    <>
+                                                        <tr>
+                                                            <td colSpan="100%" className="text-center p-4 w-1/4">
+                                                                {/* Table structure to display headings in the first column and statuses in the second column */}
+                                                                <table className="w-1/4">
+                                                                    <tbody>
+
+                                                                        {expandedRow.headingsAndStatuses &&
+                                                                            expandedRow.headingsAndStatuses.map((item, idx) => (
+                                                                                <>
+                                                                                    {item.heading && item.heading !== "null" ? ( // Exclude string "null"
+                                                                                        <tr key={`row-${idx}`}>
+                                                                                            <td className="text-left p-2 border border-black capitalize bg-gray-200">
+                                                                                                {sanitizeText(item.heading)}
+                                                                                            </td>
+                                                                                            <td
+                                                                                                className="text-left p-2 border font-bold border-black uppercase"
+                                                                                                style={getColorStyle(item.status)}
+                                                                                            >
+                                                                                                {isValidDate(item.status) ?
+                                                                                                    formatDate(item.status) :
+                                                                                                    sanitizeText(removeColorNames(item.status))
+                                                                                                }                                                                                            </td>
+                                                                                        </tr>
+                                                                                    ) : null // Skip rendering if heading is null, undefined, or the string "null"
+                                                                                    }
+
+                                                                                </>
+                                                                            ))
+                                                                        }
+                                                                        <tr>
+                                                                            <td className="text-left p-2 border border-black uppercase bg-gray-200  ref={clientSubmitRef}" id="clientSubmit">First Level Insuff</td>
+                                                                            <td className="text-left p-2 border border-black capitalize font-bold">{formatedJson(data.first_insufficiency_marks) || ''}</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td className="text-left p-2 border border-black uppercase bg-gray-200">First Level Insuff Date</td>
+                                                                            <td className="text-left p-2 border border-black capitalize font-bold">{formatDate(data.first_insuff_date)}</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td className="text-left p-2 border border-black uppercase bg-gray-200">First Level Insuff Reopen Date</td>
+                                                                            <td className="text-left p-2 border border-black capitalize font-bold">{formatDate(data.first_insuff_reopened_date)}</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td className="text-left p-2 border border-black uppercase bg-gray-200">Second Level Insuff</td>
+                                                                            <td className="text-left p-2 border border-black capitalize font-bold">{formatedJson(data.second_insufficiency_marks) || ''}</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td className="text-left p-2 border border-black uppercase bg-gray-200">Second Level Insuff Date</td>
+                                                                            <td className="text-left p-2 border border-black capitalize font-bold">{formatDate(data.second_insuff_date)}</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td className="text-left p-2 border border-black uppercase bg-gray-200">Third Level Insuff Marks</td>
+                                                                            <td className="text-left p-2 border border-black capitalize font-bold">{formatedJson(data.third_insufficiency_marks) || ''}</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td className="text-left p-2 border border-black uppercase bg-gray-200">Third Level Insuff Date</td>
+                                                                            <td className="text-left p-2 border border-black capitalize font-bold">{formatDate(data.third_insuff_date)}</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td className="text-left p-2 border border-black uppercase bg-gray-200">Third Level Insuff Reopen Date</td>
+                                                                            <td className="text-left p-2 border border-black capitalize font-bold">{formatDate(data.third_insuff_reopened_date)}</td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td className="text-left p-2 border border-black uppercase bg-gray-200">Reason For Delay</td>
+                                                                            <td className="text-left p-2 border border-black capitalize font-bold">{formatedJson(data.delay_reason) || ''}</td>
+                                                                        </tr>
+
+                                                                    </tbody>
+                                                                </table>
+                                                            </td>
+                                                        </tr>
+                                                    </>
+                                                )}
                                             </React.Fragment>
                                         )
                                     })}

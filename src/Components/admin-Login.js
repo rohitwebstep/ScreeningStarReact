@@ -2,7 +2,7 @@ import { React, useState } from "react";
 import "../App.css";
 import loginImg from "../imgs/login-img.jpg";
 import axios from "axios";
-import Logo from "../imgs/userLoginLogo.png";
+import Logo from "../imgs/admin-logo.png";
 import adminBG from "../imgs/admin-bg4.png";
 
 import Swal from "sweetalert2";

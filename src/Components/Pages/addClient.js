@@ -777,12 +777,12 @@ const AddClient = () => {
                         )}
                     </div>
                     <div>
-                        <label className="block mb-1 font-medium">Client Unique Code<span className="text-red-500 text-xl" >*</span></label>
+                        <label className="block mb-1 font-medium">Client ID<span className="text-red-500 text-xl" >*</span></label>
                         <input
                             type="text"
                             name="client_code"
                             required
-                            placeholder="Enter Client Unique Code"
+                            placeholder="Enter Client Unique ID"
                             value={clientData.client_code}
                             onChange={handleChange}
                             className={`w-full rounded-md p-2.5 mb-[20px] border ${errors.client_code ? "border-red-500" : "border-gray-300"
@@ -861,12 +861,12 @@ const AddClient = () => {
                         />
                     </div>
                     <div>
-                        <label className="block mb-1 font-medium">GSTIN<span className="text-red-500 text-xl" >*</span></label>
+                        <label className="block mb-1 font-medium">GST Number<span className="text-red-500 text-xl" >*</span></label>
                         <input
                             type="text"
                             name="gstin"
                             required
-                            placeholder="Enter GSTIN"
+                            placeholder="Enter GST Number"
                             value={clientData.gstin}
                             onChange={handleChange}
                             className={`w-full rounded-md p-2.5 mb-[20px] border ${errors.gstin ? "border-red-500" : "border-gray-300"
@@ -898,7 +898,7 @@ const AddClient = () => {
                     </div>
                     <div>
                         <label className="block mb-1 font-medium">
-                            Agreement Date{" "}<span className="text-red-500 text-xl" >*</span>
+                            Date Of Service Agreement{" "}<span className="text-red-500 text-xl" >*</span>
                         </label>
                         <DatePicker
                             selected={clientData.date_agreement ? new Date(clientData.date_agreement) : null}
@@ -911,7 +911,7 @@ const AddClient = () => {
                                     }
                                 });
                             }}
-                            placeholderText="Select Agreement Date"
+                            placeholderText="Select Service Agreement Date"
                             dateFormat="dd-MM-yyyy"
                             className={`w-full rounded-md p-2.5 mb-[20px] uppercase border ${errors.date_agreement ? "border-red-500" : "border-gray-300"
                                 } bg-[#f7f6fb]`}

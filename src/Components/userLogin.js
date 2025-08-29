@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import "../App.css";
-import Logo from "../imgs/userLoginLogo.png";
+import Logo from "../imgs/track-master2.png";
 import adminBG from "../imgs/admin-bg3.jpeg";
 import { Modal, Button, Form } from 'react-bootstrap';
 import { useLocation, useNavigate } from 'react-router-dom';

@@ -1658,34 +1658,21 @@ const InactiveClients = () => {
                                                     <tbody>
                                                         {(formData.court?.courtTable || []).map((row, index) => (
                                                             <tr key={index} className="bg-white">
-                                                               {["courtCheckType", "jurisdiction", "location", "verificationResult"].map(
-  (fieldKey) => (
-    <td key={fieldKey} className="border px-2 py-2">
-      {fieldKey === "verificationResult" ? (
-        <select
-          value={row[fieldKey]}
-          onChange={(e) => handleRowChange(index, fieldKey, e.target.value)}
-          className="w-full rounded-md p-2 border border-gray-300 bg-[#f7f6fb]"
-        >
-          <option value="">Select</option>
-          <option value="Records Found">Records Found</option>
-          <option value="No Records Found">No Records Found</option>
-        </select>
-      ) : (
-        <input
-          type="text"
-          placeholder="Enter"
-          value={row[fieldKey]}
-          onChange={(e) =>
-            handleRowChange(index, fieldKey, e.target.value)
-          }
-          className="w-full rounded-md p-2 border border-gray-300 bg-[#f7f6fb]"
-        />
-      )}
-    </td>
-  )
-)}
-
+                                                                {["courtCheckType", "jurisdiction", "location", "verificationResult"].map(
+                                                                    (fieldKey) => (
+                                                                        <td key={fieldKey} className="border px-2 py-2">
+                                                                            <input
+                                                                                type="text"
+                                                                                placeholder="Enter"
+                                                                                value={row[fieldKey]}
+                                                                                onChange={(e) =>
+                                                                                    handleRowChange(index, fieldKey, e.target.value)
+                                                                                }
+                                                                                className="w-full rounded-md p-2 border border-gray-300 bg-[#f7f6fb]"
+                                                                            />
+                                                                        </td>
+                                                                    )
+                                                                )}
                                                                 <td className="border px-2 py-2 text-center">
                                                                     <button
                                                                         type="button"

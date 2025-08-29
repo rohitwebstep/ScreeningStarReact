@@ -791,11 +791,11 @@ const EditClient = () => {
                                 {errors.name && <span className="text-red-500">{errors.name}</span>}
                             </div>
                             <div>
-                                <label className="block mb-1 font-medium">Client Unique Code</label>
+                                <label className="block mb-1 font-medium">Client Unique ID</label>
                                 <input
                                     type="text"
                                     name="client_unique_id"
-                                    placeholder="Enter Client Unique Code"
+                                    placeholder="Enter Client Unique ID"
                                     value={selectedClient?.client_unique_id}
                                     onChange={handleChange}
                                     disabled
@@ -856,11 +856,11 @@ const EditClient = () => {
                                 />
                             </div>
                             <div>
-                                <label className="block mb-1 font-medium">GSTIN</label>
+                                <label className="block mb-1 font-medium">GST Number</label>
                                 <input
                                     type="text"
                                     name="gst_number"
-                                    placeholder="Enter GSTIN"
+                                    placeholder="Enter GST Number"
                                     value={selectedClient?.gst_number}
                                     onChange={handleChange}
                                     className={`w-full rounded-md p-2.5 mb-[20px] border ${errors.gst_number ? "border-red-500" : "border-gray-300"} bg-[#f7f6fb]`}
@@ -882,7 +882,7 @@ const EditClient = () => {
                                 {errors.tat_days && <span className="text-red-500">{errors.tat_days}</span>}
                             </div>
                             <div>
-                                <label className="block mb-1 font-medium">Agreement Date </label>
+                                <label className="block mb-1 font-medium">Date Of Service Agreement </label>
                                 <DatePicker
                                     selected={selectedClient?.agreement_date ? new Date(selectedClient.agreement_date) : null}
                                     onChange={(date) => {

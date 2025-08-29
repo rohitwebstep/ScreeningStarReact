@@ -3344,22 +3344,7 @@ const GenerateReport = () => {
                                         </select>
 
                                     </div>
-                                    <div className="mb-4">
-                                        <label className='capitalize text-gray-500' htmlFor="report status">Generate Report Type:</label>
-                                        <select name="updated_json.generate_report_type" id=""
-                                            value={formData.updated_json.generate_report_type}
-                                            onChange={handleChange}
-                                            className="border rounded-md p-2 mt-2 uppercase w-full">
-                                            <option value="">Select Report Type</option>
-                                            <option value="CONFIDENTIAL BACKGROUND SCREENING REPORT">
-                                                CONFIDENTIAL BACKGROUND SCREENING REPORT
-                                            </option>
-                                            <option value="VENDOR CONFIDENTIAL SCREENING REPORT">
-                                                VENDOR CONFIDENTIAL SCREENING REPORT
-                                            </option>
-                                        </select>
-
-                                    </div>
+                                    
                                     <div className="mb-4">
                                         <label className='capitalize text-gray-500' htmlFor="Final Verification Status:">Final Verification Status:</label>
                                         <select name="updated_json.insuffDetails.final_verification_status"

@@ -429,7 +429,7 @@ const RecordTrackers = () => {
                                   ? "bg-red-600 hover:bg-red-700 hover:scale-105"
                                   : "bg-[#2c81ba] hover:bg-[#0f5381] hover:scale-105"
                               }`}
-                            // onClick={() => handleCheckIn(item.main_id, index, 'no')}
+                            onClick={() => handleCheckIn(item.main_id, index, 'no')}
                             disabled={loadingIndex !== null} // Disable all when any is loading
                           >
                             {loadingIndex === index ? (
@@ -452,7 +452,7 @@ const RecordTrackers = () => {
 
 
                           <button
-                            // onClick={() => handleCheckIn(item.main_id, index, 'yes')}
+                            onClick={() => handleCheckIn(item.main_id, index, 'yes')}
                             className={`p-6 py-3 font-bold whitespace-nowrap transition duration-200 text-white rounded-md
     ${excelIndex === index
                                 ? "bg-[#2c81ba] opacity-50 cursor-not-allowed"
