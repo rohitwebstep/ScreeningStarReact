@@ -33,10 +33,12 @@ const InactiveClients = () => {
     const [isDeleteLoading, setIsDeleteLoading] = useState(false);
     const { validateAdminLogin, setApiLoading, apiLoading } = useApiLoading();
     const [responseError, setResponseError] = useState(null);
-
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [modalData, setModalData] = useState(null);
     const [isUnblockLoading, setIsUnblockLoading] = useState(false);
     const navigate = useNavigate();
     const [inactiveClients, setInactiveClients] = useState([]);
+    const [data, setData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const storedToken = localStorage.getItem('token');
@@ -48,6 +50,21 @@ const InactiveClients = () => {
         const month = String(date.getMonth() + 1).padStart(2, '0'); // months are 0-based
         const year = date.getFullYear();
         return `${day}/${month}/${year}`;
+    };
+
+    const openModal = (jsonString) => {
+        try {
+            const parsed = JSON.parse(jsonString); // parse JSON safely
+            setModalData(parsed);
+        } catch (e) {
+            setModalData({ error: "Invalid JSON", raw: jsonString });
+        }
+        setIsModalOpen(true);
+    };
+
+    const closeModal = () => {
+        setIsModalOpen(false);
+        setModalData(null);
     };
     const [currentPage, setCurrentPage] = useState(1);
     const [entriesPerPage, setEntriesPerPage] = useState(10);
@@ -120,14 +137,14 @@ const InactiveClients = () => {
         doc.line(lineX, blockY + 5, lineX, blockY + blockHeight - 5);
 
         // Advocate Details
-           const advocateDetails = [
+        const advocateDetails = [
             "NAVA NAYANA LEGAL CHAMBERS",
             "MANJUNATHA H S (HSM), B.B.M., LL.B.",
             "ADVOCATE AND LEGAL CONSULTANT",
             "ENROLLMENT NUMBER: KAR/4765/2023",
             "MOBILE NUMBER : +91 9738812694",
             "MANJUNATH.9738812694@GMAIL.COM",
-            ];
+        ];
 
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
@@ -176,6 +193,7 @@ const InactiveClients = () => {
 
 
 
+    console.log('formData', formData)
     const handleRowChange = (index, fieldKey, value) => {
         const updatedRows = [...(formData.court?.courtTable || [])];
 
@@ -281,10 +299,10 @@ const InactiveClients = () => {
         const imgWidth = 35;
         const imgHeight = 35;
         const imgX = 20;
-        const fontSizeSmall = 8; 
-        const fontSizeHeading = 13; 
-        const fontSizeParagraph = 10; 
-        
+        const fontSizeSmall = 8;
+        const fontSizeHeading = 13;
+        const fontSizeParagraph = 10;
+
         const qrCodeBase64 = "https://webstepdev.com/screeningstarAssets/advocate.png";
         doc.addImage(qrCodeBase64, "PNG", imgX, blockY, imgWidth, imgHeight);
 
@@ -301,15 +319,15 @@ const InactiveClients = () => {
         let advocateY = blockY;
 
         // old is 10
-        doc.setFontSize(9); 
-           const advocateDetails = [
+        doc.setFontSize(9);
+        const advocateDetails = [
             "NAVA NAYANA LEGAL CHAMBERS",
             "MANJUNATHA H S (HSM), B.B.M., LL.B.",
             "ADVOCATE AND LEGAL CONSULTANT",
             "ENROLLMENT NUMBER: KAR/4765/2023",
             "MOBILE NUMBER : +91 9738812694",
             "MANJUNATH.9738812694@GMAIL.COM",
-            ];
+        ];
 
         advocateDetails.forEach(line => {
             doc.text(line, advocateX, advocateY + 10, { align: 'right' });
@@ -550,14 +568,14 @@ const InactiveClients = () => {
         let advocateY = blockY;
 
         doc.setFontSize(10);
-           const advocateDetails = [
+        const advocateDetails = [
             // "NAVA NAYANA LEGAL CHAMBERS",
             // "MANJUNATHA H S (HSM), B.B.M., LL.B.",
             // "ADVOCATE AND LEGAL CONSULTANT",
             // "ENROLLMENT NUMBER: KAR/4765/2023",
             // "MOBILE NUMBER : +91 9738812694",
             // "MANJUNATH.9738812694@GMAIL.COM",
-            ];
+        ];
 
         advocateDetails.forEach(line => {
             doc.text(line, advocateX, advocateY + 10, { align: 'right' });
@@ -978,14 +996,14 @@ const InactiveClients = () => {
         }
     }
     const generateCourtDOCX = async (courtData) => {
-      const advocateDetails = [
-    "NAVA NAYANA LEGAL CHAMBERS",
-    "MANJUNATHA H S (HSM), B.B.M., LL.B.",
-    "ADVOCATE AND LEGAL CONSULTANT",
-    "ENROLLMENT NUMBER: KAR/4765/2023",
-    "MOBILE NUMBER : +91 9738812694",
-    "MANJUNATH.9738812694@GMAIL.COM",
-    ];
+        const advocateDetails = [
+            "NAVA NAYANA LEGAL CHAMBERS",
+            "MANJUNATHA H S (HSM), B.B.M., LL.B.",
+            "ADVOCATE AND LEGAL CONSULTANT",
+            "ENROLLMENT NUMBER: KAR/4765/2023",
+            "MOBILE NUMBER : +91 9738812694",
+            "MANJUNATH.9738812694@GMAIL.COM",
+        ];
 
 
 
@@ -1276,14 +1294,14 @@ const InactiveClients = () => {
 
 
     const generatePoliceDOCX = async (policeData) => {
-           const advocateDetails = [
+        const advocateDetails = [
             "NAVA NAYANA LEGAL CHAMBERS",
             "MANJUNATHA H S (HSM), B.B.M., LL.B.",
             "ADVOCATE AND LEGAL CONSULTANT",
             "ENROLLMENT NUMBER: KAR/4765/2023",
             "MOBILE NUMBER : +91 9738812694",
             "MANJUNATH.9738812694@GMAIL.COM",
-            ];
+        ];
 
         const headerImageUrl = "https://webstepdev.com/screeningstarAssets/advocate.png";
         const stampImageUrl = Signature;
@@ -1495,6 +1513,111 @@ const InactiveClients = () => {
     };
 
 
+
+    const fetchApi = (type) => {
+        const myHeaders = new Headers();
+        const adminData = JSON.parse(localStorage.getItem("admin"));
+        const token = localStorage.getItem("_token");
+
+        myHeaders.append("Content-Type", "application/json");
+
+        const raw = JSON.stringify({
+            type: formData.selectedService,
+            data: JSON.stringify(formData[formData.selectedService]),
+            export_format: type,
+            admin_id: adminData?.id,
+            _token: token
+        });
+
+        const requestOptions = {
+            method: "POST",
+            headers: myHeaders,
+            body: raw,
+            redirect: "follow"
+        };
+
+
+        fetch(`https://api.screeningstar.co.in/integrated-service/create`, requestOptions)
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then((result) => {
+                Swal.close(); // close loading
+                if (result?.status) {
+                    Swal.fire({
+                        icon: "success",
+                        title: "Success!",
+                        text: result.message || "Your request was processed successfully."
+                    });
+                } else {
+                    Swal.fire({
+                        icon: "error",
+                        title: "Error",
+                        text: result.message || "Something went wrong. Please try again."
+                    });
+                }
+            })
+            .catch((error) => {
+                Swal.close(); // close loading
+                Swal.fire({
+                    icon: "error",
+                    title: "Request Failed",
+                    text: error.message || "Network error occurred."
+                });
+            });
+    };
+
+
+    const fetchData = useCallback(async () => {
+        setLoading(true);
+        const adminId = JSON.parse(localStorage.getItem("admin"))?.id;
+        const token = localStorage.getItem("_token");
+
+
+        try {
+            const requestOptions = {
+                method: "GET",
+                redirect: "follow",
+            };
+
+            // Construct the URL with service IDs
+            const url = `https://api.screeningstar.co.in/integrated-service/list?admin_id=${adminId}&_token=${token}`;
+
+            const response = await fetch(url, requestOptions);
+
+            if (response.ok) {
+                setLoading(false);
+
+                const result = await response.json();
+                setData(result.services || []);
+
+                // Update the token if a new one is provided
+                const newToken = result.token || result._token || localStorage.getItem("_token") || "";
+                if (newToken) {
+                    localStorage.setItem("_token", newToken);
+                }
+
+                // Filter out null or invalid items
+            } else {
+
+                setLoading(false);
+                console.error("Failed to fetch service data:", response.statusText);
+                return [];
+            }
+        } catch (error) {
+            setLoading(false);
+            console.error("Error fetching service data:", error);
+            return [];
+        }
+
+
+    },
+        []);
+console.log('data',data)
+
     const handleDownload = async (type) => {
         const element = formRef.current;
         if (!element) return;
@@ -1505,6 +1628,7 @@ const InactiveClients = () => {
             allowOutsideClick: false,
             didOpen: () => Swal.showLoading()
         });
+
 
         try {
             if (type === "pdf") {
@@ -1555,7 +1679,7 @@ const InactiveClients = () => {
                     await generatePoliceDOCX(formData.police); // fixed: formData.police instead of formData.court
                 }
             }
-
+            fetchApi(type)
             Swal.close(); // Done
         } catch (error) {
             console.error('Download failed:', error);
@@ -1566,14 +1690,19 @@ const InactiveClients = () => {
             });
         }
     };
+    useEffect(() => {
+        fetchData();
+    }, [])
 
 
+    {
+        loading && (
+            <div className="flex w-full bg-white  justify-center items-center h-20">
+                <div className="loader border-t-4 border-[#2c81ba] rounded-full w-10 h-10 animate-spin"></div>
+            </div>
+        )
+    }
 
-    const Loader = () => (
-        <div className="flex w-full bg-white  justify-center items-center h-20">
-            <div className="loader border-t-4 border-[#2c81ba] rounded-full w-10 h-10 animate-spin"></div>
-        </div>
-    );
     return (
         <div className="">
             <div className="bg-white md:p-12 p-6 border border-black w-full mx-auto">
@@ -1652,7 +1781,7 @@ const InactiveClients = () => {
                                                             <th className="px-4 py-2 border">JURISDICTION</th>
                                                             <th className="px-4 py-2 border">LOCATION</th>
                                                             <th className="px-4 py-2 border">VERIFICATION RESULT</th>
-                                                            <th className="px-4 py-2 border">Action</th> {/* New column */}
+                                                            <th className="px-4 py-2 border">ACTION</th> {/* New column */}
                                                         </tr>
                                                     </thead>
                                                     <tbody>
@@ -1661,18 +1790,31 @@ const InactiveClients = () => {
                                                                 {["courtCheckType", "jurisdiction", "location", "verificationResult"].map(
                                                                     (fieldKey) => (
                                                                         <td key={fieldKey} className="border px-2 py-2">
-                                                                            <input
-                                                                                type="text"
-                                                                                placeholder="Enter"
-                                                                                value={row[fieldKey]}
-                                                                                onChange={(e) =>
-                                                                                    handleRowChange(index, fieldKey, e.target.value)
-                                                                                }
-                                                                                className="w-full rounded-md p-2 border border-gray-300 bg-[#f7f6fb]"
-                                                                            />
+                                                                            {fieldKey === "verificationResult" ? (
+                                                                                <select
+                                                                                    value={row[fieldKey]}
+                                                                                    onChange={(e) => handleRowChange(index, fieldKey, e.target.value)}
+                                                                                    className="w-full rounded-md p-2 border border-gray-300 bg-[#f7f6fb]"
+                                                                                >
+                                                                                    <option value="">Select</option>
+                                                                                    <option value="Records Found">Records Found</option>
+                                                                                    <option value="No Records Found">No Records Found</option>
+                                                                                </select>
+                                                                            ) : (
+                                                                                <input
+                                                                                    type="text"
+                                                                                    placeholder="Enter"
+                                                                                    value={row[fieldKey]}
+                                                                                    onChange={(e) =>
+                                                                                        handleRowChange(index, fieldKey, e.target.value)
+                                                                                    }
+                                                                                    className="w-full rounded-md p-2 border border-gray-300 bg-[#f7f6fb]"
+                                                                                />
+                                                                            )}
                                                                         </td>
                                                                     )
                                                                 )}
+
                                                                 <td className="border px-2 py-2 text-center">
                                                                     <button
                                                                         type="button"
@@ -1742,6 +1884,66 @@ const InactiveClients = () => {
                                 </button>
                             </div>
                         </div>
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full border border-gray-300">
+                                <thead className="bg-gray-100">
+                                    <tr>
+                                        <th className="px-4 py-2 border">SR.</th>
+                                        <th className="px-4 py-2 border">EXPORT FORMAT</th>
+                                        <th className="px-4 py-2 border">TYPE</th>
+                                        <th className="px-4 py-2 border">DATA</th>
+                                        <th className="px-4 py-2 border">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {data.map((row, index) => (
+                                        <tr key={index} className="bg-white">
+
+                                            <td className="border px-2 py-2">
+                                                {index + 1}
+                                            </td>
+
+                                            <td className="border px-2 py-2 text-center">
+                                                {row.export_format || 'N/A'}
+                                            </td>
+                                            <td className="border px-2 py-2 text-center">
+                                                {row.type || 'N/A'}
+                                            </td>
+                                            <td className="border px-2 py-2 text-center">
+                                                <button onClick={() => openModal(row.data)}>View Data</button>
+                                            </td>
+                                            <td className="border px-2 py-2 text-center">
+                                                <button>Action</button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {data.length === 0 && (
+                                        <tr>
+                                            <td colSpan={5} className="text-center py-4 text-gray-500">
+                                                No rows added yet.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+
+                            </table>
+                        </div>
+                        {isModalOpen && (
+                            <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+                                <div className="bg-white p-6 rounded-lg shadow-lg max-w-2xl w-full relative max-h-[80vh] overflow-y-auto">
+                                    <h2 className="text-xl font-semibold mb-4">JSON Data</h2>
+                                    <pre className="bg-gray-100 p-4 rounded text-sm overflow-x-auto">
+                                        {JSON.stringify(modalData, null, 2)}
+                                    </pre>
+                                    <button
+                                        onClick={closeModal}
+                                        className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
 

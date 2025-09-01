@@ -1,0 +1,1000 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { FaChevronLeft } from 'react-icons/fa';
+
+const CandidateBGV = () => {
+    const [error, setError] = useState(null);
+    const [customBgv, setCustomBgv] = useState('');
+    const [cefData, setCefData] = useState([]);
+    const [companyName, setCompanyName] = useState('');
+    const [serviceData, setServiceData] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const navigate = useNavigate();
+    const [serviceValueData, setServiceValueData] = useState([]);
+    const [applicationData, setApplicationData] = useState([]);
+
+
+    const location = useLocation();
+    const currentURL = location.pathname + location.search;
+
+    const queryParams = new URLSearchParams(location.search);
+
+    // Extract the branch_id and applicationId
+    const branchId = queryParams.get('branch_id');
+    const applicationId = queryParams.get('applicationId');
+    const getValuesFromUrl = (currentURL) => {
+        const result = {};
+        const keys = [
+            "YXBwX2lk",
+            "YnJhbmNoX2lk",
+            "Y3VzdG9tZXJfaWQ="
+        ];
+
+        keys.forEach(key => {
+            const regex = new RegExp(`${key}=([^&]*)`);
+            const match = currentURL.match(regex);
+            result[key] = match && match[1] ? match[1] : null;
+        });
+
+        const isValidBase64 = (str) => {
+            const base64Pattern = /^[A-Za-z0-9+/]+={0,2}$/;
+            return base64Pattern.test(str) && (str.length % 4 === 0);
+        };
+
+        const decodeKeyValuePairs = (obj) => {
+            return Object.entries(obj).reduce((acc, [key, value]) => {
+                const decodedKey = isValidBase64(key) ? atob(key) : key;
+                const decodedValue = value && isValidBase64(value) ? atob(value) : null;
+                acc[decodedKey] = decodedValue;
+                return acc;
+            }, {});
+        };
+
+        return decodeKeyValuePairs(result);
+    };
+
+    const decodedValues = getValuesFromUrl(currentURL);
+
+    const fetchData = useCallback(() => {
+        setLoading(true); // Start loading
+
+        const MyToken = localStorage.getItem('_token');
+        const adminData = JSON.parse(localStorage.getItem('admin') || '{}');
+        const admin_id = adminData?.id;
+
+        if (!MyToken || !admin_id || !applicationId || !branchId) {
+            setError('Missing required parameters or authentication token.');
+            setLoading(false);
+            return;
+        }
+
+        const requestOptions = {
+            method: "GET",
+            redirect: "follow",
+        };
+
+        fetch(
+            `https://api.screeningstar.co.in/candidate-master-tracker/bgv-application-by-id?application_id=${applicationId}&branch_id=${branchId}&admin_id=${admin_id}&_token=${MyToken}`,
+            requestOptions
+        )
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error(`Error fetching data: ${res.statusText}`);
+                }
+                return res.json();
+            })
+            .then(data => {
+                setCompanyName(data.application?.customer_name || 'N/A');
+                setCefData(data.CEFData || {});
+                setApplicationData(data.application);
+
+                const serviceDataa = data.serviceData || {};
+                const jsonDataArray = Object.values(serviceDataa)?.map(item => item.jsonData) || [];
+                const serviceValueDataArray = Object.values(serviceDataa)?.map(item => item.data) || [];
+
+                setServiceData(jsonDataArray);
+                setServiceValueData(serviceValueDataArray);
+
+                setCustomBgv(data.customerInfo?.is_custom_bgv || '');
+
+                // Always update token if present in the response
+                if (data.token || data._token) {
+                    localStorage.setItem("_token", data.token || data._token);
+                }
+            })
+            .catch(err => {
+                setError(err.message || 'An unexpected error occurred.');
+            })
+            .finally(() => {
+                // Ensure we keep the latest token if it exists
+                const storedToken = localStorage.getItem('_token');
+                if (storedToken) {
+                    localStorage.setItem("_token", storedToken);
+                }
+                setLoading(false); // End loading
+            });
+    }, [applicationId, branchId]);
+
+
+
+    useEffect(() => {
+
+        fetchData();
+    }, [fetchData]);
+    const getFileExtension = (url) => {
+        const ext = url.split('.').pop().toLowerCase();
+        return ext;
+    };
+    const FileViewer = ({ fileUrl }) => {
+        if (!fileUrl) {
+            return <p>No file provided</p>; // Handle undefined fileUrl
+        }
+
+        const getFileExtension = (url) => url.split('.').pop().toLowerCase();
+
+        const renderIframe = (url) => (
+            <iframe
+                src={`https://docs.google.com/gview?url=${url}&embedded=true`}
+                width="100%"
+                height="100%"
+                title="File Viewer"
+            />
+        );
+
+        const fileExtension = getFileExtension(fileUrl);
+
+        // Determine the type of file and render accordingly
+        if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff'].includes(fileExtension)) {
+            return <img src={fileUrl} alt="Image File" style={{}} />;
+        }
+
+        if (['pdf', 'doc', 'docx', 'xls', 'xlsx'].includes(fileExtension)) {
+            return renderIframe(fileUrl);
+        }
+
+        return <p>Unsupported file type</p>;
+    };
+
+    const Loader = () => (
+        <div className="flex w-full justify-center items-center h-20">
+            <div className="loader border-t-4 border-[#2c81ba] rounded-full w-10 h-10 animate-spin"></div>
+        </div>
+    );
+    const handleGoBack = () => {
+        navigate(`/admin-CandidateCheckin?clientId=${cefData.customer_id}&branchId=${cefData.branch_id}&BranchName=${applicationData.customer_name}`);
+
+    };
+    return (
+        <>
+            {
+                loading ? (
+                    <div className='flex justify-center items-center p-6 ' >
+                        <Loader className="text-center" />
+                    </div >
+                ) :
+                    <form className='py-6 md:px-10  bg-[#c1dff2] border border-black ' id='bg-form'>
+                        <div
+                            onClick={handleGoBack}
+                            className="flex items-center w-36 md:mx-0 mx-4 space-x-3 p-2 rounded-lg bg-[#2c81ba] text-white hover:bg-[#1a5b8b] transition-all duration-300 ease-in-out transform hover:scale-105 shadow-md hover:shadow-lg cursor-pointer"
+                        >
+                            <FaChevronLeft className="text-xl text-white" />
+                            <span className="font-semibold text-lg">Go Back</span>
+                        </div>
+
+                        <h4 className="text-Black md:text-3xl  text-2xl mb-6 text-center mt-5  uppercase font-bold">Background Verification Form</h4>
+                        <div className="md:p-6 rounded md:w-9/12 m-auto">
+                            <div className="md:mb-6 mb-2 p-6 rounded-md bg-orange-400 shadow-md flex justify-center items-center">
+                                <h5 className="text-xl font-bold uppercase  text-white">Company name: <span className="text-xl font-bold text-white uppercase">{companyName}</span></h5>
+                            </div>
+
+                            <div className="md:grid grid-cols-1  border-orange-500 md:grid-cols-1 bg-white shadow-md gap-4 mb-6 border  rounded-md  p-6">
+                                <div className="form-group col-span-2">
+                                    <label className='font-bold'>Applicant’s CV: </label>
+                                    <div className="md:grid grid-cols-5 gap-4 border-orange-500  border p-3 fileViewer rounded-md justify-center">
+
+                                        <FileViewer fileUrl={cefData?.resume_file} className="w-full max-w-xs" />
+                                    </div>
+
+                                </div>
+                                <div className="form-group col-span-2">
+                                    <label className='font-bold'>Upload Photo:</label>
+                                    <div className="md:grid grid-cols-5 gap-4 border-orange-500  border p-3 fileViewer rounded-md justify-center">
+                                        {cefData?.govt_id ? (
+                                            cefData.govt_id.split(',').map((fileUrl, index) => (
+                                                <FileViewer
+                                                    key={index}
+                                                    fileUrl={fileUrl.trim()} // Trim to remove any extra spaces
+                                                    className="w-full max-w-xs mb-4"
+                                                />
+                                            ))
+                                        ) : (
+                                            <span className="text-gray-500">No files available</span>
+                                        )}
+                                    </div>
+
+                                </div>
+                                {/* <div className="form-group col-span-2">
+                                   <label className='font-bold'>Passport: </label>
+                                    <div className="md:grid grid-cols-5 gap-4 border-orange-500  border p-3 fileViewer rounded-md justify-center">
+                                        {cefData?.passport ? (
+                                            cefData.passport.split(',').map((fileUrl, index) => (
+                                                <FileViewer
+                                                    key={index}
+                                                    fileUrl={fileUrl.trim()} // Trim to remove any extra spaces
+                                                    className="w-full max-w-xs mb-4"
+                                                />
+                                            ))
+                                        ) : (
+                                            <span className="text-gray-500">No files available</span>
+                                        )}
+                                    </div>
+
+                                </div>
+                                <div className="form-group col-span-2">
+                                   <label className='font-bold'>PAN Card: </label>
+                                    <div className="md:grid grid-cols-5 gap-4 border-orange-500  border p-3 fileViewer rounded-md justify-center">
+                                        {cefData?.pan_card ? (
+                                            cefData.pan_card.split(',').map((fileUrl, index) => (
+                                                <FileViewer
+                                                    key={index}
+                                                    fileUrl={fileUrl.trim()} // Trim to remove any extra spaces
+                                                    className="w-full max-w-xs mb-4"
+                                                />
+                                            ))
+                                        ) : (
+                                            <span className="text-gray-500">No files available</span>
+                                        )}
+                                    </div>
+
+                                </div>
+                                <div className="form-group col-span-2">
+                                   <label className='font-bold'>Driving Licence: </label>
+                                    <div className="md:grid grid-cols-5 gap-4 border-orange-500  border p-3 fileViewer rounded-md justify-center">
+                                        {cefData?.driving_licence ? (
+                                            cefData.driving_licence.split(',').map((fileUrl, index) => (
+                                                <FileViewer
+                                                    key={index}
+                                                    fileUrl={fileUrl.trim()} // Trim to remove any extra spaces
+                                                    className="w-full max-w-xs mb-4"
+                                                />
+                                            ))
+                                        ) : (
+                                            <span className="text-gray-500">No files available</span>
+                                        )}
+                                    </div>
+
+                                </div>
+                                <div className="form-group col-span-2">
+                                   <label className='font-bold'>Aadhaar Card: </label>
+                                    <div className="md:grid grid-cols-5 gap-4 border-orange-500  border p-3 fileViewer rounded-md justify-center">
+                                        {cefData?.aadhaar_card ? (
+                                            cefData.aadhaar_card.split(',').map((fileUrl, index) => (
+                                                <FileViewer
+                                                    key={index}
+                                                    fileUrl={fileUrl.trim()} // Trim to remove any extra spaces
+                                                    className="w-full max-w-xs mb-4"
+                                                />
+                                            ))
+                                        ) : (
+                                            <span className="text-gray-500">No files available</span>
+                                        )}
+                                    </div>
+                                </div> */}
+                            </div>
+
+                            <div className='border bg-white shadow-md border-orange-500   p-6 rounded-md'>
+                                <h4 className="md:text-center text-left text-xl md:text-2xl my-6 font-bold ">Personal Information</h4>
+
+                                <div className="md:grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 ">
+                                    <div className="form-group">
+                                        <label className="font-bold" htmlFor="full_name">Full Name as per Govt ID Proof (first, middle, last): <span className="text-red-500">*</span></label>
+                                        <input
+                                            value={cefData?.full_name}
+                                            type="text"
+                                            className="form-control border rounded w-full p-2 mt-2"
+                                            id="full_name"
+                                            name="full_name"
+
+                                        />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="font-bold" htmlFor="former_name">Former Name/ Maiden Name (if applicable)<span className="text-red-500">*</span></label>
+                                        <input
+                                            value={cefData?.former_name}
+                                            type="text"
+                                            className="form-control border rounded w-full p-2 mt-2"
+                                            id="former_name"
+                                            name="former_name"
+                                        />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="font-bold" htmlFor="mob_no">Mobile Number: <span className="text-red-500">*</span></label>
+                                        <input
+                                            value={cefData?.mb_no}
+                                            type="tel"
+                                            className="form-control border rounded w-full p-2 mt-2"
+                                            name="mb_no"
+                                            id="mob_no"
+                                            minLength="10"
+                                            maxLength="10"
+
+                                        />
+                                    </div>
+                                </div>
+                                <div className="md:grid grid-cols-1 md:grid-cols-3 gap-4">
+
+                                    <div className="form-group">
+                                        <label className="font-bold" htmlFor="father_name">Father's Name: <span className="text-red-500">*</span></label>
+                                        <input
+                                            value={cefData?.father_name}
+                                            type="text"
+                                            className="form-control border rounded w-full p-2 mt-2"
+                                            id="father_name"
+                                            name="father_name"
+
+                                        />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="font-bold" htmlFor="husband_name">Spouse's Name</label>
+                                        <input
+                                            value={cefData?.husband_name}
+                                            type="text"
+                                            className="form-control border rounded w-full p-2 mt-2"
+                                            id="husband_name"
+                                            name="husband_name"
+                                        />
+                                    </div>
+
+                                    <div className="form-group">
+                                        <label className="font-bold" htmlFor="dob">DOB: <span className="text-red-500">*</span></label>
+                                        <input
+                                            value={cefData?.dob}
+                                            type="date"
+                                            className="form-control border rounded w-full p-2 mt-2"
+                                            name="dob"
+                                            id="dob"
+
+                                        />
+                                    </div>
+                                </div>
+                                <div className="md:grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                                    <div className="form-group">
+                                        <label className="font-bold" htmlFor="gender">
+                                            Gender: <span className="text-red-500">*</span>
+                                        </label>
+                                        <select
+                                            disabled
+                                            value={cefData?.gender}
+                                            className="form-control border rounded w-full p-2 mt-2"
+                                            name="gender"
+                                            id="gender"
+                                        >
+                                            <option value="" disabled>
+                                                Select gender
+                                            </option>
+                                            <option value="male">Male</option>
+                                            <option value="female">Female</option>
+                                            <option value="other">Other</option>
+                                        </select>
+                                    </div>
+
+
+                                    <div className='form-group'>
+                                        <label className="font-bold" >Aadhar card No</label>
+                                        <input
+                                            type="text"
+                                            name="aadhar_card_number"
+                                            value={cefData?.aadhar_card_number}
+
+                                            className="form-control border rounded w-full p-2 mt-2"
+                                        />
+
+                                    </div>
+                                    <div className='form-group'>
+                                        <label className="font-bold" >Pan card No</label>
+                                        <input
+                                            type="text"
+                                            name="pan_card_number"
+                                            value={cefData?.pan_card_number}
+
+                                            className="form-control border rounded w-full p-2 mt-2"
+                                        />
+
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="font-bold" htmlFor="nationality">Nationality: <span className="text-red-500">*</span></label>
+                                        <input
+                                            value={cefData?.nationality}
+                                            type="text"
+                                            className="form-control border rounded w-full p-2 mt-2"
+                                            name="nationality"
+                                            id="nationality"
+
+                                        />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="font-bold" htmlFor="marital_status">Marital Status: <span className="text-red-500">*</span></label>
+                                        <select
+                                            disabled
+                                            className="form-control border rounded w-full p-2 mt-2"
+                                            name="marital_status"
+                                            id="marital_status"
+
+                                        >
+                                            <option value="">Not Filled</option>
+                                            <option value="Dont wish to disclose">Don't wish to disclose</option>
+                                            <option value="Single">Single</option>
+                                            <option value="Married">Married</option>
+                                            <option value="Widowed">Widowed</option>
+                                            <option value="Divorced">Divorced</option>
+                                            <option value="Separated">Separated</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                < div className='bordershadow-md bg-gray-100  border-gray-300 p-6 rounded-md mt-5 hover:transition-shadow duration-300' >
+
+                                    <h3 className='md:text-center text-start md:text-2xl text-sm font-bold my-5' > Current Address </h3>
+                                    < div className="grid grid-cols-1 md:grid-cols-3 gap-4" >
+
+                                        <div className="form-group" >
+                                            <label className="font-bold" htmlFor="full_name" > Full Address < span className="text-red-500" >* </span></label >
+                                            <input
+
+                                                value={cefData?.full_address}
+                                                type="text"
+                                                className="form-control border rounded w-full p-2 mt-2"
+                                                id="full_address"
+                                                name="full_address"
+
+                                            />
+                                        </div>
+                                        < div className="form-group" >
+                                            <label className="font-bold" htmlFor="pin_code" > Pin Code < span className="text-red-500" >* </span></label >
+                                            <input
+
+                                                value={cefData?.pin_code}
+                                                type="text"
+                                                className="form-control border rounded w-full p-2 mt-2"
+                                                id="pin_code"
+                                                name="pin_code"
+
+                                            />
+                                        </div>
+
+                                        < div className="form-group" >
+                                            <label className="font-bold" htmlFor="current_address_state" > State < span className="text-red-500" >* </span></label >
+                                            <input
+
+                                                value={cefData?.current_address_state}
+                                                type="text"
+                                                className="form-control border rounded w-full p-2 mt-2"
+                                                id="current_address_state"
+                                                name="current_address_state"
+
+                                            />
+                                        </div>
+                                        < div className="form-group" >
+                                            <label className="font-bold" htmlFor="current_prominent_landmark" > Prominent Landmark < span className="text-red-500" >* </span></label >
+                                            <input
+
+                                                value={cefData?.current_prominent_landmark}
+                                                type="text"
+                                                className="form-control border rounded w-full p-2 mt-2"
+                                                id="current_prominent_landmark"
+                                                name="current_prominent_landmark"
+
+                                            />
+                                        </div>
+                                        < div className="form-group" >
+                                            <label className="font-bold" htmlFor="nearest_police_station" > Nearest Police Station.< span className="text-red-500" >* </span></label >
+                                            <input
+
+                                                value={cefData?.nearest_police_station}
+                                                type="text"
+                                                className="form-control border rounded w-full p-2 mt-2"
+                                                id="nearest_police_station"
+                                                name="nearest_police_station"
+
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className='my-10 mb-6'>
+                                        <label htmlFor="" className=' font-bold' >Period Of Stay < span className="text-red-500" >*</span></label >
+                                    </div>
+                                    < div className="grid grid-c ols-1 md:grid-cols-2 gap-4" >
+                                        < div className="form-group" >
+                                            <label className="font-bold" htmlFor="current_from_date"> From Date< span className="text-red-500" >* </span></label >
+                                            <input
+
+                                                value={cefData?.current_from_date}
+                                                type="date"
+                                                className="form-control border rounded w-full p-2 mt-2"
+                                                id="current_from_date"
+                                                name="current_from_date"
+
+
+                                            />
+                                        </div>
+                                        <div className="form-group" >
+                                            <label className="font-bold" htmlFor="current_to_date" > To Date < span className="text-red-500" >* </span></label >
+                                            <input
+
+                                                value={cefData?.current_to_date}
+                                                type="date"
+                                                className="form-control border rounded w-full p-2 mt-2"
+                                                id="current_to_date"
+                                                name="current_to_date"
+                                            // Attach ref here
+
+                                            />
+                                        </div>
+                                        < div className="form-group" >
+                                            <label className="font-bold" htmlFor="residence_number"> Residence Number< span className="text-red-500" >* </span></label >
+                                            <input
+
+                                                value={cefData?.residence_number}
+                                                type="text"
+                                                className="form-control border rounded w-full p-2 mt-2"
+                                                id="residence_number"
+                                                name="residence_number"
+                                            // Attach ref here
+
+                                            />
+
+                                        </div>
+                                        < div className="form-group" >
+                                            <label className="font-bold" htmlFor="alternate_mobile_number" > Alternate Mobile Number < span className="text-red-500" >* </span></label >
+                                            <input
+
+                                                value={cefData?.alternate_mobile_number}
+                                                type="number"
+                                                className="form-control border rounded w-full p-2 mt-2"
+                                                id="alternate_mobile_number"
+                                                name="alternate_mobile_number"
+
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+
+
+
+                            </div>
+                            {customBgv === 1 && (
+                                <>
+                                    <div className='border bg-white shadow-md border-gray-300 md:p-6 p-2 rounded-md mt-5 hover:transition-shadow duration-300'>
+
+                                        <label className="font-bold" >Blood Group</label>
+                                        <div className='form-group'>
+                                            <input
+                                                type="text"
+                                                name="blood_group"
+                                                value={cefData?.blood_group}
+                                                readOnly className="form-control border rounded w-full p-2 mt-2"
+                                            />
+                                        </div>
+
+
+
+
+                                        <div className='form-group'>
+                                            <label className="font-bold" >Declaration Date<span className='text-red-500'>*</span></label>
+                                            <input
+                                                type="date"
+                                                name="declaration_date"
+                                                value={cefData?.declaration_date}
+                                                className="form-control border rounded w-full p-2 mt-2"
+                                            />
+                                        </div>
+
+                                        <div className='border rounded-md p-3 my-5 '>
+                                            <h3 className='md:text-center text-left md:text-xl font-bold pb-4'>Add Emergency Contact Details</h3>
+                                            <div className='md:grid grid-cols-3 gap-3 '>
+                                                <div className='form-group'>
+                                                    <label className="font-bold" >Name<span className='text-red-500'>*</span></label>
+                                                    <input
+                                                        type="text"
+                                                        name="emergency_details_name"
+                                                        value={cefData?.emergency_details_name}
+                                                        readOnly
+
+                                                        className="form-control border rounded w-full p-2 mt-2"
+                                                    />
+                                                </div>
+                                                <div className='form-group'>
+                                                    <label className="font-bold" >Relation<span className='text-red-500'>*</span></label>
+                                                    <input
+                                                        type="text"
+                                                        name="emergency_details_relation"
+                                                        value={cefData?.emergency_details_relation}
+
+                                                        className="form-control border rounded w-full p-2 mt-2"
+                                                    />
+                                                </div>
+                                                <div className='form-group'>
+                                                    <label className="font-bold" >Contact Number<span className='text-red-500'>*</span></label>
+                                                    <input
+                                                        type="text"
+                                                        name="emergency_details_contact_number"
+                                                        value={cefData?.emergency_details_contact_number}
+
+                                                        className="form-control border rounded w-full p-2 mt-2"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className='border rounded-md p-3  my-5'>
+                                            <h3 className='md:text-center text-left md:text-xl font-bold pb-4'>Add PF Details</h3>
+                                            <div className='md:grid grid-cols-3 gap-3'>
+                                                <div className='form-group'>
+                                                    <label className="font-bold" >PF Number</label>
+                                                    <input
+                                                        type="text"
+                                                        name="pf_details_pf_number"
+                                                        value={cefData?.pf_details_pf_number}
+                                                        readOnly className="form-control border rounded w-full p-2 mt-2"
+                                                    />
+                                                </div>
+                                                <div className='form-group'>
+                                                    <label className="font-bold" >PF Type</label>
+                                                    <input
+                                                        type="text"
+                                                        name="pf_details_pf_type"
+                                                        value={cefData?.pf_details_pf_type}
+                                                        readOnly className="form-control border rounded w-full p-2 mt-2"
+                                                    />
+                                                </div>
+                                                <div className='form-group'>
+                                                    <label className="font-bold" >PF Nominee</label>
+                                                    <input
+                                                        type="text"
+                                                        name="pf_details_pg_nominee"
+                                                        value={cefData?.pf_details_pg_nominee}
+                                                        readOnly className="form-control border rounded w-full p-2 mt-2"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className='border rounded-md p-3   mt-3'>
+                                            <h3 className='md:text-center text-left md:text-xl font-bold pb-4'>Do you have an NPS Account? If yes</h3>
+                                            <div className='md:grid grid-cols-3 gap-3'>
+                                                <div className='form-group '>
+                                                    <label className="font-bold" >PRAN (Permanent Retirement Account Number).</label>
+                                                    <input
+                                                        type="text"
+                                                        name="nps_details_details_pran_number"
+                                                        value={cefData?.nps_details_details_pran_number}
+                                                        readOnly className="form-control border rounded w-full p-2 mt-2"
+                                                    />
+                                                </div>
+                                                <div className='form-group'>
+                                                    <label className="font-bold" >Enter Nominee Details of NPS. </label>
+                                                    <input
+                                                        type="text"
+                                                        name="nps_details_details_nominee_details"
+                                                        value={cefData?.nps_details_details_nominee_details}
+                                                        readOnly className="form-control border rounded w-full p-2 mt-2"
+                                                    />
+                                                </div>
+                                                <div className='form-group'>
+                                                    <label className="font-bold" >Enter your contribution details of NPS</label>
+                                                    <input
+                                                        type="text"
+                                                        name="nps_details_details_nps_contribution"
+                                                        value={cefData?.nps_details_details_nps_contribution}
+                                                        readOnly className="form-control border rounded w-full p-2 mt-2"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <label className='mt-5 font-bold block'>Do you have an ICICI Bank A/c<span className='text-red-500'>*</span></label>
+
+                                        <div className='flex gap-6 mb-4  '>
+                                            <div className='form-group pt-2 flex  gap-2'>
+
+                                                <input
+                                                    type="radio"
+                                                    name="icc_bank_acc"
+                                                    value='yes'
+                                                    readOnly className="form-control border rounded p-2 "
+                                                />
+                                                <label className="font-bold" >Yes</label>
+                                            </div>
+                                            <div className='form-group pt-2 flex  gap-2'>
+                                                <input
+                                                    type="radio"
+                                                    name="icc_bank_acc"
+                                                    value='no'
+                                                    readOnly className="form-control border rounded p-2 "
+                                                />
+                                                <label className="font-bold" >No</label>
+                                            </div>
+
+                                        </div>
+
+                                        <div className='border rounded-md p-3 my-6  '>
+                                            <h3 className='md:text-center text-left md:text-xl font-bold pb-2'>Banking Details: </h3>
+                                            <span className='text-sm md:text-center text-left block'> Note: If you have an ICICI Bank account, please provide those details. If not, feel free to share your banking information from any other bank.</span>
+                                            <div className='form-group mt-4'>
+                                                <label className="font-bold" >Bank Account Number<span className='text-red-500'>*</span></label>
+                                                <input
+                                                    type="text"
+                                                    name="bank_details_account_number"
+                                                    value={cefData?.bank_details_account_number}
+                                                    readOnly className="form-control border rounded w-full p-2 mt-2"
+                                                />
+                                            </div>
+                                            <div className='form-group'>
+                                                <label className="font-bold" >Bank Name<span className='text-red-500'>*</span></label>
+                                                <input
+                                                    type="text"
+                                                    name="bank_details_bank_name"
+                                                    value={cefData?.bank_details_bank_name}
+                                                    readOnly className="form-control border rounded w-full p-2 mt-2"
+                                                />
+                                            </div>
+                                            <div className='form-group'>
+                                                <label className="font-bold" >Bank Branch Name<span className='text-red-500'>*</span></label>
+                                                <input
+                                                    type="text"
+                                                    name="bank_details_branch_name"
+                                                    value={cefData?.bank_details_branch_name}
+                                                    readOnly className="form-control border rounded w-full p-2 mt-2"
+                                                />
+                                            </div>
+                                            <div className='form-group'>
+                                                <label className="font-bold" >IFSC Code<span className='text-red-500'>*</span></label>
+                                                <input
+                                                    type="text"
+                                                    name="bank_details_ifsc_code"
+                                                    value={cefData?.bank_details_ifsc_code}
+                                                    readOnly className="form-control border rounded w-full p-2 mt-2"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className='border rounded-md p-3 mt-3  '>
+                                            <h3 className='md:text-center text-left md:text-xl font-bold pb-2'> Insurance Nomination Details:- (A set of parent either Parents or Parents in Law, 1 child, Spouse Nominee details) </h3>
+                                            <div className='md:grid grid-cols-2 gap-3'>
+                                                <div className='form-group'>
+                                                    <label className="font-bold" >Name(s)
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        name="insurance_details_name"
+                                                        value={cefData?.insurance_details_name}
+                                                        readOnly className="form-control border rounded w-full p-2 mt-2"
+                                                    />
+                                                </div>
+                                                <div className='form-group'>
+                                                    <label className="font-bold" >Nominee Relationship
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        name="insurance_details_nominee_relation"
+                                                        value={cefData?.insurance_details_nominee_relation}
+                                                        readOnly className="form-control border rounded w-full p-2 mt-2"
+                                                    />
+                                                </div>
+                                                <div className='form-group'>
+                                                    <lalbel>Nominee Date of Birth
+                                                    </lalbel>
+                                                    <input
+                                                        type="date"
+                                                        name="insurance_details_nominee_dob"
+                                                        value={cefData?.insurance_details_nominee_dob}
+                                                        readOnly className="form-control border rounded w-full p-2 mt-2"
+                                                    />
+                                                </div>
+                                                <div className='form-group'>
+                                                    <label className="font-bold" >Contact No.
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        name="insurance_details_contact_number"
+                                                        value={cefData?.insurance_details_contact_number}
+                                                        readOnly className="form-control border rounded w-full p-2 mt-2"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <label className='mt-5 font-bold block'>Do you want to opt for a Food Coupon?<span className='text-red-500'>*</span></label>
+
+                                        <div className='flex gap-6 mb-4  '>
+                                            <div className='form-group pt-2 flex gap-2'>
+                                                <input
+                                                    type="radio"
+                                                    name="food_coupon"
+                                                    value="Yes"
+                                                    readOnly className="form-control border rounded p-2"
+                                                />
+                                                <label className="font-bold" >Yes</label>
+                                            </div>
+                                            <div className='form-group pt-2 flex gap-2'>
+                                                <input
+                                                    type="radio"
+                                                    name="food_coupon"
+                                                    value="No"
+                                                    readOnly className="form-control border rounded p-2"
+                                                />
+                                                <label className="font-bold" >No</label>
+                                            </div>
+                                        </div>
+
+
+                                        <p className='text-left '>Food coupons are vouchers or digital meal cards given to employees to purchase food and non-alcoholic beverages. Specific amount as per your requirement would get deducted from your Basic Pay. These are tax free, considered as a non-monetary benefit and are exempt from tax up to a specified limit.</p>
+                                    </div>
+                                </>
+                            )}
+
+{
+    serviceData?.length > 0 ? (
+        serviceData.map((service, serviceIndex) => (
+            <div
+                key={serviceIndex}
+                className="border border-orange-500 bg-white p-6 rounded-md mt-5 hover:transition-shadow duration-300"
+            >
+                <div className='border shadow-md p-6 rounded-md bg-gray-100'>
+                    <h2 className="md:text-center bg-[#c1dff2] text-left py-4 text-xl md:text-2xl font-bold mb-6 text-black">
+                        {service.heading}
+                    </h2>
+                    <div className="space-y-6">
+                        {service.rows.map((row, rowIndex) => {
+                            return (
+                                <div key={rowIndex}>
+                                    {row.row_heading && (
+                                        <h3 className="text-lg font-semibold mb-4">{row.row_heading}</h3>
+                                    )}
+                                    {row.inputs && row.inputs.length > 0 ? (
+                                        <div className="space-y-4">
+                                            <div
+                                                className={`md:grid grid-cols-${row.inputs.length === 1
+                                                    ? '1'
+                                                    : row.inputs.length === 2
+                                                        ? '2'
+                                                        : '3'
+                                                    } gap-3`}
+                                            >
+                                                {row.inputs.map((input, inputIndex) => {
+                                                    const prefilledValue =
+                                                        Array.isArray(serviceValueData) &&
+                                                        serviceValueData.find(
+                                                            (item) => item && item[input.name]
+                                                        ) || {};
+
+                                                    const inputValue = prefilledValue[input.name] || '';
+
+                                                    return (
+                                                        <div
+                                                            key={inputIndex}
+                                                            className={`flex flex-col space-y-3 ${row.inputs.length === 1
+                                                                ? 'col-span-1'
+                                                                : row.inputs.length === 2
+                                                                    ? 'col-span-1'
+                                                                    : ''
+                                                                }`}
+                                                        >
+                                                            <label className="block font-bold text-sm mb-2 text-gray-700 capitalize">
+                                                                {input.label.replace(/[\/\\]/g, '')}
+                                                            </label>
+
+                                                            {input.type === 'input' && (
+                                                                <input
+                                                                    readOnly
+                                                                    type="text"
+                                                                    name={input.name}
+                                                                    value={inputValue}
+                                                                    className="mt-1 p-2 border w-full border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                />
+                                                            )}
+
+                                                            {input.type === 'textarea' && (
+                                                                <textarea
+                                                                    readOnly
+                                                                    name={input.name}
+                                                                    rows={1}
+                                                                    value={inputValue}
+                                                                    className="mt-1 p-2 border w-full border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                />
+                                                            )}
+
+                                                            {input.type === 'datepicker' && (
+                                                                <input
+                                                                    readOnly
+                                                                    type="date"
+                                                                    name={input.name}
+                                                                    value={inputValue}
+                                                                    className="mt-1 p-2 border w-full border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                />
+                                                            )}
+
+                                                            {input.type === 'number' && (
+                                                                <input
+                                                                    readOnly
+                                                                    type="number"
+                                                                    name={input.name}
+                                                                    value={inputValue}
+                                                                    className="mt-1 p-2 border w-full border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                />
+                                                            )}
+
+                                                            {input.type === 'email' && (
+                                                                <input
+                                                                    readOnly
+                                                                    type="email"
+                                                                    name={input.name}
+                                                                    value={inputValue}
+                                                                    className="mt-1 p-2 border w-full border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                />
+                                                            )}
+
+                                                            {input.type === 'select' && (
+                                                                <input
+                                                                    readOnly
+                                                                    type="text"
+                                                                    name={input.name}
+                                                                    value={inputValue}
+                                                                    className="mt-1 p-2 border w-full border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                />
+                                                            )}
+
+                                                            {input.type === 'file' && inputValue && typeof inputValue === 'string' && (
+                                                                <div className="md:grid grid-cols-4 gap-4 border p-3 fileViewer_service rounded-md">
+                                                                    {inputValue.split(',').map((fileUrl, index) => (
+                                                                        <FileViewer
+                                                                            key={index}
+                                                                            fileUrl={fileUrl.trim()}
+                                                                            className="w-full max-w-xs mb-4"
+                                                                        />
+                                                                    ))}
+                                                                </div>
+                                                            )}
+
+                                                            {input.type === 'checkbox' && (
+                                                                <div className="flex items-center space-x-3">
+                                                                    <input
+                                                                        disabled
+                                                                        type="checkbox"
+                                                                        name={input.name}
+                                                                        defaultChecked={
+                                                                            inputValue === 'on' || inputValue === '1'
+                                                                        }
+                                                                        className="h-5 w-5 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                                                    />
+                                                                    <span className="text-sm text-gray-700">
+                                                                        {input.label}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <p className='text-sm'>No inputs available for this row.</p>
+                                    )}
+                                </div>
+                            )
+                        })}
+                    </div>
+                </div>
+            </div>
+        ))
+    ) : (
+        <p className="md:text-center text-left md:text-xl text-gray-500">No services available.</p>
+    )
+}
+
+
+                        </div>
+                    </form>
+            }
+
+        </>
+    );
+};
+
+export default CandidateBGV;

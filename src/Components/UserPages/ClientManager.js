@@ -153,6 +153,7 @@ const ClientManager = () => {
                     locationExist: spoc.location,
                 }));
 
+                console.log('spocDetailss', spocDetailss);
 
                 const isExist = {
                     employeIdExist: spocDetailss.some(spoc => spoc.employeIdExist && spoc.employeIdExist.trim() !== ""),
@@ -203,19 +204,25 @@ const ClientManager = () => {
             .map(service => {
                 const trimmedService = service.trim();  // Trim each service string
                 const serviceNumber = parseInt(trimmedService, 10);  // Convert to number
+                console.log(`Trimmed Service: "${trimmedService}", Parsed Number: ${serviceNumber}`);
                 return serviceNumber; // Return the converted number
             });
 
+        // Log the final array of selected service IDs
+        console.log("selectedServices -", selectedServices);
 
         // Map over services and set isSelected based on selectedServices array
         const updatedServices = services.map(group => {
+            console.log(`Processing group: ${group.group_title} (ID: ${group.group_id})`);
 
             return {
                 ...group, // Keep the existing properties of the group
                 services: group.services.map(service => {
+                    console.log(`Processing service: ${service.serviceTitle} (ID: ${service.serviceId})`);
 
                     // Check if the serviceId is in selectedServices array
                     const isSelected = selectedServices.includes(service.serviceId);
+                    console.log(`Is service ${service.serviceTitle} selected? ${isSelected}`);
 
                     // Return the updated service object with isSelected property
                     return {
@@ -226,6 +233,8 @@ const ClientManager = () => {
             };
         });
 
+        // Log the final updated services array
+        console.log("Updated Services: ", updatedServices);
         setServices(updatedServices);
         setFormData({
             id: item.id,
@@ -245,17 +254,19 @@ const ClientManager = () => {
             sub_client: item.sub_client,
             photo: item.photo,
             location: item.location,
-            generate_report_type:item.generate_report_type,
+            generate_report_type: item.generate_report_type || '',
             services: updatedServices || [], // Ensure services are passed correctly
         });
         setClientApplicationId(item.id);
 
         // Log formData (Note: This might not show the updated state immediately due to setState's async nature)
     };
+    console.log('editdata', formData);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setLoadingbtn(true); // Start loading when th
+        setLoadingbtn(true); // Start loading when the form is submitted
+        console.log('first -0', branchData);
         const branch_id = branchData?.branch_id;
         const customer_id = branchData?.customer_id;
         const _token = localStorage.getItem("branch_token");
@@ -280,10 +291,12 @@ const ClientManager = () => {
             .join(','); // Join them into a comma-separated string
 
         const uploadCustomerLogo = async (insertedId, new_application_id) => {
+            console.log('files - - - ', files)
             if (branchData) {
                 const { customer_id, id: branch_id } = branchData;
                 const branch_token = localStorage.getItem("branch_token");
                 const fileCount = Object.keys(files).length;
+                console.log('files - - - ', files, 'count', fileCount)
 
                 const serviceData = JSON.stringify(selectedServiceIds);
 
@@ -327,6 +340,7 @@ const ClientManager = () => {
 
         const fileCount = Object.keys(files).length;
 
+        console.log(`formData - `, formData);
 
         let payload = {
             client_application_id: formData.id,
@@ -337,6 +351,7 @@ const ClientManager = () => {
             client_spoc_name: formData.client_spoc_name || "",
             employee_id: formData.employeeId,
             spoc: formData.client_spoc_name,
+            location: formData.location,
             batch_number: formData.batchNumber,
             sub_client: formData.subClient,
             photo: formData.photo, // Ensure photo is passed for update
@@ -349,11 +364,12 @@ const ClientManager = () => {
             ticket_id: formData.ticket_id,
             sub_client: formData.sub_client,
             photo: formData.photo,
-            location: formData.location,
             generate_report_type: formData.generate_report_type,
+            location: formData.location,
             send_mail: fileCount === 0 ? 1 : 0,
         };
 
+        console.log('first -1', branchData);
 
         if (branchData?.type == "sub_user") {
             payload.sub_user_id = `${branchData.id}`;
@@ -396,6 +412,7 @@ const ClientManager = () => {
                 }
 
                 const fileCount = Object.keys(files).length;
+                console.log('fileCount', fileCount);
 
                 if (fileCount > 0 && insertedId && new_application_id) {
                     await uploadCustomerLogo(insertedId, new_application_id);
@@ -429,7 +446,7 @@ const ClientManager = () => {
                     sub_client: '',
                     photo: '',
                     location: '',
-                    generate_report_type:'',
+                    generate_report_type: '',
                 });
             } else {
                 const errorData = await response.json();
@@ -527,22 +544,28 @@ const ClientManager = () => {
             });
         });
 
-       
+        // Optional: Log the updated services to verify
+        console.log(services);
     };
 
     const handlePackageChange = (selectedOptions) => {
+        console.log("handlePackageChange triggered");
+        console.log("Selected Options:", selectedOptions);
 
         const selectedPackageIds = selectedOptions?.map(option => option.value) || [];
+        console.log("Mapped Selected Package IDs:", selectedPackageIds);
 
         const isSelectAllSelected = selectedPackageIds.includes("select_all");
         const isCurrentlyAllSelected = formData?.package?.includes("select_all");
 
         if (isSelectAllSelected && !isCurrentlyAllSelected) {
+            console.log('"select_all" selected. Selecting all services...');
 
             // Select all services
             services.forEach(group => {
                 group.services.forEach(service => {
                     service.isSelected = true;
+                    console.log(`Service ${service.name} selected`);
                 });
             });
 
@@ -551,15 +574,18 @@ const ClientManager = () => {
                 package: ["select_all"]
             };
             setFormData(updatedFormData);
+            console.log("FormData updated with select_all");
             return;
         }
 
         if (isSelectAllSelected && isCurrentlyAllSelected) {
+            console.log('"select_all" clicked again. Deselecting all services...');
 
             // Deselect all services
             services.forEach(group => {
                 group.services.forEach(service => {
                     service.isSelected = false;
+                    console.log(`Service ${service.name} deselected`);
                 });
             });
 
@@ -568,14 +594,17 @@ const ClientManager = () => {
                 package: []
             };
             setFormData(updatedFormData);
+            console.log("FormData cleared");
             return;
         }
 
         if (selectedPackageIds.length === 0) {
+            console.log("No packages selected. Deselecting all services...");
 
             services.forEach(group => {
                 group.services.forEach(service => {
                     service.isSelected = false;
+                    console.log(`Service ${service.name} deselected`);
                 });
             });
 
@@ -583,6 +612,7 @@ const ClientManager = () => {
             return;
         }
 
+        console.log("Specific packages selected. Matching services...");
         selectPackageById(selectedPackageIds);
 
         const updatedFormData = {
@@ -590,6 +620,7 @@ const ClientManager = () => {
             package: selectedPackageIds
         };
         setFormData(updatedFormData);
+        console.log("FormData updated with specific packages");
     };
 
 
@@ -629,6 +660,7 @@ const ClientManager = () => {
         setIsModalOpen(false);
         setModalServices([]);
     };
+    console.log('visibleFeilds', visibleFeilds)
     // console.log('Client Spoc  data is -', clientSpocName);
     const Loader = () => (
         <div className="flex w-full justify-center items-center h-20">
@@ -665,6 +697,7 @@ const ClientManager = () => {
         Array.isArray(formData.package)
             ? formData.package.map(pkg => ({ label: pkg, value: pkg }))
             : [];
+    console.log('myipadress is', ipAddress);
     return (
         <div className="bg-[#c1dff2]  border border-black " ref={clientEditRef} id="clientedit">
             <div className="bg-white md:p-12 p-6 w-full mx-auto">
@@ -943,7 +976,7 @@ const ClientManager = () => {
                                                     sub_client: '',
                                                     photo: '',
                                                     location: '',
-                                                    generate_report_type:'',
+                                                    generate_report_type: '',
 
                                                 });
                                                 fetchCustomerInfo();
@@ -1160,6 +1193,7 @@ const ClientManager = () => {
                                     <th className=" uppercase border border-black px-4 py-2">Sl No.</th>
                                     <th className=" uppercase border border-black px-4 py-2">Photo</th>
                                     <th className=" uppercase border border-black px-4 py-2 text-left">Name Of The Applicant</th>
+                                    <th className=" uppercase border border-black px-4 py-2 text-left">Generate Report Type</th>
                                     <th className=" uppercase border border-black px-4 py-2 text-left">Application Id</th>
                                     {isExist.employeIdExist && (
                                         <th className="uppercase border border-black px-4 py-2 text-left">Employe Id</th>
@@ -1190,6 +1224,7 @@ const ClientManager = () => {
                                     </tr>
                                 ) : (
                                     <>
+                                        {console.log(`tableData - `, tableData)}
                                         {paginatedData.map((item, index) => (
                                             <tr key={item.id} className="text-center">
                                                 <td className="border border-black px-4 py-2">
@@ -1201,6 +1236,7 @@ const ClientManager = () => {
                                                     </div>
                                                 </td>
                                                 <td className="border border-black px-4 py-2 text-left">{item.name}</td>
+                                                <td className="border border-black px-4 py-2 text-left">{item.generate_report_type}</td>
                                                 <td className="border border-black px-4 py-2 text-left">{item.application_id}</td>
                                                 {isExist.employeIdExist && (
                                                     <td className="border border-black px-4 py-2 text-left">{item.employee_id || "null"}</td>
