@@ -185,10 +185,19 @@ const RecordTrackers = () => {
     } else {
       setLoadingIndex(rowIndex); // Set normal loading
     }
+    const finalFromMonth = fromMonth || month;
+    const finalToMonth = toMonth || month;
+    const finalFromYear = fromYear || year;
+    const finalToYear = toYear || year;
+
+    if (!finalFromMonth || !finalToMonth || !finalFromYear || !finalToYear) {
+      alert("Please select either month/year or full filter range.");
+      return;
+    }
 
     try {
       const response = await fetch(
-        `https://api.screeningstar.co.in/record-tracker/report?customer_id=${customerId}&admin_id=${adminId}&_token=${token}&month=${month}&year=${year}`,
+        `https://api.screeningstar.co.in/record-tracker/report?customer_id=${customerId}&admin_id=${adminId}&_token=${token}&from_month=${finalFromMonth}&to_month=${finalToMonth}&from_year=${finalFromYear}&to_year=${finalToYear}`,
         { method: "GET" }
       );
       const result = await response.json();
@@ -289,91 +298,91 @@ const RecordTrackers = () => {
           <h2 className="text-2xl font-bold text-center text-[#4d606b] px-3 pb-8">
             RECORDS & TRACKERS
           </h2>
-      <div className="bg-[#c1dff2] p-8 rounded-2xl shadow-xl max-w-5xl mx-auto">
-  {/* MONTH RANGE */}
-  <div className="mb-8">
-    <h2 className="text-xl font-bold text-gray-800 mb-4">Select Month Range</h2>
-    <div className="flex flex-col md:flex-row md:items-end gap-6 backdrop-blur-sm bg-white/70 rounded-xl">
-      {/* FROM MONTH */}
-      <div className="flex-1  rounded-xl p-4 ">
-        <label className="block text-sm font-semibold text-gray-700 mb-2">From Month</label>
-        <select
-          className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          name="fromMonth"
-          value={fromMonth}
-          onChange={handleInputChange}
-        >
-          <option value="">SELECT MONTH</option>
-          {[...Array(12)].map((_, i) => (
-            <option key={i} value={i + 1}>
-              {new Date(0, i).toLocaleString("default", { month: "long" })}
-            </option>
-          ))}
-        </select>
-      </div>
+          <div className="bg-[#c1dff2] p-8 rounded-2xl shadow-xl max-w-5xl mx-auto">
+            {/* MONTH RANGE */}
+            <div className="mb-8">
+              <h2 className="text-xl font-bold text-gray-800 mb-4">Select Month Range</h2>
+              <div className="flex flex-col md:flex-row md:items-end gap-6 backdrop-blur-sm bg-white/70 rounded-xl">
+                {/* FROM MONTH */}
+                <div className="flex-1  rounded-xl p-4 ">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">From Month</label>
+                  <select
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    name="fromMonth"
+                    value={fromMonth}
+                    onChange={handleInputChange}
+                  >
+                    <option value="">SELECT MONTH</option>
+                    {[...Array(12)].map((_, i) => (
+                      <option key={i} value={i + 1}>
+                        {new Date(0, i).toLocaleString("default", { month: "long" })}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-      {/* TO MONTH */}
-      <div className="flex-1   rounded-xl p-4 ">
-        <label className="block text-sm font-semibold text-gray-700 mb-2">To Month</label>
-        <select
-          className="w-full border border-gray-300 rounded-lg px-4 py-2  focus:outline-none focus:ring-2 focus:ring-green-500"
-          name="toMonth"
-          value={toMonth}
-          onChange={handleInputChange}
-        >
-          <option value="">SELECT MONTH</option>
-          {[...Array(12)].map((_, i) => (
-            <option key={i} value={i + 1}>
-              {new Date(0, i).toLocaleString("default", { month: "long" })}
-            </option>
-          ))}
-        </select>
-      </div>
-    </div>
-  </div>
+                {/* TO MONTH */}
+                <div className="flex-1   rounded-xl p-4 ">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">To Month</label>
+                  <select
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2  focus:outline-none focus:ring-2 focus:ring-green-500"
+                    name="toMonth"
+                    value={toMonth}
+                    onChange={handleInputChange}
+                  >
+                    <option value="">SELECT MONTH</option>
+                    {[...Array(12)].map((_, i) => (
+                      <option key={i} value={i + 1}>
+                        {new Date(0, i).toLocaleString("default", { month: "long" })}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
 
-  {/* YEAR RANGE */}
-  <div>
-    <h2 className="text-xl font-bold text-gray-800 mb-4">Select Year Range</h2>
-    <div className="flex flex-col md:flex-row md:items-end gap-6 backdrop-blur-sm bg-white/70 rounded-xl">
-      {/* FROM YEAR */}
-      <div className="flex-1  rounded-xl p-4 ">
-        <label className="block text-sm font-semibold text-gray-700 mb-2">From Year</label>
-        <select
-          className="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-          name="fromYear"
-          value={fromYear}
-          onChange={handleInputChange}
-        >
-          <option value="">SELECT YEAR</option>
-          {[2025, 2024, 2023, 2022].map((yr) => (
-            <option key={yr} value={yr}>
-              {yr}
-            </option>
-          ))}
-        </select>
-      </div>
+            {/* YEAR RANGE */}
+            <div>
+              <h2 className="text-xl font-bold text-gray-800 mb-4">Select Year Range</h2>
+              <div className="flex flex-col md:flex-row md:items-end gap-6 backdrop-blur-sm bg-white/70 rounded-xl">
+                {/* FROM YEAR */}
+                <div className="flex-1  rounded-xl p-4 ">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">From Year</label>
+                  <select
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    name="fromYear"
+                    value={fromYear}
+                    onChange={handleInputChange}
+                  >
+                    <option value="">SELECT YEAR</option>
+                    {[2025, 2024, 2023, 2022].map((yr) => (
+                      <option key={yr} value={yr}>
+                        {yr}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-      {/* TO YEAR */}
-      <div className="flex-1  rounded-xl p-4 d">
-        <label className="block text-sm font-semibold text-gray-700 mb-2">To Year</label>
-        <select
-          className="w-full border border-gray-300 rounded-lg px-4 py-2  focus:outline-none focus:ring-2 focus:ring-green-500"
-          name="toYear"
-          value={toYear}
-          onChange={handleInputChange}
-        >
-          <option value="">SELECT YEAR</option>
-          {[2025, 2024, 2023, 2022].map((yr) => (
-            <option key={yr} value={yr}>
-              {yr}
-            </option>
-          ))}
-        </select>
-      </div>
-    </div>
-  </div>
-</div>
+                {/* TO YEAR */}
+                <div className="flex-1  rounded-xl p-4 d">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">To Year</label>
+                  <select
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2  focus:outline-none focus:ring-2 focus:ring-green-500"
+                    name="toYear"
+                    value={toYear}
+                    onChange={handleInputChange}
+                  >
+                    <option value="">SELECT YEAR</option>
+                    {[2025, 2024, 2023, 2022].map((yr) => (
+                      <option key={yr} value={yr}>
+                        {yr}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
 
 
 
@@ -429,7 +438,7 @@ const RecordTrackers = () => {
                                   ? "bg-red-600 hover:bg-red-700 hover:scale-105"
                                   : "bg-[#2c81ba] hover:bg-[#0f5381] hover:scale-105"
                               }`}
-                            // onClick={() => handleCheckIn(item.main_id, index, 'no')}
+                            onClick={() => handleCheckIn(item.main_id, index, 'no')}
                             disabled={loadingIndex !== null} // Disable all when any is loading
                           >
                             {loadingIndex === index ? (
@@ -452,9 +461,9 @@ const RecordTrackers = () => {
 
 
                           <button
-                            // onClick={() => handleCheckIn(item.main_id, index, 'yes')}
+                            onClick={() => handleCheckIn(item.main_id, index, 'yes')}
                             className={`p-6 py-3 font-bold whitespace-nowrap transition duration-200 text-white rounded-md
-    ${excelIndex === index
+                           ${excelIndex === index
                                 ? "bg-[#2c81ba] opacity-50 cursor-not-allowed"
                                 : "bg-green-500 hover:bg-green-600 hover:scale-105"
                               }`
