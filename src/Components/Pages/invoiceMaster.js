@@ -10,23 +10,23 @@ const InvoiceMaster = () => {
     const [itemsPerPage, setItemsPerPage] = useState(10);
     const optionsPerPage = [10, 50, 100, 200];
     const [responseError, setResponseError] = useState(null);
-  const formatDate = (dateString) => {
-    if (!dateString || isNaN(new Date(dateString).getTime())) {
-        return "N/A";
-    }
+    const formatDate = (dateString) => {
+        if (!dateString || isNaN(new Date(dateString).getTime())) {
+            return "N/A";
+        }
 
-    const date = new Date(dateString);
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = date.getFullYear();
+        const date = new Date(dateString);
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
 
-    return `${day}-${month}-${year}`;
-};
-const parseAndValidateDate = (dateString) => {
-  if (!dateString) return null;
-  const parsed = parseISO(dateString);
-  return isNaN(parsed) ? null : parsed;
-};
+        return `${day}-${month}-${year}`;
+    };
+    const parseAndValidateDate = (dateString) => {
+        if (!dateString) return null;
+        const parsed = parseISO(dateString);
+        return isNaN(parsed) ? null : parsed;
+    };
     const [loading, setLoading] = useState(true);
     const [selectedInvoice, setSelectedInvoice] = useState(null);
     const [showModal, setShowModal] = useState(false);
@@ -90,6 +90,60 @@ const parseAndValidateDate = (dateString) => {
     const handleUpdateClick = (invoice) => {
         setSelectedInvoice(invoice);
         setShowModal(true); // Open the modal when the "UPDATE" button is clicked
+    };
+
+    const handleDeleteClick = async (invoice) => {
+        Swal.fire({
+            title: "Are you sure?",
+            text: "This action will permanently delete the invoice.",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#d33",
+            cancelButtonColor: "#3085d6",
+            confirmButtonText: "Yes, delete it!",
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: "Processing...",
+                    text: "Deleting invoice, please wait.",
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    },
+                });
+
+                const admin_id = JSON.parse(localStorage.getItem("admin"))?.id;
+                const storedToken = localStorage.getItem("_token");
+
+                try {
+                    const response = await fetch(
+                        `https://api.screeningstar.co.in/invoice-master/delete?id=${invoice.id}&admin_id=${admin_id}&_token=${storedToken}`,
+                        { method: "DELETE" }
+                    );
+
+                    const result = await response.text();
+
+                    Swal.fire({
+                        icon: "success",
+                        title: "Deleted!",
+                        text: "Invoice has been deleted successfully.",
+                        timer: 2000,
+                        showConfirmButton: false,
+                    }).then(() => {
+                        fetchInvoices();
+                    });
+
+                } catch (error) {
+                    Swal.fire({
+                        icon: "error",
+                        title: "Error!",
+                        text: "Something went wrong while deleting the invoice.",
+                    });
+                } finally {
+                    fetchInvoices();
+                }
+            }
+        });
     };
 
     const handleCloseModal = () => {
@@ -477,13 +531,22 @@ const parseAndValidateDate = (dateString) => {
                                         <td className="border border-black px-4 py-2">{invoice.ammount_received}</td>
                                         <td className="border border-black px-4 py-2">{invoice.balance_payment}</td>
                                         <td className="border border-black px-4 py-2">{invoice.payment_remarks}</td>
-                                        <td className="border border-black px-4 py-2">
-                                            <button
-                                                className="p-6 py-3 bg-green-500 hover:bg-green-600 hover:scale-105  text-white font-bold rounded-md whitespace-nowrap transition duration-200"
-                                                onClick={() => handleUpdateClick(invoice)}
-                                            >
-                                                UPDATE
-                                            </button>
+                                        <td className="border border-black px-4 py-2 text-center">
+                                            <div className="flex justify-center gap-3">
+                                                <button
+                                                    className="px-5 py-2 bg-green-500 hover:bg-green-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition duration-200"
+                                                    onClick={() => handleUpdateClick(invoice)}
+                                                >
+                                                    Update
+                                                </button>
+
+                                                <button
+                                                    className="px-5 py-2 bg-red-500 hover:bg-red-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition duration-200"
+                                                    onClick={() => handleDeleteClick(invoice)}
+                                                >
+                                                    Delete
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))
@@ -560,19 +623,19 @@ const parseAndValidateDate = (dateString) => {
                                 <div className="mb-4">
                                     <label className="block mb-2">Due Date</label>
                                     <DatePicker
-    selected={parseAndValidateDate(selectedInvoice.due_date)}
-    onChange={(date) => {
-      const formattedDate = date ? format(date, "yyyy-MM-dd") : "";
-      setSelectedInvoice((prev) => ({ ...prev, due_date: formattedDate }));
-    }}
-    onChangeRaw={(e) => {
-      setSelectedInvoice((prev) => ({ ...prev, due_date: e.target.value }));
-    }}
-    dateFormat="dd-MM-yyyy"
-    placeholderText="Select Due Date"
-    className="w-full p-2 border border-gray-300 rounded-md uppercase focus:outline-none focus:ring-2 focus:ring-blue-500"
-  />
-                                    
+                                        selected={parseAndValidateDate(selectedInvoice.due_date)}
+                                        onChange={(date) => {
+                                            const formattedDate = date ? format(date, "yyyy-MM-dd") : "";
+                                            setSelectedInvoice((prev) => ({ ...prev, due_date: formattedDate }));
+                                        }}
+                                        onChangeRaw={(e) => {
+                                            setSelectedInvoice((prev) => ({ ...prev, due_date: e.target.value }));
+                                        }}
+                                        dateFormat="dd-MM-yyyy"
+                                        placeholderText="Select Due Date"
+                                        className="w-full p-2 border border-gray-300 rounded-md uppercase focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+
                                 </div>
                                 <div className="mb-4">
                                     <label className="block mb-2">Payment Status <span className="text-red-500 text-xl" >*</span></label>
@@ -586,18 +649,18 @@ const parseAndValidateDate = (dateString) => {
                                 <div className="mb-4">
                                     <label className="block mb-2">Received Date</label>
                                     <DatePicker
-    selected={parseAndValidateDate(selectedInvoice.received_date)}
-    onChange={(date) => {
-      const formattedDate = date ? format(date, "yyyy-MM-dd") : "";
-      setSelectedInvoice((prev) => ({ ...prev, received_date: formattedDate }));
-    }}
-    onChangeRaw={(e) => {
-      setSelectedInvoice((prev) => ({ ...prev, received_date: e.target.value }));
-    }}
-    dateFormat="dd-MM-yyyy"
-    placeholderText="Select Received Date"
-    className="w-full p-2 border border-gray-300 rounded-md uppercase focus:outline-none focus:ring-2 focus:ring-blue-500"
-  />
+                                        selected={parseAndValidateDate(selectedInvoice.received_date)}
+                                        onChange={(date) => {
+                                            const formattedDate = date ? format(date, "yyyy-MM-dd") : "";
+                                            setSelectedInvoice((prev) => ({ ...prev, received_date: formattedDate }));
+                                        }}
+                                        onChangeRaw={(e) => {
+                                            setSelectedInvoice((prev) => ({ ...prev, received_date: e.target.value }));
+                                        }}
+                                        dateFormat="dd-MM-yyyy"
+                                        placeholderText="Select Received Date"
+                                        className="w-full p-2 border border-gray-300 rounded-md uppercase focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
                                 </div>
                                 <div className="mb-4">
                                     <label className="block mb-2">TDS Percentage</label>
