@@ -98,6 +98,7 @@ const TATReminder = () => {
         )
         .map((application) => ({
           ...application,
+          tat_days: hierarchy.tat_days,
           branch_id: branch.branch_id,
           customer_id: hierarchy.customer_id,
         }))
@@ -119,7 +120,8 @@ const TATReminder = () => {
   // Format date utility
   const formatDate = (dateString) => {
     if (!dateString || isNaN(new Date(dateString).getTime())) {
-      return String(dateString);
+      // return String(dateString);
+      return false;
     }
     const date = new Date(dateString);
     const day = String(date.getDate()).padStart(2, '0'); // Ensure 2 digits for day
@@ -325,7 +327,7 @@ const TATReminder = () => {
                   <tr key={`${application.client_application_id}-${index}`} >
 
                     <td className="border border-black px-4 py-2 text-center">{(currentPage - 1) * rowsPerPage + index + 1}</td>
-                    <td className="border border-black px-4 py-2 text-center">{application.days_out_of_tat}</td>
+                    <td className="border border-black px-4 py-2 text-center">{application.tat_days}</td>
                     <td className="border border-black px-4 py-2 text-center">
                       {application.application_created_at
                         ? new Date(application.application_created_at).toLocaleDateString('en-GB').replace(/\//g, '-')
@@ -335,19 +337,19 @@ const TATReminder = () => {
                     <td className="border border-black px-4 py-2">{application.application_name}</td>
                     <td className="border border-black px-4 py-2 text-center">
                       {application.days_out_of_tat
-                        ? new Date(application.days_out_of_tat).toLocaleDateString('en-GB').replace(/\//g, '-')
+                        ? application.days_out_of_tat
                         : 'NIL'}
                     </td>
-                    <td className="border border-black px-4 py-2 ">{formatStatus(application.first_insufficiency_marks) || 'null'}</td>
-                    <td className="border border-black px-4 py-2">{formatDate(application.first_insuff_date)}</td>
-                    <td className="border border-black px-4 py-2">{formatDate(application.first_insuff_reopened_date)}</td>
-                    <td className="border border-black px-4 py-2 ">{formatStatus(application.second_insufficiency_marks) || 'null'}</td>
-                    <td className="border border-black px-4 py-2">{formatDate(application.second_insuff_date)}</td>
-                    <td className="border border-black px-4 py-2">{formatDate(application.second_insuff_reopened_date)}</td>
-                    <td className="border border-black px-4 py-2 ">{formatStatus(application.third_insufficiency_marks) || 'null'}</td>
-                    <td className="border border-black px-4 py-2">{formatDate(application.third_insuff_date)}</td>
-                    <td className="border border-black px-4 py-2 ">{formatDate(application.third_insuff_reopened_date)}</td>
-                    <td className="border border-black px-4 py-2 ">{formatStatus(application.delay_reason) || 'null'}</td>
+                    <td className="border border-black px-4 py-2 ">{formatStatus(application.first_insufficiency_marks) || 'NIL'}</td>
+                    <td className="border border-black px-4 py-2">{formatDate(application.first_insuff_date) || 'NIL'}</td>
+                    <td className="border border-black px-4 py-2">{formatDate(application.first_insuff_reopened_date) || 'NIL'}</td>
+                    <td className="border border-black px-4 py-2 ">{formatStatus(application.second_insufficiency_marks) || 'NIL'}</td>
+                    <td className="border border-black px-4 py-2">{formatDate(application.second_insuff_date) || 'NIL'}</td>
+                    <td className="border border-black px-4 py-2">{formatDate(application.second_insuff_reopened_date) || 'NIL'}</td>
+                    <td className="border border-black px-4 py-2 ">{formatStatus(application.third_insufficiency_marks) || 'NIL'}</td>
+                    <td className="border border-black px-4 py-2">{formatDate(application.third_insuff_date) || 'NIL'}</td>
+                    <td className="border border-black px-4 py-2 ">{formatDate(application.third_insuff_reopened_date) || 'NIL'}</td>
+                    <td className="border border-black px-4 py-2 ">{formatStatus(application.delay_reason) || 'NIL'}</td>
                     {/* <td className="border border-black px-4 py-2">
                           <button
                             className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md hover:scale-105"
