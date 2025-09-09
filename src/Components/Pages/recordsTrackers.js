@@ -91,6 +91,10 @@ const RecordTrackers = () => {
     const headers = [
       "SR No.",
       "Application ID",
+      "Sub Client",
+      "Employee Id",
+      "Check Id ",
+      "Ticket id",
       "Case Received",
       "Candidate Full Name",
       ...serviceInfo.map((s) => s.shortCode),
@@ -136,6 +140,10 @@ const RecordTrackers = () => {
         const row = worksheet.addRow([
           sr++,
           app.application_id,
+          app.sub_client,
+          app.employee_id,
+          app.check_id,
+          app.ticket_id,
           formatDate(app.created_at),
           app.name,
           ...servicePrices,

@@ -585,7 +585,7 @@ const AdminChekin = () => {
 
         //    // console.log('applicationInfo.custom_logo',)  
         const servicesData = (await fetchServicesData(applicationInfo.main_id, applicationInfo.services, '1')) || [];
-        const doc = new jsPDF();
+        const doc = new jsPDF({ compress: true });
         const pageWidth = doc.internal.pageSize.getWidth();
         const pageHeight = doc.internal.pageSize.getHeight();
         // RGB for #F3FBFD

@@ -240,7 +240,7 @@ const AdminCandidateCheckin = () => {
 
         try {
             // Create a new PDF document
-            const doc = new jsPDF();
+            const doc = new jsPDF({ compress: true });
             let yPosition = 10;  // Initial y position
             const gapY = 8; // consistent gap between tables
             const formatDate = (value) => {

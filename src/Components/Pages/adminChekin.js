@@ -606,7 +606,7 @@ const AdminChekin = () => {
 
         //    // console.log('applicationInfo.custom_logo',)  
         const servicesData = (await fetchServicesData(applicationInfo.main_id, applicationInfo.services, '1')) || [];
-        const doc = new jsPDF();
+        const doc = new jsPDF({ compress: true });
         const pageWidth = doc.internal.pageSize.getWidth();
         const pageHeight = doc.internal.pageSize.getHeight();
         // RGB for #F3FBFD
@@ -669,7 +669,6 @@ const AdminChekin = () => {
         const profileY = 45;
         const nameFontSize = 16;
 
-        // === 1. LOGO ===
         const screeningLogo = screeningStarLogo;
         const customLogo =
             applicationInfo?.custom_template === "yes" && applicationInfo?.custom_logo?.trim()
@@ -2540,7 +2539,7 @@ const AdminChekin = () => {
         return acc;
     }, {});
     const formatedJson = (delayReason) => {
-        if (!delayReason) return ""; // Handle empty, null, or undefined inputs
+        if (!delayReason) return "NOT APPLICABLE"; // Handle empty, null, or undefined inputs
         return delayReason
             // Remove backslashes
             .replace(/\\+/g, "")
@@ -2574,8 +2573,7 @@ const AdminChekin = () => {
         const colorRegex = new RegExp(`\\b(${colorNames.join('|')})\\b`, 'gi');
         return text.replace(colorRegex, '').trim();
     };
-    console.log('filteredData name', filteredData);
-    console.log('selectedRows    name', selectedRows);
+    console.log('paginatedData    name', paginatedData);
 
     return (
         <div className="bg-[#c1dff2] border border-black">
@@ -2767,8 +2765,6 @@ const AdminChekin = () => {
                                         </th>
                                     ) : null
                                 )}
-                                {expandedRow && (
-                                    <>
                                         <th className="border border-black px-4 py-2">First Level Insuff</th>
                                         <th className="border border-black px-4 py-2">First Insuff Date</th>
                                         <th className="border border-black px-4 py-2">First Insuff Reopen</th>
@@ -2777,8 +2773,7 @@ const AdminChekin = () => {
                                         <th className="border border-black px-4 py-2">Third Level Insuff</th>
                                         <th className="border border-black px-4 py-2">Third Insuff Date</th>
                                         <th className="border border-black px-4 py-2">Reason for Delay</th>
-                                    </>
-                                )}
+                                  
 
                             </tr>
                         </thead>
@@ -3028,18 +3023,16 @@ const AdminChekin = () => {
                                                                 </td>
                                                             ) : null
                                                         )}
-                                                    {isExpanded && (
-                                                        <>
-                                                            <td className="border border-black px-4 py-2 font-bold">{formatedJson(data.first_insufficiency_marks) || ""}</td>
-                                                            <td className="border border-black px-4 py-2 font-bold">{formatDate(data.first_insuff_date)}</td>
-                                                            <td className="border border-black px-4 py-2 font-bold">{formatDate(data.first_insuff_reopened_date)}</td>
-                                                            <td className="border border-black px-4 py-2 font-bold">{formatedJson(data.second_insufficiency_marks) || ""}</td>
-                                                            <td className="border border-black px-4 py-2 font-bold">{formatDate(data.second_insuff_date)}</td>
-                                                            <td className="border border-black px-4 py-2 font-bold">{formatedJson(data.third_insufficiency_marks) || ""}</td>
-                                                            <td className="border border-black px-4 py-2 font-bold">{formatDate(data.third_insuff_date)}</td>
-                                                            <td className="border border-black px-4 py-2 font-bold">{formatedJson(data.delay_reason) || ""}</td>
-                                                        </>
-                                                    )}
+                                                 
+                                                            <td className="border border-black px-4 py-2 font-bold">{formatedJson(data.first_insufficiency_marks) || "NOT APPLICABLE"}</td>
+                                                            <td className="border border-black px-4 py-2 font-bold">{formatDate(data.first_insuff_date) || "NOT APPLICABLE"}</td>
+                                                            <td className="border border-black px-4 py-2 font-bold">{formatDate(data.first_insuff_reopened_date) || "NOT APPLICABLE"}</td>
+                                                            <td className="border border-black px-4 py-2 font-bold">{formatedJson(data.second_insufficiency_marks) || "NOT APPLICABLE"}</td>
+                                                            <td className="border border-black px-4 py-2 font-bold">{formatDate(data.second_insuff_date) || "NOT APPLICABLE"}</td>
+                                                            <td className="border border-black px-4 py-2 font-bold">{formatedJson(data.third_insufficiency_marks) || "NOT APPLICABLE"}</td>
+                                                            <td className="border border-black px-4 py-2 font-bold">{formatDate(data.third_insuff_date) || "NOT APPLICABLE"}</td>
+                                                            <td className="border border-black px-4 py-2 font-bold">{formatedJson(data.delay_reason) || "NOT APPLICABLE"}</td>
+                                                     
 
                                                 </tr>
 

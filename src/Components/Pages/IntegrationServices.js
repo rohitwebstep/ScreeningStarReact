@@ -43,6 +43,9 @@ const InactiveClients = () => {
     const [error, setError] = useState(null);
     const storedToken = localStorage.getItem('token');
     const [searchTerm, setSearchTerm] = useState('');
+    const [deleteLoading, setDeleteLoading] = useState(null);
+    const [isEdit, setIsEdit] = useState(false);
+    const [editData, setEditData] = useState(null);
 
     const [activeId, setActiveId] = useState(null);
     const formatDate = (date = new Date()) => {
@@ -72,7 +75,18 @@ const InactiveClients = () => {
     const totalPages = Math.ceil(inactiveClients.length / entriesPerPage);
 
     const [selectedService, setSelectedService] = useState("");
-    const [formData, setFormData] = useState({});
+    const defaultCourtRows = [
+        { courtCheckType: "Civil", jurisdiction: "", location: "", verificationResult: "" },
+        { courtCheckType: "Magistrate", jurisdiction: "", location: "", verificationResult: "" },
+        { courtCheckType: "Sessions", jurisdiction: "", location: "", verificationResult: "" },
+        { courtCheckType: "High Court", jurisdiction: "", location: "", verificationResult: "" },
+    ];
+
+    const [formData, setFormData] = useState({
+        court: {
+            courtTable: defaultCourtRows
+        }
+    });
     const [courtExtraRows, setCourtExtraRows] = useState([]);
     const formRef = useRef(null);
 
@@ -169,31 +183,25 @@ const InactiveClients = () => {
     const handleServiceChange = (e) => {
         const service = e.target.value;
 
-        setSelectedService(service);
+        setSelectedService(e.target.value);
 
         setFormData({
             selectedService: service,
             [service]: service === "court"
-                ? { courtTable: [] }
+                ? { courtTable: defaultCourtRows || [] }
                 : {} // police has no table
         });
     };
     const handleChange = (e) => {
         const { name, value } = e.target;
-        const currentService = formData.selectedService;
-
         setFormData((prev) => ({
             ...prev,
-            [currentService]: {
-                ...prev[currentService],
-                [name]: value
-            }
+            [selectedService]: { ...prev[selectedService], [name]: value },
         }));
     };
 
 
 
-    console.log('formData', formData)
     const handleRowChange = (index, fieldKey, value) => {
         const updatedRows = [...(formData.court?.courtTable || [])];
 
@@ -288,7 +296,7 @@ const InactiveClients = () => {
     };
 
     const generatePolicePDF = async (policeData, shouldSave = true) => {
-        const doc = new jsPDF();
+        const doc = new jsPDF({ compress: true });
         const pageWidth = doc.internal.pageSize.getWidth();
         const lineHeight = 5;
         const marginLeft = 20;
@@ -542,7 +550,7 @@ const InactiveClients = () => {
 
     }
     const generateCourtPDF = async (courtData, shouldSave = true) => {
-        const doc = new jsPDF();
+        const doc = new jsPDF({ compress: true });
         const pageWidth = doc.internal.pageSize.getWidth();
         const lineHeight = 6;
 
@@ -1512,65 +1520,6 @@ const InactiveClients = () => {
         return doc.output("blob"); // return as Blob
     };
 
-
-
-    const fetchApi = (type) => {
-        const myHeaders = new Headers();
-        const adminData = JSON.parse(localStorage.getItem("admin"));
-        const token = localStorage.getItem("_token");
-
-        myHeaders.append("Content-Type", "application/json");
-
-        const raw = JSON.stringify({
-            type: formData.selectedService,
-            data: JSON.stringify(formData[formData.selectedService]),
-            export_format: type,
-            admin_id: adminData?.id,
-            _token: token
-        });
-
-        const requestOptions = {
-            method: "POST",
-            headers: myHeaders,
-            body: raw,
-            redirect: "follow"
-        };
-
-
-        fetch(`https://api.screeningstar.co.in/integrated-service/create`, requestOptions)
-            .then((response) => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then((result) => {
-                Swal.close(); // close loading
-                if (result?.status) {
-                    Swal.fire({
-                        icon: "success",
-                        title: "Success!",
-                        text: result.message || "Your request was processed successfully."
-                    });
-                } else {
-                    Swal.fire({
-                        icon: "error",
-                        title: "Error",
-                        text: result.message || "Something went wrong. Please try again."
-                    });
-                }
-            })
-            .catch((error) => {
-                Swal.close(); // close loading
-                Swal.fire({
-                    icon: "error",
-                    title: "Request Failed",
-                    text: error.message || "Network error occurred."
-                });
-            });
-    };
-
-
     const fetchData = useCallback(async () => {
         setLoading(true);
         const adminId = JSON.parse(localStorage.getItem("admin"))?.id;
@@ -1616,11 +1565,94 @@ const InactiveClients = () => {
 
     },
         []);
-console.log('data',data)
+
+    const fetchApi = (type, isEdit) => {
+        const myHeaders = new Headers();
+        myHeaders.append("Content-Type", "application/json");
+
+        const adminData = JSON.parse(localStorage.getItem("admin"));
+        const token = localStorage.getItem("_token");
+
+        // Determine request type and URL
+        const method = isEdit ? "PUT" : "POST";
+        const url = isEdit
+            ? `https://api.screeningstar.co.in/integrated-service/update`
+            : `https://api.screeningstar.co.in/integrated-service/create`;
+
+        console.log('formDatasubmit', formData)
+
+        const bodyData = isEdit
+            ? {
+                id: editData?.id, // fetch id from editData
+                type: selectedService, // just use the selectedService value
+                export_format: type, // the format you want to export
+                data: JSON.stringify(
+                    selectedService === "police" ? formData.police : formData.court
+                ),
+                admin_id: adminData?.id,
+                _token: token
+            }
+            : {
+                type: formData.selectedService,
+                data: JSON.stringify(formData[formData.selectedService]),
+                export_format: type,
+                admin_id: adminData?.id,
+                _token: token
+            };
+
+        const requestOptions = {
+            method,
+            headers: myHeaders,
+            body: JSON.stringify(bodyData),
+            redirect: "follow"
+        };
+
+        Swal.showLoading(); // optional: show loading before fetch
+
+        fetch(url, requestOptions)
+            .then((response) => {
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                return response.json();
+            })
+            .then((result) => {
+                Swal.close();
+                if (result?.status) {
+                    setSelectedService("");
+                    setFormData({});
+                    setIsEdit(false);
+                    setEditData(null);
+                    fetchData(); // refresh data
+                    Swal.fire({
+                        icon: "success",
+                        title: "Success!",
+                        text: result.message || "Your request was processed successfully."
+                    });
+                    if (isEdit) setEditData(null); // reset edit mode
+                } else {
+                    Swal.fire({
+                        icon: "error",
+                        title: "Error",
+                        text: result.message || "Something went wrong. Please try again."
+                    });
+                }
+            })
+            .catch((error) => {
+                Swal.close();
+                Swal.fire({
+                    icon: "error",
+                    title: "Request Failed",
+                    text: error.message || "Network error occurred."
+                });
+            });
+    };
+
+
+
+
+    console.log('data', data)
 
     const handleDownload = async (type) => {
-        const element = formRef.current;
-        if (!element) return;
+        if (!formRef.current) return;
 
         Swal.fire({
             title: 'Please wait...',
@@ -1629,58 +1661,62 @@ console.log('data',data)
             didOpen: () => Swal.showLoading()
         });
 
-
         try {
+            // PDF
             if (type === "pdf") {
-                if (formData.selectedService === "court") {
+                if (selectedService === "court") {
                     await generateCourtPDF(formData.court);
-                } else if (formData.selectedService === "police") {
+                } else if (selectedService === "police") {
                     await generatePolicePDF(formData.police);
                 }
             }
 
-            if (type === "png" || type === "jpg") {
+            // PNG or JPG
+            else if (type === "png" || type === "jpg") {
                 let blob;
-                if (formData.selectedService === "court") {
+                if (selectedService === "court") {
                     blob = await generateCourtPDFBlob(formData.court);
-                } else if (formData.selectedService === "police") {
+                } else if (selectedService === "police") {
                     blob = await generatePolicePDFBlob(formData.police);
                 }
 
                 const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.js');
-                const pdfjsWorker = await import('pdfjs-dist/legacy/build/pdf.worker.entry.js');
-                pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+                pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
-                const loadingTask = pdfjsLib.getDocument({ data: await blob.arrayBuffer() });
-                const pdf = await loadingTask.promise;
+                const pdf = await pdfjsLib.getDocument({ data: await blob.arrayBuffer() }).promise;
                 const page = await pdf.getPage(1);
 
-                const viewport = page.getViewport({ scale: 2 }); // Scale for quality
+                const viewport = page.getViewport({ scale: 2 });
                 const canvas = document.createElement("canvas");
-                const context = canvas.getContext("2d");
                 canvas.width = viewport.width;
                 canvas.height = viewport.height;
+                const context = canvas.getContext("2d");
 
-                await page.render({ canvasContext: context, viewport: viewport }).promise;
+                await page.render({ canvasContext: context, viewport }).promise;
 
                 const imageDataURL = canvas.toDataURL(type === "jpg" ? "image/jpeg" : "image/png");
 
                 const a = document.createElement("a");
                 a.href = imageDataURL;
-                a.download = `Court_Record_Report.${type}`;
+                a.download = `${selectedService === "court" ? "Court_Record_Report" : "Police_Record_Report"}.${type}`;
                 a.click();
             }
 
-
-            if (type === "word") {
-                if (formData.selectedService === "court") {
+            // Word
+            else if (type === "word") {
+                if (selectedService === "court") {
                     await generateCourtDOCX(formData.court);
-                } else if (formData.selectedService === "police") {
-                    await generatePoliceDOCX(formData.police); // fixed: formData.police instead of formData.court
+                } else if (selectedService === "police") {
+                    await generatePoliceDOCX(formData.police);
                 }
             }
-            fetchApi(type)
-            Swal.close(); // Done
+
+            // Optional API call after download
+            if (typeof fetchApi === "function") {
+                await fetchApi(type, isEdit);
+            }
+
+            Swal.close();
         } catch (error) {
             console.error('Download failed:', error);
             Swal.fire({
@@ -1690,11 +1726,95 @@ console.log('data',data)
             });
         }
     };
+
     useEffect(() => {
         fetchData();
     }, [])
+    const handleApplicationDelete = (id) => {
+        Swal.fire({
+            title: "Are you sure?",
+            text: "Do you really want to delete this application? This action cannot be undone!",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#3085d6",
+            cancelButtonColor: "#d33",
+            confirmButtonText: "Yes, delete it!",
+            cancelButtonText: "No, cancel!",
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // If user clicks "Yes"
+                setDeleteLoading(id);
+                setActiveId(id);
+                const formdata = new FormData();
 
+                const adminId = JSON.parse(localStorage.getItem("admin"))?.id;
+                const token = localStorage.getItem('_token');
+                const requestOptions = {
+                    method: "DELETE",
+                    body: formdata,
+                    redirect: "follow"
+                };
+                const url = `https://api.screeningstar.co.in/integrated-service/delete?id=${id}&admin_id=${adminId}&_token=${token}`;
+                fetch(url, requestOptions)
+                    .then((response) => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then((result) => {
+                        // console.log("Delete success:", result);
+                        if (result.status) {
+                            Swal.fire('Deleted!', result.message, 'success');
+                            fetchData(); // Refresh the data after success
+                        } else {
+                            Swal.fire('Error', result.message, 'error');
+                        }
+                    })
+                    .catch((error) => {
+                        console.error("Error Deleting application:", error);
 
+                        // Extract or set dynamic error message based on the error
+                        const errorMessage = error.message.includes('HTTP error')
+                            ? `Failed to Delete application. Server returned status ${error.message.split(': ')[1]}`
+                            : 'Failed to Delete application. Please try again.';
+
+                        Swal.fire('Error', errorMessage, 'error');
+                    })
+                    .finally(() => {
+                        setDeleteLoading(null);
+                        setActiveId(null);
+                    });
+            } else if (result.dismiss === Swal.DismissReason.cancel) {
+                // If user clicks "No"
+                Swal.fire('Cancelled', '', 'info');
+            }
+        });
+    };
+    const handleEdit = (row) => {
+        if (editData === row) {
+            setSelectedService("");
+            setFormData({});
+            setIsEdit(false);
+            setEditData(null);
+        } else {
+            setEditData(row);
+            setIsEdit(true);
+
+            const parsedData = JSON.parse(row.data || "{}");
+            if (row.type === "police") {
+                setSelectedService("police");
+                setFormData((prev) => ({ ...prev, police: parsedData }));
+            } else if (row.type === "court") {
+                setSelectedService("court");
+                setFormData((prev) => ({
+                    ...prev,
+                    court: { ...parsedData, courtTable: parsedData.courtTable || [] },
+                }));
+            }
+        }
+    };
+console.log('formDatafinal',formData)
     {
         loading && (
             <div className="flex w-full bg-white  justify-center items-center h-20">
@@ -1745,9 +1865,6 @@ console.log('data',data)
                                         })}
                                     </div>
                                 )}
-
-
-
                                 {/* Court Report Fields */}
                                 {selectedService === "court" && (
                                     <>
@@ -1826,6 +1943,7 @@ console.log('data',data)
                                                                 </td>
                                                             </tr>
                                                         ))}
+
                                                         {(formData.court?.courtTable || []).length === 0 && (
                                                             <tr>
                                                                 <td colSpan={5} className="text-center py-4 text-gray-500">
@@ -1889,6 +2007,8 @@ console.log('data',data)
                                 <thead className="bg-gray-100">
                                     <tr>
                                         <th className="px-4 py-2 border">SR.</th>
+                                        <th className="px-4 py-2 border">Full Name</th>
+                                        <th className="px-4 py-2 border">Reference Id</th>
                                         <th className="px-4 py-2 border">EXPORT FORMAT</th>
                                         <th className="px-4 py-2 border">TYPE</th>
                                         <th className="px-4 py-2 border">DATA</th>
@@ -1899,21 +2019,46 @@ console.log('data',data)
                                     {data.map((row, index) => (
                                         <tr key={index} className="bg-white">
 
-                                            <td className="border px-2 py-2">
+                                            <td className="border text-center px-2 py-2">
                                                 {index + 1}
                                             </td>
-
-                                            <td className="border px-2 py-2 text-center">
+                                            <td className="border text-center px-2 py-2">
+                                                {JSON.parse(row.data).full_name || 'N/A'}
+                                            </td>
+                                            <td className="border text-center px-2 py-2">
+                                                {JSON.parse(row.data).reference_id || 'N/A'}
+                                            </td>
+                                            <td className="border px-2 uppercase py-2 text-center">
                                                 {row.export_format || 'N/A'}
                                             </td>
                                             <td className="border px-2 py-2 text-center">
                                                 {row.type || 'N/A'}
                                             </td>
                                             <td className="border px-2 py-2 text-center">
-                                                <button onClick={() => openModal(row.data)}>View Data</button>
+                                                <button className={`p-6 py-3 font-bold whitespace-nowrap transition duration-200 text-white rounded-md bg-sky-500 hover:bg-sky-600 hover:scale-105
+                                    `} onClick={() => openModal(row.data)}>View Data</button>
                                             </td>
                                             <td className="border px-2 py-2 text-center">
-                                                <button>Action</button>
+                                                <div className='flex gap-4 justify-center items-center'>
+                                                    <button
+                                                        onClick={() => handleEdit(row)}
+                                                        className={`p-6 py-3 font-bold whitespace-nowrap transition duration-200 text-white rounded-md
+              ${editData === row
+                                                                ? "bg-orange-500 hover:bg-orange-600 hover:scale-105"
+                                                                : "bg-green-500 hover:bg-green-600 hover:scale-105"}`}
+                                                    >
+                                                        {editData === row ? 'Cancel' : 'Edit'}
+                                                    </button>
+
+                                                    <button
+                                                        onClick={() => handleApplicationDelete(row.id)}
+                                                        className={`p-6 py-3 font-bold whitespace-nowrap transition duration-200 text-white rounded-md bg-red-500 hover:bg-red-600 hover:scale-105 ${deleteLoading === row.id ? 'opacity-50 cursor-not-allowed' : ''
+                                                            }
+                                    `} disabled={deleteLoading === row.id}
+                                                    >
+
+                                                        {deleteLoading === row.id ? ' Deleting...' : ' Delete'}</button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
