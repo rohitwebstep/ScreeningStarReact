@@ -35,6 +35,7 @@ const ClientManager = () => {
     const [spocID, setSpocID] = useState('');
     const [spocs, setSpocs] = useState([]);
     const [services, setServices] = useState([]);
+    const [rawServices, setRawServices] = useState([]);
     const [loading, setLoading] = useState(true);
     const [loadingbtn, setLoadingbtn] = useState(false);
     const [error, setError] = useState(null);
@@ -81,6 +82,7 @@ const ClientManager = () => {
         }));
     });
 
+    // console.log(`allServices - `, allServices);
 
     // Determine the services to display on the current page
     const startIndex = (currentPage - 1) * entriesPerPage;
@@ -136,6 +138,7 @@ const ClientManager = () => {
                 setTableData(result.data.clientApplications);
                 const customerInfo = result.data.customer;
                 const services = customerInfo.services ? JSON.parse(customerInfo.services) : [];
+                setRawServices(services);
                 setServices(services);
                 setFormData(prevFormData => ({
                     ...prevFormData,
@@ -153,7 +156,7 @@ const ClientManager = () => {
                     locationExist: spoc.location,
                 }));
 
-                console.log('spocDetailss', spocDetailss);
+                // console.log('spocDetailss', spocDetailss);
 
                 const isExist = {
                     employeIdExist: spocDetailss.some(spoc => spoc.employeIdExist && spoc.employeIdExist.trim() !== ""),
@@ -166,7 +169,7 @@ const ClientManager = () => {
                 const visiblefeilds = JSON.parse(customerInfo.visible_fields);
                 setVisibleFeilds(visiblefeilds);
             } else {
-                console.log('Error fetching data:', response.statusText);
+                // console.log('Error fetching data:', response.statusText);
             }
         } catch (error) {
             console.error('Error fetching data:', error);
@@ -204,25 +207,25 @@ const ClientManager = () => {
             .map(service => {
                 const trimmedService = service.trim();  // Trim each service string
                 const serviceNumber = parseInt(trimmedService, 10);  // Convert to number
-                console.log(`Trimmed Service: "${trimmedService}", Parsed Number: ${serviceNumber}`);
+                // console.log(`Trimmed Service: "${trimmedService}", Parsed Number: ${serviceNumber}`);
                 return serviceNumber; // Return the converted number
             });
 
         // Log the final array of selected service IDs
-        console.log("selectedServices -", selectedServices);
+        // console.log("selectedServices -", selectedServices);
 
         // Map over services and set isSelected based on selectedServices array
         const updatedServices = services.map(group => {
-            console.log(`Processing group: ${group.group_title} (ID: ${group.group_id})`);
+            // console.log(`Processing group: ${group.group_title} (ID: ${group.group_id})`);
 
             return {
                 ...group, // Keep the existing properties of the group
                 services: group.services.map(service => {
-                    console.log(`Processing service: ${service.serviceTitle} (ID: ${service.serviceId})`);
+                    // console.log(`Processing service: ${service.serviceTitle} (ID: ${service.serviceId})`);
 
                     // Check if the serviceId is in selectedServices array
                     const isSelected = selectedServices.includes(service.serviceId);
-                    console.log(`Is service ${service.serviceTitle} selected? ${isSelected}`);
+                    // console.log(`Is service ${service.serviceTitle} selected? ${isSelected}`);
 
                     // Return the updated service object with isSelected property
                     return {
@@ -234,7 +237,7 @@ const ClientManager = () => {
         });
 
         // Log the final updated services array
-        console.log("Updated Services: ", updatedServices);
+        // console.log("Updated Services: ", updatedServices);
         setServices(updatedServices);
         setFormData({
             id: item.id,
@@ -261,12 +264,12 @@ const ClientManager = () => {
 
         // Log formData (Note: This might not show the updated state immediately due to setState's async nature)
     };
-    console.log('editdata', formData);
+    // console.log('editdata', formData);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoadingbtn(true); // Start loading when the form is submitted
-        console.log('first -0', branchData);
+        // console.log('first -0', branchData);
         const branch_id = branchData?.branch_id;
         const customer_id = branchData?.customer_id;
         const _token = localStorage.getItem("branch_token");
@@ -291,12 +294,12 @@ const ClientManager = () => {
             .join(','); // Join them into a comma-separated string
 
         const uploadCustomerLogo = async (insertedId, new_application_id) => {
-            console.log('files - - - ', files)
+            // console.log('files - - - ', files)
             if (branchData) {
                 const { customer_id, id: branch_id } = branchData;
                 const branch_token = localStorage.getItem("branch_token");
                 const fileCount = Object.keys(files).length;
-                console.log('files - - - ', files, 'count', fileCount)
+                // console.log('files - - - ', files, 'count', fileCount)
 
                 const serviceData = JSON.stringify(selectedServiceIds);
 
@@ -340,7 +343,7 @@ const ClientManager = () => {
 
         const fileCount = Object.keys(files).length;
 
-        console.log(`formData - `, formData);
+        // console.log(`formData - `, formData);
 
         let payload = {
             client_application_id: formData.id,
@@ -369,7 +372,7 @@ const ClientManager = () => {
             send_mail: fileCount === 0 ? 1 : 0,
         };
 
-        console.log('first -1', branchData);
+        // console.log('first -1', branchData);
 
         if (branchData?.type == "sub_user") {
             payload.sub_user_id = `${branchData.id}`;
@@ -412,7 +415,7 @@ const ClientManager = () => {
                 }
 
                 const fileCount = Object.keys(files).length;
-                console.log('fileCount', fileCount);
+                // console.log('fileCount', fileCount);
 
                 if (fileCount > 0 && insertedId && new_application_id) {
                     await uploadCustomerLogo(insertedId, new_application_id);
@@ -531,61 +534,76 @@ const ClientManager = () => {
         setApplicantName(formData.fullName);
     };
 
+    const selectPackageById = (selectedPackageIds, rawServices, sendAll = false) => {
+        let showServices;
+        if (sendAll) {
+            showServices = rawServices;
+        } else {
+            // Create a new array of groups with filtered services
+            showServices = rawServices.map(group => {
+                const filteredServices = group.services
+                    .filter(service =>
+                        service.packages.some(pkg => selectedPackageIds.includes(pkg.name))
+                    )
+                    .map(service => ({
+                        ...service,
+                        isSelected: true
+                    }));
 
-    const selectPackageById = (selectedPackageIds) => {
-        // Iterate over the services and update isSelected based on selected package IDs
-        services.forEach(group => {
-            group.services.forEach(service => {
-                // Check if any package within the service matches the selected package ID
-                const matchingPackage = service.packages.some(pkg => selectedPackageIds.includes(pkg.name));
-
-                // Update the service's isSelected based on whether any package matches
-                service.isSelected = matchingPackage;
+                return {
+                    ...group,
+                    services: filteredServices
+                };
             });
-        });
+        }
 
-        // Optional: Log the updated services to verify
-        console.log(services);
+        setServices(showServices);
+
+        // Log the updated services to verify
+        // console.log("HERE - ", services);
     };
 
+
     const handlePackageChange = (selectedOptions) => {
-        console.log("handlePackageChange triggered");
+        // console.log("handlePackageChange triggered");
         console.log("Selected Options:", selectedOptions);
 
         const selectedPackageIds = selectedOptions?.map(option => option.value) || [];
-        console.log("Mapped Selected Package IDs:", selectedPackageIds);
+        // console.log("Mapped Selected Package IDs:", selectedPackageIds);
 
         const isSelectAllSelected = selectedPackageIds.includes("select_all");
         const isCurrentlyAllSelected = formData?.package?.includes("select_all");
 
         if (isSelectAllSelected && !isCurrentlyAllSelected) {
-            console.log('"select_all" selected. Selecting all services...');
+            // console.log('"select_all" selected. Selecting all services...');
 
             // Select all services
             services.forEach(group => {
                 group.services.forEach(service => {
                     service.isSelected = true;
-                    console.log(`Service ${service.name} selected`);
+                    // console.log(`Service ${service.name} selected`);
                 });
             });
+
+            selectPackageById(selectedPackageIds, rawServices, true);
 
             const updatedFormData = {
                 ...formData,
                 package: ["select_all"]
             };
             setFormData(updatedFormData);
-            console.log("FormData updated with select_all");
+            // console.log("FormData updated with select_all");
             return;
-        }
+        } else if (isSelectAllSelected && isCurrentlyAllSelected) {
+            // console.log('"select_all" clicked again. Deselecting all services...');
 
-        if (isSelectAllSelected && isCurrentlyAllSelected) {
-            console.log('"select_all" clicked again. Deselecting all services...');
+            selectPackageById(selectedPackageIds, rawServices, true);
 
             // Deselect all services
             services.forEach(group => {
                 group.services.forEach(service => {
                     service.isSelected = false;
-                    console.log(`Service ${service.name} deselected`);
+                    // console.log(`Service ${service.name} deselected`);
                 });
             });
 
@@ -594,33 +612,37 @@ const ClientManager = () => {
                 package: []
             };
             setFormData(updatedFormData);
-            console.log("FormData cleared");
+            // console.log("FormData cleared");
             return;
         }
 
         if (selectedPackageIds.length === 0) {
-            console.log("No packages selected. Deselecting all services...");
+            // console.log("No packages selected. Deselecting all services...");
+
+            selectPackageById(selectedPackageIds, rawServices, true);
 
             services.forEach(group => {
                 group.services.forEach(service => {
                     service.isSelected = false;
-                    console.log(`Service ${service.name} deselected`);
+                    // console.log(`Service ${service.name} deselected`);
                 });
             });
 
+
             setFormData({ ...formData, package: [] });
             return;
+        } else {
+            // console.log("Specific packages selected. Matching services...");
+            selectPackageById(selectedPackageIds, rawServices);
+
+            const updatedFormData = {
+                ...formData,
+                package: selectedPackageIds
+            };
+            setFormData(updatedFormData);
+            // console.log("FormData updated with specific packages");
         }
 
-        console.log("Specific packages selected. Matching services...");
-        selectPackageById(selectedPackageIds);
-
-        const updatedFormData = {
-            ...formData,
-            package: selectedPackageIds
-        };
-        setFormData(updatedFormData);
-        console.log("FormData updated with specific packages");
     };
 
 
@@ -660,7 +682,7 @@ const ClientManager = () => {
         setIsModalOpen(false);
         setModalServices([]);
     };
-    console.log('visibleFeilds', visibleFeilds)
+    // console.log('visibleFeilds', visibleFeilds)
     // console.log('Client Spoc  data is -', clientSpocName);
     const Loader = () => (
         <div className="flex w-full justify-center items-center h-20">
@@ -697,7 +719,7 @@ const ClientManager = () => {
         Array.isArray(formData.package)
             ? formData.package.map(pkg => ({ label: pkg, value: pkg }))
             : [];
-    console.log('myipadress is', ipAddress);
+    // console.log('myipadress is', ipAddress);
     return (
         <div className="bg-[#c1dff2]  border border-black " ref={clientEditRef} id="clientedit">
             <div className="bg-white md:p-12 p-6 w-full mx-auto">
@@ -720,7 +742,7 @@ const ClientManager = () => {
 
                             {/* Full Name */}
                             <div className="w-full">
-                                <label htmlFor="fullName" className="block text-left w-full  m-auto mb-2 text-gray-700">Full Name of the Applicant<span className="text-red-500 text-xl" >*</span></label>
+                                <label htmlFor="fullName" className="block text-left w-full  m-auto mb-2 text-gray-700">{formData.generate_report_type && formData.generate_report_type.toLowerCase() == "vendor confidential screening report" ? "Full Name of Organization" : "Full Name of the Applicant"}<span className="text-red-500 text-xl" >*</span></label>
                                 <input
                                     type="text"
                                     name="fullName"
@@ -780,22 +802,25 @@ const ClientManager = () => {
                                 )
                             }
                             {
-                                visibleFeilds.includes("employeeId") && (
-
+                                visibleFeilds.includes("employeeId") &&
+                                (!formData.generate_report_type ||
+                                    formData.generate_report_type.toLowerCase() !== "vendor confidential screening report") && (
                                     <div className="w-full">
-                                        <label htmlFor="employeeId" className="block text-left w-full  m-auto mb-2 text-gray-700">Employee ID  (Optional)</label>
+                                        <label htmlFor="employeeId" className="block text-left w-full m-auto mb-2 text-gray-700">
+                                            Employee ID  (Optional)
+                                        </label>
                                         <input
                                             type="text"
                                             name="employeeId"
                                             placeholder="EMPLOYEE ID"
-                                            value={formData.employeeId}
+                                            value={formData.employeeId || ""}
                                             onChange={handleChange}
                                             className={`w-full m-auto p-3 mb-[20px] border ${errors.employeeId ? 'border-red-500' : 'border-gray-300'} rounded-md`}
                                         />
                                         {errors.employeeId && <p className="text-red-500 text-sm">{errors.employeeId}</p>}
                                     </div>
-                                )}
-
+                                )
+                            }
 
                             {
                                 visibleFeilds.includes("location") && (
@@ -1224,84 +1249,85 @@ const ClientManager = () => {
                                     </tr>
                                 ) : (
                                     <>
-                                        {console.log(`tableData - `, tableData)}
-                                        {paginatedData.map((item, index) => (
-                                            <tr key={item.id} className="text-center">
-                                                <td className="border border-black px-4 py-2">
-                                                    {index + 1 + (tableCurrentPage - 1) * rowsPerPage}
-                                                </td>
-                                                <td className="border border-black px-4 text-center py-2">
-                                                    <div className='flex justify-center'>
-                                                        <img src={item.photo ? item.photo : `${Default}`} alt="Photo" className="h-10 w-10 object-cover" />
-                                                    </div>
-                                                </td>
-                                                <td className="border border-black px-4 py-2 text-left">{item.name}</td>
-                                                <td className="border border-black px-4 py-2 text-left">{item.generate_report_type}</td>
-                                                <td className="border border-black px-4 py-2 text-left">{item.application_id}</td>
-                                                {isExist.employeIdExist && (
-                                                    <td className="border border-black px-4 py-2 text-left">{item.employee_id || "null"}</td>
-                                                )}
-                                                {isExist.locationExist && (
-                                                    <td className="border border-black px-4 py-2 text-left ">{item.location}</td>
-                                                )}
-                                                <td className="border border-black px-4 py-2  text-left">
-                                                    <div className='flex whitespace-nowrap'>
-                                                        {Array.isArray(item.serviceNames) && item.serviceNames.length > 0 ? (
-                                                            item.serviceNames.length === 1 ? (
-                                                                // Single service
-                                                                <span className="px-4 py-2 bg-blue-100 border border-blue-500 rounded-lg text-sm">
-                                                                    {typeof item.serviceNames[0] === "string"
-                                                                        ? item.serviceNames[0]
-                                                                        : item.serviceNames[0].join(", ")}
-                                                                </span>
+                                        {
+                                            paginatedData.map((item, index) => (
+                                                <tr key={item.id} className="text-center">
+                                                    <td className="border border-black px-4 py-2">
+                                                        {index + 1 + (tableCurrentPage - 1) * rowsPerPage}
+                                                    </td>
+                                                    <td className="border border-black px-4 text-center py-2">
+                                                        <div className='flex justify-center'>
+                                                            <img src={item.photo ? item.photo : `${Default}`} alt="Photo" className="h-10 w-10 object-cover" />
+                                                        </div>
+                                                    </td>
+                                                    <td className="border border-black px-4 py-2 text-left">{item.name}</td>
+                                                    <td className="border border-black px-4 py-2 text-left">{item.generate_report_type}</td>
+                                                    <td className="border border-black px-4 py-2 text-left">{item.application_id}</td>
+                                                    {isExist.employeIdExist && (
+                                                        <td className="border border-black px-4 py-2 text-left">{item.employee_id || "null"}</td>
+                                                    )}
+                                                    {isExist.locationExist && (
+                                                        <td className="border border-black px-4 py-2 text-left ">{item.location}</td>
+                                                    )}
+                                                    <td className="border border-black px-4 py-2  text-left">
+                                                        <div className='flex whitespace-nowrap'>
+                                                            {Array.isArray(item.serviceNames) && item.serviceNames.length > 0 ? (
+                                                                item.serviceNames.length === 1 ? (
+                                                                    // Single service
+                                                                    <span className="px-4 py-2 bg-blue-100 border border-blue-500 rounded-lg text-sm">
+                                                                        {typeof item.serviceNames[0] === "string"
+                                                                            ? item.serviceNames[0]
+                                                                            : item.serviceNames[0].join(", ")}
+                                                                    </span>
+                                                                ) : (
+                                                                    // Multiple services
+                                                                    <>
+                                                                        {typeof item.serviceNames[0] === "string" ? (
+                                                                            <span className="px-4 py-2 bg-blue-100 border border-blue-500 rounded-lg text-sm">
+                                                                                {item.serviceNames[0]}
+                                                                            </span>
+                                                                        ) : (
+                                                                            <span className="px-4 py-2 bg-blue-100 border border-blue-500 rounded-lg text-sm">
+                                                                                {item.serviceNames[0].join(", ")}
+                                                                            </span>
+                                                                        )}
+                                                                        <button
+                                                                            className="text-blue-500 ml-2"
+                                                                            onClick={() => handleViewMore(item.serviceNames)}
+                                                                        >
+                                                                            View More
+                                                                        </button>
+                                                                    </>
+                                                                )
                                                             ) : (
-                                                                // Multiple services
-                                                                <>
-                                                                    {typeof item.serviceNames[0] === "string" ? (
-                                                                        <span className="px-4 py-2 bg-blue-100 border border-blue-500 rounded-lg text-sm">
-                                                                            {item.serviceNames[0]}
-                                                                        </span>
-                                                                    ) : (
-                                                                        <span className="px-4 py-2 bg-blue-100 border border-blue-500 rounded-lg text-sm">
-                                                                            {item.serviceNames[0].join(", ")}
-                                                                        </span>
-                                                                    )}
-                                                                    <button
-                                                                        className="text-blue-500 ml-2"
-                                                                        onClick={() => handleViewMore(item.serviceNames)}
-                                                                    >
-                                                                        View More
-                                                                    </button>
-                                                                </>
-                                                            )
-                                                        ) : (
-                                                            // No services or serviceNames is not an array
-                                                            <span className="px-4 py-2 bg-red-100 border border-red-500 rounded-lg">
-                                                                You have no services
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                                <td className="border  border-black px-4 py-2">
-                                                    <button
-                                                        className="bg-green-500 hover:scale-105 transition duration-200  text-white px-4 py-2 rounded-md"
-                                                        onClick={() => handleEdit(item)}
-                                                    >
-                                                        Edit
-                                                    </button>
-                                                </td>
-                                                <td className="border  border-black px-4 py-2">
-                                                    <button
-                                                        className={`bg-red-500 hover:scale-105 transition duration-200 text-white px-4 py-2 rounded-md 
+                                                                // No services or serviceNames is not an array
+                                                                <span className="px-4 py-2 bg-red-100 border border-red-500 rounded-lg">
+                                                                    You have no services
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    <td className="border  border-black px-4 py-2">
+                                                        <button
+                                                            className="bg-green-500 hover:scale-105 transition duration-200  text-white px-4 py-2 rounded-md"
+                                                            onClick={() => handleEdit(item)}
+                                                        >
+                                                            Edit
+                                                        </button>
+                                                    </td>
+                                                    <td className="border  border-black px-4 py-2">
+                                                        <button
+                                                            className={`bg-red-500 hover:scale-105 transition duration-200 text-white px-4 py-2 rounded-md 
         ${loadingStates[item.id] ? 'opacity-50 cursor-not-allowed' : 'opacity-100'}`}
-                                                        onClick={() => handleDelete(item.id)}
-                                                        disabled={loadingStates[item.id]} // Disable button when loading
-                                                    >
-                                                        {loadingStates[item.id] ? 'Deleting...' : 'Delete'}
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))}
+                                                            onClick={() => handleDelete(item.id)}
+                                                            disabled={loadingStates[item.id]} // Disable button when loading
+                                                        >
+                                                            {loadingStates[item.id] ? 'Deleting...' : 'Delete'}
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        }
                                     </>
                                 )}
                             </tbody>

@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { } from "react-icons/fc";
 import { FaHome, FaBars, FaUserTie } from "react-icons/fa";
 import { RiArrowRightWideLine } from "react-icons/ri";
-import Logo from "../imgs/track-master2.png";
+import Logo from "../imgs/screeningLogoNew.png";
 import { IoNotifications } from "react-icons/io5";
 import { CgProfile } from "react-icons/cg";
 import {
@@ -476,7 +476,7 @@ const AdminHeader = () => {
             </Link>
             <Link to="/" onClick={() => handleSectionClick('Home')}>
               <div className="border orangeBorder rounded-md p-1 shadow-md cursor-pointer">
-                <img src={Logo} alt="Logo" className="h-10 md:h-[5.5rem] md:w-[13.5rem] w-auto " />
+                <img src={Logo} alt="Logo" className=" md:w-[13.5rem] w-auto " />
               </div>
             </Link>
             <span className="text-xs md:text-lg hidden lg:block font-bold text-[#4d606b]">Hi {adminName}</span>

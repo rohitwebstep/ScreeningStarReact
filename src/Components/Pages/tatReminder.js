@@ -3,7 +3,7 @@ import * as XLSX from 'xlsx';
 import { useNavigate } from 'react-router-dom';
 import { useApiLoading } from '../ApiLoadingContext';
 import Swal from 'sweetalert2';
-
+import axios from 'axios';
 const TATReminder = () => {
   const navigate = useNavigate();
   const { validateAdminLogin, setApiLoading, apiLoading } = useApiLoading();
@@ -70,6 +70,53 @@ const TATReminder = () => {
       setLoading(false);
     }
   }, [storedToken, admin_id]);
+
+const handleDelete = (app_id) => {
+  Swal.fire({
+    title: "Are you sure?",
+    text: "Tat Reminder will be deleted for this application.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#3085d6",
+    cancelButtonColor: "#d33",
+    confirmButtonText: "Yes, delete it!",
+  }).then(async (swalResult) => {
+    if (swalResult.isConfirmed) {
+      const admin_id = JSON.parse(localStorage.getItem("admin"))?.id;
+      const storedToken = localStorage.getItem("_token");
+
+      try {
+        const response = await axios.delete(
+          `https://api.screeningstar.co.in/tat-delay/delete`,
+          {
+            params: {
+              client_application_id: app_id,
+              admin_id: admin_id,
+              _token: storedToken,
+            },
+          }
+        );
+
+        // Check and store a new token if provided in the API response
+        const newToken =
+          response.data?.token || response.data?._token || storedToken;
+        if (newToken) {
+          localStorage.setItem("_token", newToken);
+        }
+
+        Swal.fire("Deleted!", "Deleted successfully.", "success");
+        fetchData();
+      } catch (error) {
+        console.error("Error deleting package:", error);
+        Swal.fire(
+          "Error!",
+          "Something went wrong while deleting.",
+          "error"
+        );
+      }
+    }
+  });
+};
 
   // Initialize component
   useEffect(() => {
@@ -312,6 +359,7 @@ const TATReminder = () => {
                 <th className="border border-black px-4 py-2">Third Insuff Date</th>
                 <th className="border border-black px-4 py-2">Third Insuff Cleared</th>
                 <th className="border border-black px-4 py-2  ">Remarks & Reason for Delay</th>
+                <th className="border border-black px-4 py-2  ">Action</th>
 
               </tr>
             </thead>
@@ -376,6 +424,16 @@ const TATReminder = () => {
                             {deleteLoading && activeId === application.client_application_id ? "Deleting..." : "Delete"}
                           </button>
                         </td> */}
+                        <td className="border border-black px-4 py-2">
+                          <button
+                            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md hover:scale-105"
+                            onClick={() =>
+                              handleDelete(application.client_application_id)
+                            }
+                          >
+                           Delete From Reminder
+                          </button>
+                        </td> 
                   </tr>
                 ))) : (
                 <tr>

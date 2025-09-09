@@ -8,7 +8,7 @@ import { } from "react-icons/fc";
 import { FaHome, FaBars, FaUserTie } from "react-icons/fa";
 // import { FaHome } from "react-icons/fa";
 import { RiArrowRightWideLine } from "react-icons/ri";
-import Logo from "../../imgs/track-master2.png";
+import Logo from "../../imgs/screeningLogoNew.png";
 import { IoNotifications } from "react-icons/io5";
 import { CgProfile } from "react-icons/cg";
 import { MobileContext } from "../MobileContext";
@@ -257,7 +257,7 @@ const UserHeader = () => {
             </Link>
             <div className="border newBorderOrange  rounded-md p-2 shadow-md">
               <Link to="/user-dashboard" onClick={() => handleSectionClick('Home')}>
-                <img src={Logo} alt="Logo" className="h-10 md:h-[5.5rem] md:w-[13.5rem] w-auto " />
+                <img src={Logo} alt="Logo" className="md:w-[13.5rem] w-auto " />
               </Link>
             </div>
             <span className="text-xs md:text-lg hidden  lg:block font-bold text-[#4d606b]">Hi User...</span>

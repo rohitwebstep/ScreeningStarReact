@@ -92,6 +92,7 @@ const GenerateReport = () => {
     const [submitLoading, setSubmitLoading] = useState(false);
     const [adminNamesNew, setAdminNamesNew] = useState([]);
     const [servicesForm, setServicesForm] = useState('');
+    const [genrateReportType, setGenrateReportType] = useState('');
     const [applicationRefID, setApplicationRefID] = useState('');
     const [servicesDataInfo, setServicesDataInfo] = useState('');
     const [servicesData, setServicesData] = useState([]);
@@ -121,7 +122,6 @@ const GenerateReport = () => {
         client_applicant_gender: '',
         client_organization_code: '',
         updated_json: {
-            generate_report_type: '',
             month_year: '',
             initiation_date: '',
             organization_name: '',
@@ -464,6 +464,7 @@ const GenerateReport = () => {
                     localStorage.setItem("_token", newToken);
                 }
                 const applicationData = result.application;
+                setGenrateReportType(applicationData.generate_report_type)
                 const cmtData = result.CMTData || [];
                 if (!cmtData.deadline_date) {
                     cmtData.deadline_date = cmtData.new_deadline_date;
@@ -504,7 +505,6 @@ const GenerateReport = () => {
                     client_applicant_gender: applicationData.gender || prevFormData.client_applicant_gender || '',
                     client_organization_code: result.customerInfo.client_unique_id || cmtData.client_code || prevFormData.updated_json.client_code || '',
                     updated_json: {
-                        generate_report_type: cmtData.generate_report_type || applicationData.generate_report_type || prevFormData.updated_json.generate_report_type || '',
                         month_year: cmtData.month_year || applicationData.month_year || prevFormData.updated_json.month_year || '',
                         verification_purpose: cmtData.verification_purpose || prevFormData.updated_json.verification_purpose || '',
                         employee_id: cmtData.employee_id || applicationData.employee_id || prevFormData.updated_json.employee_id || '',
@@ -1828,6 +1828,27 @@ const GenerateReport = () => {
         // Log after the state update
         // console.log("State after update: ", selectedCheckbox);
     }, []);
+    function changeLabel(label) {
+
+        if (genrateReportType !== 'VENDOR CONFIDENTIAL SCREENING REPORT') {
+            return label;
+        }
+
+        const labelChangeAsPerVendorOrBGV = {
+            "name of the applicant:": "Name of the Organization:",
+            "date of birth:": "Date of Incorporation:",
+            "applicant details": "ORGANISATION DETAILS"
+        };
+
+        if (label && typeof label === "string" && label.trim() !== "") {
+            const lowerLabel = label.trim().toLowerCase();
+            if (labelChangeAsPerVendorOrBGV.hasOwnProperty(lowerLabel)) {
+                return labelChangeAsPerVendorOrBGV[lowerLabel];
+            }
+        }
+
+        return label;
+    }
 
 
     const renderInput = (index, dbTable, input, annexureImagesSplitArr, label, inputColumn) => {
@@ -2573,7 +2594,7 @@ const GenerateReport = () => {
                                             )}
                                         </div>
                                         <div className="mb-4">
-                                            <label htmlFor="dob">Date Of Birth</label>
+                                            <label htmlFor="dob">{genrateReportType.toLowerCase() == "vendor confidential screening report" ? "Date of Incorporation" : "Date Of Birth"}</label>
                                             <DatePicker
                                                 id="dob"
                                                 selected={parseDate(formData.updated_json.dob)}
@@ -2937,7 +2958,7 @@ const GenerateReport = () => {
                                                                                             className="py-2 px-4  border md:w-1/3 whitespace-nowrap border-gray-300"
                                                                                             ref={(el) => (inputRefs.current["annexure"] = el)}
                                                                                         >
-                                                                                            {row.label}
+                                                                                            {changeLabel(row.label)}
                                                                                         </td>
 
                                                                                         {row.inputs.length === 1 ? (
@@ -3344,7 +3365,7 @@ const GenerateReport = () => {
                                         </select>
 
                                     </div>
-                                  
+
                                     <div className="mb-4">
                                         <label className='capitalize text-gray-500' htmlFor="Final Verification Status:">Final Verification Status:</label>
                                         <select name="updated_json.insuffDetails.final_verification_status"
