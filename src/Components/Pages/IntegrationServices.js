@@ -4,7 +4,7 @@ import Swal from 'sweetalert2'
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf';
 import pdfjsWorker from 'pdfjs-dist/legacy/build/pdf.worker.entry';
 // import "pdfjs-dist/build/pdf.worker.entry";
-import Signature from "../../imgs/Signature.png";
+import Signature from "../../imgs/servicesSeal.jpg";
 
 import {
     Packer,
@@ -39,6 +39,10 @@ const InactiveClients = () => {
     const navigate = useNavigate();
     const [inactiveClients, setInactiveClients] = useState([]);
     const [data, setData] = useState([]);
+    const [policeData, setPoliceData] = useState([]);
+    const [courtData, setCourtData] = useState([]);
+    const [fileName, setFileName] = useState("");
+    const [isFileValid, setIsFileValid] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const storedToken = localStorage.getItem('token');
@@ -46,7 +50,7 @@ const InactiveClients = () => {
     const [deleteLoading, setDeleteLoading] = useState(null);
     const [isEdit, setIsEdit] = useState(false);
     const [editData, setEditData] = useState(null);
-
+    const [rowsPerPage, setRowsPerPage] = useState(10);
     const [activeId, setActiveId] = useState(null);
     const formatDate = (date = new Date()) => {
         const day = String(date.getDate()).padStart(2, '0');
@@ -55,6 +59,8 @@ const InactiveClients = () => {
         return `${day}/${month}/${year}`;
     };
 
+    console.log('policeData', policeData);
+    console.log('courtData', courtData);
     const openModal = (jsonString) => {
         try {
             const parsed = JSON.parse(jsonString); // parse JSON safely
@@ -72,7 +78,7 @@ const InactiveClients = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [entriesPerPage, setEntriesPerPage] = useState(10);
     const optionsPerPage = [10, 50, 100, 200];
-    const totalPages = Math.ceil(inactiveClients.length / entriesPerPage);
+    const totalPages = Math.ceil(data.length / entriesPerPage);
 
     const [selectedService, setSelectedService] = useState("");
     const defaultCourtRows = [
@@ -128,6 +134,29 @@ const InactiveClients = () => {
             }
         });
     }
+    const handleSearch = (e) => {
+        setSearchTerm(e.target.value);
+        setCurrentPage(1)
+    };
+
+    const filteredData = data.filter((item) => {
+        const term = searchTerm.toLowerCase();
+
+        // safely access nested fields
+        const name = item?.data ? JSON.parse(item.data)?.full_name : "";
+        const id = item?.id ? item.id.toString() : "";
+        const type = item?.type ? item.type.toLowerCase() : "";
+        const format = item?.export_format ? item.export_format.toLowerCase() : "";
+
+        return (
+            name.toLowerCase().includes(term) ||
+            id.includes(term) ||
+            type.includes(term) ||
+            format.includes(term)
+        );
+    });
+
+    const paginatedData = filteredData.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
 
     function navbar(doc) {
         const pageWidth = doc.internal.pageSize.getWidth();
@@ -179,11 +208,25 @@ const InactiveClients = () => {
         return hrY + 10;
     }
 
-
+    const handlePageChange = (page) => {
+        ;
+        if (page >= 1 && page <= totalPages) {
+            setCurrentPage(page);
+        }
+    }
+    const cleanFieldNames = (row) => {
+        const cleanedRow = {};
+        Object.keys(row).forEach((key) => {
+            const cleanKey = key.replace(/^_+|_+$/g, ''); // Remove leading and trailing underscores
+            cleanedRow[cleanKey] = row[key];
+        });
+        return cleanedRow;
+    };
     const handleServiceChange = (e) => {
         const service = e.target.value;
 
         setSelectedService(e.target.value);
+        setFileName('');
 
         setFormData({
             selectedService: service,
@@ -192,6 +235,36 @@ const InactiveClients = () => {
                 : {} // police has no table
         });
     };
+
+    const csvHeadings = (csv) => {
+        const rows = csv.split('\n');
+        const headers = rows[0].split(','); // Get headers (first row)
+        return headers.map((header) => header);
+    };
+    const formatKey = (key) => {
+        // Convert to lowercase, remove special characters, replace spaces with underscores, and double underscores with a single one
+        return key
+            .toLowerCase()                    // Convert to lowercase
+            .replace(/[^a-z0-9\s_]/g, '')      // Remove special characters
+            .replace(/\s+/g, '_')              // Replace spaces with underscores
+            .replace(/__+/g, '_');             // Replace double underscores with single
+    };
+
+    const parseCSV = (csv) => {
+        const rows = csv.split('\n');
+        const headers = rows[0].split(','); // Get headers (first row)
+        const dataArray = rows.slice(1).map((row) => {
+            const values = row.split(',');
+            let rowObject = {};
+            headers.forEach((header, index) => {
+                const formattedHeader = formatKey(header);
+                rowObject[formattedHeader] = values[index] ? values[index].trim() : '';
+            });
+            return rowObject;
+        });
+        return dataArray;
+    };
+
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData((prev) => ({
@@ -200,6 +273,98 @@ const InactiveClients = () => {
         }));
     };
 
+    const handleFileUpload = (e, type) => {
+        const file = e.target.files[0];
+        if (file && file.type === 'text/csv') {
+            console.log("File selected:", file.name); // Log file selection
+
+            const reader = new FileReader();
+            reader.onload = () => {
+                const fileContent = reader.result;
+                console.log("File content loaded:", fileContent); // Log CSV content
+                setFileName(file.name);
+                setIsFileValid(true);
+                const parsedData = parseCSV(fileContent);
+                const csvHeaders = csvHeadings(fileContent); // Ass-uming csvHeadings correctly returns column headers.
+                console.log("Headers:", csvHeaders); // Log headers
+
+                const newData = [];
+                let hasError = false;
+
+                // Validate and process data
+                parsedData.forEach((row, index) => {
+                    const values = Object.values(row).map((value) => value.trim());
+                    const allEmpty = values.every((val) => val === '');
+                    const someEmpty = values.some((val) => val === '') && !allEmpty;
+
+                    if (allEmpty) {
+                        console.log(`Skipping row ${index + 1}: Empty row.`); // Skip empty rows
+                    } else if (someEmpty) {
+                        setFileName('');
+                        setIsFileValid(false);
+                        console.log(`Error in row ${index + 1}: Missing values.`); // Log error for incomplete rows
+                        hasError = true;
+
+                        // Check which fields are missing
+                        const missingFields = csvHeaders.filter((header, i) => !values[i] || values[i] === '');
+                        const errorMessage = `Row ${index + 1} is incomplete. Missing fields: ${missingFields.join(', ')}`;
+
+                        // Display the error
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: errorMessage,
+                        });
+                    } else {
+                        newData.push(cleanFieldNames(row)); // Only add valid rows
+                    }
+                });
+
+                if (hasError) {
+                    console.log("Errors found. Not processing file further."); // Stop processing on error
+                    return;
+                }
+
+                // Set valid data if no errors
+                if (type == "court") {
+                    setCourtData(newData)
+                } else {
+                    setPoliceData(newData);
+
+                }
+                console.log("Processed and set valid data:", newData); // Log valid data
+            };
+
+            reader.readAsText(file);
+        } else {
+            console.log("Invalid file type selected."); // Log invalid file type
+            Swal.fire({
+                icon: 'error',
+                title: 'Invalid File',
+                text: 'Please upload a valid CSV file.',
+            });
+        }
+    };
+    const downloadSampleFile = () => {
+        const sampleFile = "/police-record.csv"; // make sure this file exists in public/
+
+        const link = document.createElement("a");
+        link.href = sampleFile;
+        link.download = "police-record.csv"; // name of the downloaded file
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+    const downloadSampleFileCourt = () => {
+        const sampleFile = "/court-record.csv"; // make sure this file exists in public/
+
+        const link = document.createElement("a");
+        link.href = sampleFile;
+        link.download = "court-record.csv"; // name of the downloaded file
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
 
 
     const handleRowChange = (index, fieldKey, value) => {
@@ -1566,7 +1731,7 @@ const InactiveClients = () => {
     },
         []);
 
-    const fetchApi = (type, isEdit) => {
+    const submitRecords = (type, isEdit) => {
         const myHeaders = new Headers();
         myHeaders.append("Content-Type", "application/json");
 
@@ -1645,11 +1810,88 @@ const InactiveClients = () => {
                 });
             });
     };
+    const submitRecordsBulk = async (type) => {
+        const adminData = JSON.parse(localStorage.getItem("admin"));
+        const token = localStorage.getItem("_token");
 
+        if (!adminData || !token) {
+            Swal.fire({
+                icon: "error",
+                title: "Missing Credentials",
+                text: "Admin data or token is missing. Please login again."
+            });
+            return;
+        }
 
+        const myHeaders = new Headers();
+        myHeaders.append("Content-Type", "application/json");
 
+        const records = type === "policeBulk" ? policeData : courtData;
 
-    console.log('data', data)
+        // Remove duplicate records by reference_id
+        const uniqueRecords = Array.from(
+            new Map(records.map(r => [r.reference_id, r])).values()
+        );
+
+        const url = `https://api.screeningstar.co.in/integrated-service/create`;
+
+        Swal.fire({
+            title: "Processing...",
+            text: "Please wait while we process your records.",
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        try {
+            for (const record of uniqueRecords) {
+                const bodyData = {
+                    type: formData.selectedService,
+                    data: JSON.stringify(record), // single object
+                    export_format: "png",
+                    admin_id: adminData.id,
+                    _token: token
+                };
+
+                const requestOptions = {
+                    method: "POST",
+                    headers: myHeaders,
+                    body: JSON.stringify(bodyData),
+                    redirect: "follow"
+                };
+
+                const response = await fetch(url, requestOptions);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+                const result = await response.json();
+                if (!result?.status) {
+                    throw new Error(result.message || "Error processing record");
+                }
+            }
+
+            Swal.close();
+            setSelectedService("");
+            setFileName("");
+            setCourtData([]);
+            setPoliceData([]);
+            fetchData();
+            if (isEdit) setEditData(null);
+
+            Swal.fire({
+                icon: "success",
+                title: "Success!",
+                text: "All records were processed successfully."
+            });
+
+        } catch (error) {
+            Swal.close();
+            Swal.fire({
+                icon: "error",
+                title: "Request Failed",
+                text: error.message || "Something went wrong."
+            });
+        }
+    };
+
 
     const handleDownload = async (type) => {
         if (!formRef.current) return;
@@ -1712,8 +1954,8 @@ const InactiveClients = () => {
             }
 
             // Optional API call after download
-            if (typeof fetchApi === "function") {
-                await fetchApi(type, isEdit);
+            if (typeof submitRecords === "function") {
+                await submitRecords(type, isEdit);
             }
 
             Swal.close();
@@ -1814,7 +2056,7 @@ const InactiveClients = () => {
             }
         }
     };
-console.log('formDatafinal',formData)
+    console.log('formDatafinal', formData)
     {
         loading && (
             <div className="flex w-full bg-white  justify-center items-center h-20">
@@ -1828,7 +2070,7 @@ console.log('formDatafinal',formData)
             <div className="bg-white md:p-12 p-6 border border-black w-full mx-auto">
                 <div className='md:flex justify-between items-center'>
                     <div className="bg-white p-8 rounded-lg border border-gray-300 shadow-md w-full max-w-5xl mx-auto">
-                        <div className="p-6 max-w-5xl mx-auto">
+                        <div className="py-6 max-w-5xl mx-auto">
                             <div ref={formRef} className="bg-white p-8 rounded-lg border border-gray-300 shadow-md">
                                 {/* Service dropdown */}
                                 <div className="mb-6">
@@ -1846,43 +2088,142 @@ console.log('formDatafinal',formData)
 
                                 {/* Police Report Fields */}
                                 {selectedService === "police" && (
-                                    <div className="grid md:grid-cols-2 gap-6">
-                                        {policeFields.map((field) => {
-                                            const name = field.toLowerCase().replace(/ /g, "_");
-                                            return (
-                                                <div key={field} className="w-full">
-                                                    <label className="block mb-1 font-medium text-gray-700">{field}</label>
-                                                    <input
-                                                        type="text"
-                                                        name={name}
-                                                        placeholder={`Enter ${field}`}
-                                                        value={formData[selectedService]?.[name] || ""}
-                                                        onChange={handleChange}
-                                                        className="w-full rounded-md p-3 border border-gray-300 bg-[#f7f6fb] focus:border-blue-500"
-                                                    />
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
+                                    <>
+                                        <div className="border border-gray-200 p-3 rounded-md mb-3">
+                                            <div className='font-bold text-lg'>Bulk Upload Police Records</div>
+                                            <div className="file-upload-wrapper text-left">
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() => document.getElementById("fileInput").click()}
+                                                    className="upload-button bg-green-500 mt-2  transition-all duration-200 hover:bg-green-600 hover:scale-105"
+                                                >
+                                                    Upload CSV
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={downloadSampleFile}
+                                                    className="upload-button bg-blue-500 mt-2 ms-2  transition-all duration-200 hover:bg-blue-600 hover:scale-105"
+                                                >
+                                                    Download Sample File
+                                                </button>
+
+                                                {/* Hidden Input */}
+                                                <input
+                                                    id="fileInput"
+                                                    type="file"
+                                                    accept=".csv"
+                                                    onChange={(e) => handleFileUpload(e, 'police')}
+                                                    className="hidden"
+                                                />
+
+                                                {/* Display File Name Conditionally */}
+                                                <input
+                                                    type="text"
+                                                    value={isFileValid ? fileName : ""}
+                                                    placeholder="No file selected"
+                                                    readOnly
+                                                    className="file-name-input mb-4 mt-2 p-3 border rounded w-full"
+                                                />
+                                                <button
+                                                    type="submit"
+                                                    onClick={() => submitRecordsBulk('policeBulk')}
+                                                    className={`p-6 mb-3 py-3 bg-[#2c81ba]  transition-all duration-200 hover:scale-105 text-white font-bold rounded-md hover:bg-[#0f5381] ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                >
+                                                    Submit
+
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div className="grid md:grid-cols-2 gap-6">
+                                            {policeFields.map((field) => {
+                                                const name = field.toLowerCase().replace(/ /g, "_");
+                                                return (
+                                                    <>
+
+                                                        <div key={field} className="w-full">
+                                                            <label className="block mb-1 font-medium text-gray-700">{field}</label>
+                                                            <input
+                                                                type="text"
+                                                                name={name}
+                                                                placeholder={`Enter ${field}`}
+                                                                value={formData[selectedService]?.[name] || ""}
+                                                                onChange={handleChange}
+                                                                className="w-full rounded-md p-3 border border-gray-300 bg-[#f7f6fb] focus:border-blue-500"
+                                                            />
+                                                        </div>
+                                                    </>
+                                                );
+                                            })}
+                                        </div>
+                                    </>
                                 )}
                                 {/* Court Report Fields */}
                                 {selectedService === "court" && (
                                     <>
+                                        <div className="border border-gray-200 p-3 rounded-md mb-3">
+                                            <div className='font-bold text-lg'>Bulk Upload Court Records</div>
+                                            <div className="file-upload-wrapper text-left">
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() => document.getElementById("fileInput").click()}
+                                                    className="upload-button bg-green-500 mt-2  transition-all duration-200 hover:bg-green-600 hover:scale-105"
+                                                >
+                                                    Upload CSV
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={downloadSampleFileCourt}
+                                                    className="upload-button bg-blue-500 mt-2 ms-2  transition-all duration-200 hover:bg-blue-600 hover:scale-105"
+                                                >
+                                                    Download Sample File
+                                                </button>
+
+                                                {/* Hidden Input */}
+                                                <input
+                                                    id="fileInput"
+                                                    type="file"
+                                                    accept=".csv"
+                                                    onChange={(e) => handleFileUpload(e, 'court')}
+                                                    className="hidden"
+                                                />
+
+                                                {/* Display File Name Conditionally */}
+                                                <input
+                                                    type="text"
+                                                    value={isFileValid ? fileName : ""}
+                                                    placeholder="No file selected"
+                                                    readOnly
+                                                    className="file-name-input mb-4 mt-2 p-3 border rounded w-full"
+                                                />
+                                                <button
+                                                    type="submit"
+                                                    onClick={() => submitRecordsBulk('courtBulk')}
+                                                    className={`p-6 mb-3 py-3 bg-[#2c81ba]  transition-all duration-200 hover:scale-105 text-white font-bold rounded-md hover:bg-[#0f5381] ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                >
+                                                    Submit
+
+                                                </button>
+                                            </div></div>
                                         <div className="grid md:grid-cols-2 gap-6">
                                             {courtFields.map((field) => {
                                                 const name = field.toLowerCase().replace(/ /g, "_");
                                                 return (
-                                                    <div key={field} className="w-full">
-                                                        <label className="block mb-1 font-medium text-gray-700">{field}</label>
-                                                        <input
-                                                            type="text"
-                                                            name={name}
-                                                            placeholder={`Enter ${field}`}
-                                                            value={formData[selectedService]?.[name] || ""}
-                                                            onChange={handleChange}
-                                                            className="w-full rounded-md p-3 border border-gray-300 bg-[#f7f6fb] focus:border-blue-500"
-                                                        />
-                                                    </div>
+                                                    <>
+
+                                                        <div key={field} className="w-full">
+                                                            <label className="block mb-1 font-medium text-gray-700">{field}</label>
+                                                            <input
+                                                                type="text"
+                                                                name={name}
+                                                                placeholder={`Enter ${field}`}
+                                                                value={formData[selectedService]?.[name] || ""}
+                                                                onChange={handleChange}
+                                                                className="w-full rounded-md p-3 border border-gray-300 bg-[#f7f6fb] focus:border-blue-500"
+                                                            />
+                                                        </div>
+                                                    </>
                                                 );
                                             })}
                                         </div>
@@ -1954,6 +2295,7 @@ console.log('formDatafinal',formData)
                                                     </tbody>
 
                                                 </table>
+
                                             </div>
                                             <div className="flex justify-left gap-4">
                                                 {(formData.court?.courtTable?.length || 0) < 5 && (
@@ -2002,6 +2344,13 @@ console.log('formDatafinal',formData)
                                 </button>
                             </div>
                         </div>
+                        <input
+                            type="text"
+                            placeholder="Search by Reference ID, Name,Type and Format"
+                            className="w-full rounded-md p-2.5 mb-3 border border-gray-300"
+                            value={searchTerm}
+                            onChange={handleSearch}
+                        />
                         <div className="overflow-x-auto">
                             <table className="min-w-full border border-gray-300">
                                 <thead className="bg-gray-100">
@@ -2016,53 +2365,56 @@ console.log('formDatafinal',formData)
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {data.map((row, index) => (
-                                        <tr key={index} className="bg-white">
+                                    {paginatedData.map((row, index) => {
 
-                                            <td className="border text-center px-2 py-2">
-                                                {index + 1}
-                                            </td>
-                                            <td className="border text-center px-2 py-2">
-                                                {JSON.parse(row.data).full_name || 'N/A'}
-                                            </td>
-                                            <td className="border text-center px-2 py-2">
-                                                {JSON.parse(row.data).reference_id || 'N/A'}
-                                            </td>
-                                            <td className="border px-2 uppercase py-2 text-center">
-                                                {row.export_format || 'N/A'}
-                                            </td>
-                                            <td className="border px-2 py-2 text-center">
-                                                {row.type || 'N/A'}
-                                            </td>
-                                            <td className="border px-2 py-2 text-center">
-                                                <button className={`p-6 py-3 font-bold whitespace-nowrap transition duration-200 text-white rounded-md bg-sky-500 hover:bg-sky-600 hover:scale-105
+                                        return (
+                                            <tr key={index} className="bg-white">
+
+                                                <td className="border text-center px-2 py-2">
+                                                    {index + 1 + (currentPage - 1) * rowsPerPage}
+                                                </td>
+                                                <td className="border text-center px-2 py-2">
+                                                    {JSON.parse(row.data).full_name || 'N/A'}
+                                                </td>
+                                                <td className="border text-center px-2 py-2">
+                                                    {JSON.parse(row.data).reference_id || 'N/A'}
+                                                </td>
+                                                <td className="border px-2 uppercase py-2 text-center">
+                                                    {row.export_format || 'N/A'}
+                                                </td>
+                                                <td className="border px-2 py-2 text-center">
+                                                    {row.type || 'N/A'}
+                                                </td>
+                                                <td className="border px-2 py-2 text-center">
+                                                    <button className={`p-6 py-3 font-bold whitespace-nowrap transition duration-200 text-white rounded-md bg-sky-500 hover:bg-sky-600 hover:scale-105
                                     `} onClick={() => openModal(row.data)}>View Data</button>
-                                            </td>
-                                            <td className="border px-2 py-2 text-center">
-                                                <div className='flex gap-4 justify-center items-center'>
-                                                    <button
-                                                        onClick={() => handleEdit(row)}
-                                                        className={`p-6 py-3 font-bold whitespace-nowrap transition duration-200 text-white rounded-md
+                                                </td>
+                                                <td className="border px-2 py-2 text-center">
+                                                    <div className='flex gap-4 justify-center items-center'>
+                                                        <button
+                                                            onClick={() => handleEdit(row)}
+                                                            className={`p-6 py-3 font-bold whitespace-nowrap transition duration-200 text-white rounded-md
               ${editData === row
-                                                                ? "bg-orange-500 hover:bg-orange-600 hover:scale-105"
-                                                                : "bg-green-500 hover:bg-green-600 hover:scale-105"}`}
-                                                    >
-                                                        {editData === row ? 'Cancel' : 'Edit'}
-                                                    </button>
+                                                                    ? "bg-orange-500 hover:bg-orange-600 hover:scale-105"
+                                                                    : "bg-green-500 hover:bg-green-600 hover:scale-105"}`}
+                                                        >
+                                                            {editData === row ? 'Cancel' : 'Edit'}
+                                                        </button>
 
-                                                    <button
-                                                        onClick={() => handleApplicationDelete(row.id)}
-                                                        className={`p-6 py-3 font-bold whitespace-nowrap transition duration-200 text-white rounded-md bg-red-500 hover:bg-red-600 hover:scale-105 ${deleteLoading === row.id ? 'opacity-50 cursor-not-allowed' : ''
-                                                            }
+                                                        <button
+                                                            onClick={() => handleApplicationDelete(row.id)}
+                                                            className={`p-6 py-3 font-bold whitespace-nowrap transition duration-200 text-white rounded-md bg-red-500 hover:bg-red-600 hover:scale-105 ${deleteLoading === row.id ? 'opacity-50 cursor-not-allowed' : ''
+                                                                }
                                     `} disabled={deleteLoading === row.id}
-                                                    >
+                                                        >
 
-                                                        {deleteLoading === row.id ? ' Deleting...' : ' Delete'}</button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                    {data.length === 0 && (
+                                                            {deleteLoading === row.id ? ' Deleting...' : ' Delete'}</button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        )
+                                    })}
+                                    {paginatedData.length === 0 && (
                                         <tr>
                                             <td colSpan={5} className="text-center py-4 text-gray-500">
                                                 No rows added yet.
@@ -2072,6 +2424,25 @@ console.log('formDatafinal',formData)
                                 </tbody>
 
                             </table>
+                            <div className="flex justify-between items-center mt-4">
+                                <button
+                                    onClick={() => handlePageChange(currentPage - 1)}
+                                    disabled={currentPage === 1}
+                                    className="px-4 py-2 bg-gray-300 text-gray-600 rounded hover:bg-gray-400"
+                                >
+                                    Previous
+                                </button>
+                                <span className="text-gray-700">
+                                    Page {currentPage} of {totalPages}
+                                </span>
+                                <button
+                                    onClick={() => handlePageChange(currentPage + 1)}
+                                    disabled={currentPage === totalPages}
+                                    className="px-4 py-2 bg-gray-300 text-gray-600 rounded hover:bg-gray-400"
+                                >
+                                    Next
+                                </button>
+                            </div>
                         </div>
                         {isModalOpen && (
                             <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
