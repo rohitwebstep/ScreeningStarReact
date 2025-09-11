@@ -1940,7 +1940,12 @@ const InactiveClients = () => {
 
                 const a = document.createElement("a");
                 a.href = imageDataURL;
-                a.download = `${selectedService === "court" ? "Court_Record_Report" : "Police_Record_Report"}.${type}`;
+                const referenceId =
+                    selectedService === "court"
+                        ? formData?.court?.reference_id || "Unknown"
+                        : formData?.police?.reference_id || "Unknown";
+
+                a.download = `${referenceId} ${selectedService === "court" ? "Court Report" : "Police Report"}.${type || "pdf"}`;
                 a.click();
             }
 
