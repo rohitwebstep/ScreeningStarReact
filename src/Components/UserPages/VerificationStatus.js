@@ -2545,9 +2545,11 @@ console.log("sub_user_id:", branchData?.id);
                                                                                                                   buttonText = "DOWNLOAD";
                                                                                                               } else {
                                                                                                                   buttonText = "QC Pending";
+                                                                                                                  buttonDisabled=true;
                                                                                                               }
                                                                                                           } else if (data.overall_status === "wip") {
                                                                                                               buttonText = "WIP";
+                                                                                                              buttonDisabled=true;
                                                                                                           } else {
                                                                                                               buttonText = "NOT READY";
                                                                                                               buttonDisabled = true;
