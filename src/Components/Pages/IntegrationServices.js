@@ -138,15 +138,19 @@ const InactiveClients = () => {
         setSearchTerm(e.target.value);
         setCurrentPage(1)
     };
-
     const filteredData = data.filter((item) => {
-        const term = searchTerm.toLowerCase();
+        const term = (searchTerm || "").toLowerCase();
 
-        // safely access nested fields
-        const name = item?.data ? JSON.parse(item.data)?.full_name : "";
+        let name = "";
+        try {
+            name = item?.data ? JSON.parse(item.data)?.full_name || "" : "";
+        } catch (e) {
+            name = "";
+        }
+
         const id = item?.id ? item.id.toString() : "";
-        const type = item?.type ? item.type.toLowerCase() : "";
-        const format = item?.export_format ? item.export_format.toLowerCase() : "";
+        const type = typeof item?.type === "string" ? item.type.toLowerCase() : "";
+        const format = typeof item?.export_format === "string" ? item.export_format.toLowerCase() : "";
 
         return (
             name.toLowerCase().includes(term) ||
@@ -155,6 +159,7 @@ const InactiveClients = () => {
             format.includes(term)
         );
     });
+
 
     const paginatedData = filteredData.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
 
