@@ -47,6 +47,8 @@ const AdminChekin = () => {
     const [loadingIndex, setLoadingIndex] = useState(null);
     const [servicesDataInfo, setServicesDataInfo] = useState('');
     const [expandedRow, setExpandedRow] = useState({ index: '', headingsAndStatuses: [] });
+    const [headingsAndStatuses, setHeadingsAndStatuses] = useState([]);
+
     const navigate = useNavigate();
     const location = useLocation();
     const [adminTAT, setAdminTAT] = useState('');
@@ -2062,6 +2064,62 @@ const AdminChekin = () => {
         setApiLoading(false)
         setLoadingIndex(null);
     };
+    useEffect(() => {
+        const fetchHeadingsAndStatuses = async () => {
+            if (!Array.isArray(data) || data.length === 0) return;
+
+            const applicationInfo = data[0]; // You can change this logic if needed
+
+            if (!applicationInfo?.main_id || !applicationInfo?.services) return;
+
+            try {
+                const servicesData = await fetchServicesData(applicationInfo.main_id, applicationInfo.services);
+                if (!Array.isArray(servicesData)) return;
+
+                const headings = [];
+
+                servicesData.forEach((service) => {
+                    const rawJson = service?.reportFormJson?.json;
+                    if (!rawJson || rawJson === "null") return;
+
+                    let parsedJson;
+                    try {
+                        parsedJson = JSON.parse(rawJson);
+                    } catch (err) {
+                        console.warn("Invalid JSON found in reportFormJson:", rawJson);
+                        return;
+                    }
+
+                    const heading = parsedJson?.heading?.trim();
+                    if (!heading || heading.toLowerCase() === "null") return;
+
+                    let status = service?.annexureData?.status?.trim();
+
+                    // Handle empty, null or "null" status
+                    if (!status || status.toLowerCase() === "null") {
+                        status = "INITIATED";
+                    } else if (status.length < 4) {
+                        // Format short statuses
+                        status = status.replace(/[^a-zA-Z0-9\s]/g, " ").toUpperCase() || "N/A";
+                    } else {
+                        // Format longer statuses (e.g. "completed" -> "Completed")
+                        status = status
+                            .replace(/[^a-zA-Z0-9\s]/g, " ")
+                            .toLowerCase()
+                            .replace(/\b\w/g, (char) => char.toUpperCase()) || "N/A";
+                    }
+
+                    headings.push({ heading, status });
+                });
+
+                setHeadingsAndStatuses(headings);
+            } catch (err) {
+                console.error("Error fetching headings and statuses:", err);
+            }
+        };
+
+        fetchHeadingsAndStatuses();
+    }, [data]);
 
 
     const handleCheckboxChange = (id, isDownloadable) => {
@@ -2747,7 +2805,6 @@ const AdminChekin = () => {
                                 <th className="uppercase border border-black px-4 py-2">Deadline Date</th>
                                 <th className="uppercase border border-black px-4 py-2">Report Data</th>
                                 <th className="uppercase border border-black px-4 py-2">Download Status</th>
-                                <th className="uppercase border border-black px-4 py-2">View More</th>
 
                                 <th className="uppercase border border-black px-4 py-2">Overall Status</th>
                                 <th className="uppercase border border-black px-4 py-2">Report Type</th>
@@ -2758,22 +2815,33 @@ const AdminChekin = () => {
                                 <th className="uppercase border border-black px-4 py-2">Completed IN</th>
                                 <th className="uppercase border border-black px-4 py-2">Days Delayed</th>
                                 <th className="uppercase border border-black px-4 py-2 ">HIGHLIGHT</th>
-                                {expandedRow && expandedRow.headingsAndStatuses?.map((item, idx) =>
-                                    item.heading && item.heading !== "null" ? (
-                                        <th key={idx} className="border border-black px-4 py-2 capitalize">
-                                            {sanitizeText(item.heading)}
+                                {headingsAndStatuses.map((item, idx) => {
+                                    const rawHeading = item?.heading;
+
+                                    const isEmpty =
+                                        !rawHeading ||
+                                        rawHeading.trim() === '' ||
+                                        rawHeading.trim().toLowerCase() === 'null';
+
+                                    return (
+                                        <th
+                                            key={`heading-${idx}`}
+                                            className="text-left p-2 border border-black capitalize bg-gray-200"
+                                        >
+                                            {isEmpty ? 'NIL' : sanitizeText(rawHeading)}
                                         </th>
-                                    ) : null
-                                )}
-                                        <th className="border border-black px-4 py-2">First Level Insuff</th>
-                                        <th className="border border-black px-4 py-2">First Insuff Date</th>
-                                        <th className="border border-black px-4 py-2">First Insuff Reopen</th>
-                                        <th className="border border-black px-4 py-2">Second Level Insuff</th>
-                                        <th className="border border-black px-4 py-2">Second Insuff Date</th>
-                                        <th className="border border-black px-4 py-2">Third Level Insuff</th>
-                                        <th className="border border-black px-4 py-2">Third Insuff Date</th>
-                                        <th className="border border-black px-4 py-2">Reason for Delay</th>
-                                  
+                                    );
+                                })}
+
+                                <th className="border border-black px-4 py-2">First Level Insuff</th>
+                                <th className="border border-black px-4 py-2">First Insuff Date</th>
+                                <th className="border border-black px-4 py-2">First Insuff Reopen</th>
+                                <th className="border border-black px-4 py-2">Second Level Insuff</th>
+                                <th className="border border-black px-4 py-2">Second Insuff Date</th>
+                                <th className="border border-black px-4 py-2">Third Level Insuff</th>
+                                <th className="border border-black px-4 py-2">Third Insuff Date</th>
+                                <th className="border border-black px-4 py-2">Reason for Delay</th>
+
 
                             </tr>
                         </thead>
@@ -2931,18 +2999,6 @@ const AdminChekin = () => {
                                                         })()}
                                                     </td>
 
-
-                                                    <td className="border border-black px-4  py-2" >
-                                                        <button
-                                                            className="bg-orange-500 text-white px-4 py-2 rounded hover:bg-white hover:text-orange-500"
-                                                            onClick={() => handleViewMore(index)}
-                                                        >
-                                                            {isExpanded ? "Less" : "View"}
-                                                        </button>
-
-                                                    </td>
-
-
                                                     <td className="border border-black px-4 uppercase py-2">{(data.overall_status || 'WIP').replace(/_/g, ' ')}
                                                     </td>
                                                     <td className="border border-black px-4 uppercase py-2">{data.report_type?.replace(/_/g, " ") || 'N/A'}</td>
@@ -3009,30 +3065,39 @@ const AdminChekin = () => {
                                                             )}
                                                         </div>
                                                     </td>
-                                                    {isExpanded &&
-                                                        expandedRow.headingsAndStatuses?.map((item, idx) =>
-                                                            item.heading && item.heading !== "null" ? (
-                                                                <td
-                                                                    key={`col-${idx}`}
-                                                                    className="border border-black px-4 py-2 font-bold uppercase"
-                                                                    style={getColorStyle(item.status)}
-                                                                >
-                                                                    {isValidDate(item.status)
-                                                                        ? formatDate(item.status)
-                                                                        : sanitizeText(removeColorNames(item.status))}
-                                                                </td>
-                                                            ) : null
-                                                        )}
-                                                 
-                                                            <td className="border border-black px-4 py-2 font-bold">{formatedJson(data.first_insufficiency_marks) || "NOT APPLICABLE"}</td>
-                                                            <td className="border border-black px-4 py-2 font-bold">{formatDate(data.first_insuff_date) || "NOT APPLICABLE"}</td>
-                                                            <td className="border border-black px-4 py-2 font-bold">{formatDate(data.first_insuff_reopened_date) || "NOT APPLICABLE"}</td>
-                                                            <td className="border border-black px-4 py-2 font-bold">{formatedJson(data.second_insufficiency_marks) || "NOT APPLICABLE"}</td>
-                                                            <td className="border border-black px-4 py-2 font-bold">{formatDate(data.second_insuff_date) || "NOT APPLICABLE"}</td>
-                                                            <td className="border border-black px-4 py-2 font-bold">{formatedJson(data.third_insufficiency_marks) || "NOT APPLICABLE"}</td>
-                                                            <td className="border border-black px-4 py-2 font-bold">{formatDate(data.third_insuff_date) || "NOT APPLICABLE"}</td>
-                                                            <td className="border border-black px-4 py-2 font-bold">{formatedJson(data.delay_reason) || "NOT APPLICABLE"}</td>
-                                                     
+                                                    {headingsAndStatuses.map((item, idx) => {
+                                                        const rawStatus = item?.status;
+
+                                                        const isEmpty =
+                                                            !rawStatus ||
+                                                            rawStatus.trim() === '' ||
+                                                            rawStatus.trim().toLowerCase() === 'null';
+
+                                                        return (
+                                                            <td
+                                                                key={`status-${idx}`}
+                                                                className="text-left p-2 border font-bold border-black uppercase"
+                                                                style={getColorStyle(rawStatus)}
+                                                            >
+                                                                {isEmpty
+                                                                    ? 'NIL'
+                                                                    : isValidDate(rawStatus)
+                                                                        ? formatDate(rawStatus)
+                                                                        : sanitizeText(removeColorNames(rawStatus))}
+                                                            </td>
+                                                        );
+                                                    })}
+
+
+                                                    <td className="border border-black px-4 py-2 font-bold">{formatedJson(data.first_insufficiency_marks) || "NOT APPLICABLE"}</td>
+                                                    <td className="border border-black px-4 py-2 font-bold">{formatDate(data.first_insuff_date) || "NOT APPLICABLE"}</td>
+                                                    <td className="border border-black px-4 py-2 font-bold">{formatDate(data.first_insuff_reopened_date) || "NOT APPLICABLE"}</td>
+                                                    <td className="border border-black px-4 py-2 font-bold">{formatedJson(data.second_insufficiency_marks) || "NOT APPLICABLE"}</td>
+                                                    <td className="border border-black px-4 py-2 font-bold">{formatDate(data.second_insuff_date) || "NOT APPLICABLE"}</td>
+                                                    <td className="border border-black px-4 py-2 font-bold">{formatedJson(data.third_insufficiency_marks) || "NOT APPLICABLE"}</td>
+                                                    <td className="border border-black px-4 py-2 font-bold">{formatDate(data.third_insuff_date) || "NOT APPLICABLE"}</td>
+                                                    <td className="border border-black px-4 py-2 font-bold">{formatedJson(data.delay_reason) || "NOT APPLICABLE"}</td>
+
 
                                                 </tr>
 

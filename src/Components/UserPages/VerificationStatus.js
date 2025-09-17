@@ -32,6 +32,8 @@ const VerificationStatus = () => {
     const [filterData, setFilterData] = useState([]);
     const [servicesDataInfo, setServicesDataInfo] = useState('');
     const [expandedRow, setExpandedRow] = useState({ index: '', headingsAndStatuses: [] });
+    const [headingsAndStatuses, setHeadingsAndStatuses] = useState([]);
+
     const navigate = useNavigate();
     const location = useLocation();
     const [adminTAT, setAdminTAT] = useState('');
@@ -187,7 +189,7 @@ const VerificationStatus = () => {
     const fetchServicesData = async (applicationId, servicesList, reportDownload = '0') => {
         const branch_id = JSON.parse(localStorage.getItem("branch"))?.branch_id;
         const branch = JSON.parse(localStorage.getItem("branch"));
-        console.log('branch',branch)
+        console.log('branch', branch)
         const token = localStorage.getItem("branch_token");
 
         if (!branch_id) {
@@ -218,21 +220,21 @@ const VerificationStatus = () => {
 
         try {
             const baseUrl = `https://api.screeningstar.co.in/branch/report-case-status/services-annexure-data`;
-const params = new URLSearchParams({
-    application_id: applicationId,
-    service_ids: servicesList,
-    branch_id: branch_id,
-    _token: token,
-});
-if (branchData?.type === "sub_user" && branchData?.id && branchData?.id !== branch_id) {
-    params.append("sub_user_id", branchData.id);
-}
-const finalUrl = `${baseUrl}?${params.toString()}`;
-console.log("Calling API:", finalUrl);
+            const params = new URLSearchParams({
+                application_id: applicationId,
+                service_ids: servicesList,
+                branch_id: branch_id,
+                _token: token,
+            });
+            if (branchData?.type === "sub_user" && branchData?.id && branchData?.id !== branch_id) {
+                params.append("sub_user_id", branchData.id);
+            }
+            const finalUrl = `${baseUrl}?${params.toString()}`;
+            console.log("Calling API:", finalUrl);
 
-const response = await fetch(finalUrl, { method: "GET", redirect: "follow" });
-console.log("branch_id:", branch_id);
-console.log("sub_user_id:", branchData?.id);
+            const response = await fetch(finalUrl, { method: "GET", redirect: "follow" });
+            console.log("branch_id:", branch_id);
+            console.log("sub_user_id:", branchData?.id);
             const result = await response.json();
 
             // Check for internal token validation error
@@ -872,7 +874,7 @@ console.log("sub_user_id:", branchData?.id);
                     },
                 ]
             ],
-                   body: servicesData
+            body: servicesData
                 .filter(service => service?.annexureData?.status) // Filter out rows with no status
                 .slice(0, 10)
                 .map(service => {
@@ -1985,82 +1987,134 @@ console.log("sub_user_id:", branchData?.id);
 
 
     // Refresh the table data by fetching from the generatereport API after generating a report
-    const handleViewMore = async (index) => {
-        console.log(`handleViewMore called with index: ${index}`);
-        setActiveService(index);
-        if (expandedRow && expandedRow.index === index) {
-            console.log("Row is already expanded. Collapsing the row.");
-            setExpandedRow(null);
-            setActiveService(null);
-            return;
-        } else {
-            if (scrollContainerRef.current) {
-                scrollContainerRef.current.scrollLeft = 0;
+    // const handleViewMore = async (index) => {
+    //     console.log(`handleViewMore called with index: ${index}`);
+    //     setActiveService(index);
+    //     if (expandedRow && expandedRow.index === index) {
+    //         console.log("Row is already expanded. Collapsing the row.");
+    //         setExpandedRow(null);
+    //         setActiveService(null);
+    //         return;
+    //     } else {
+    //         if (scrollContainerRef.current) {
+    //             scrollContainerRef.current.scrollLeft = 0;
+    //         }
+    //     }
+
+    //     const applicationInfo = data[index];
+    //     console.log("Fetched applicationInfo:", applicationInfo);
+
+    //     // Assuming fetchServicesData is an async function that returns services data
+    //     const servicesData = await fetchServicesData(applicationInfo.main_id, applicationInfo.services);
+    //     console.log("Fetched servicesData:", servicesData);
+
+    //     // Initialize an empty array to store headings and statuses
+    //     const headingsAndStatuses = [];
+
+    //     // Loop through servicesData and extract the heading and status
+    //     servicesData.forEach((service, idx) => {
+    //         console.log(`Processing service at index ${idx}:`, service);
+    //         const parsedJson = JSON.parse(service?.reportFormJson?.json || 'null');
+    //         const heading = parsedJson?.heading || "null";
+    //         console.log("Parsed heading:", heading);
+
+    //         if (heading) {
+    //             let status = 'INITIATED';
+
+    //             if (service.annexureData) {
+    //                 status = service.annexureData.status;
+    //             }
+
+    //             console.log("Initial status:", status);
+
+    //             // If status is null or an empty string, set it to 'N/A'
+    //             if (!status) {
+    //                 status = 'INITIATED';
+    //             }
+    //             // If the length of the status is less than 4
+    //             else if (status.length < 4) {
+    //                 status = status.replace(/[^a-zA-Z0-9\s]/g, " ").toUpperCase() || 'N/A'; // Remove special chars and make uppercase
+    //             }
+    //             // If the length of the status is 4 or more but less than 6
+    //             else {
+    //                 status = status.replace(/[^a-zA-Z0-9\s]/g, " ") // Remove special chars
+    //                     .toLowerCase()
+    //                     .replace(/\b\w/g, (char) => char.toUpperCase()) || 'N/A'; // Capitalize first letter of each word
+    //             }
+    //             setActiveService(null);
+    //             console.log(`Formatted status for heading "${heading}":`, status);
+
+    //             // Push the heading and formatted status into the array
+    //             headingsAndStatuses.push({ heading, status });
+    //         }
+    //     });
+    //     setActiveService(null);
+    //     console.log("Final headingsAndStatuses array:", headingsAndStatuses);
+
+    //     // Set the expanded row with new data
+    //     setExpandedRow({
+    //         index: index,
+    //         headingsAndStatuses: headingsAndStatuses,
+    //     });
+
+    //     console.log(`Expanded row set for index ${index}:`, {
+    //         index,
+    //         headingsAndStatuses,
+    //     });
+    //     setActiveService(null);
+    // };
+    useEffect(() => {
+        const fetchHeadingsAndStatuses = async () => {
+            if (!Array.isArray(data) || data.length === 0) return;
+
+            const applicationInfo = data[0];
+            if (!applicationInfo?.main_id || !applicationInfo?.services) return;
+
+            try {
+                const servicesData = await fetchServicesData(applicationInfo.main_id, applicationInfo.services);
+                if (!Array.isArray(servicesData)) return;
+
+                const headings = [];
+
+                servicesData.forEach((service) => {
+                    const rawJson = service?.reportFormJson?.json || null;
+                    if (!rawJson) return;
+
+                    let parsedJson = null;
+                    try {
+                        parsedJson = JSON.parse(rawJson);
+                    } catch (error) {
+                        console.warn("Invalid JSON in reportFormJson:", rawJson);
+                        return; // Skip this entry if JSON is invalid
+                    }
+
+                    const heading = parsedJson?.heading?.trim();
+                    if (!heading || heading === "null") return;
+
+                    let status = service?.annexureData?.status?.trim();
+                    if (!status || status === "null" || status === "") {
+                        status = "INITIATED";
+                    } else if (status.length < 4) {
+                        status = status.replace(/[^a-zA-Z0-9\s]/g, " ").toUpperCase() || "N/A";
+                    } else {
+                        status = status
+                            .replace(/[^a-zA-Z0-9\s]/g, " ")
+                            .toLowerCase()
+                            .replace(/\b\w/g, (char) => char.toUpperCase()) || "N/A";
+                    }
+
+                    headings.push({ heading, status });
+                });
+
+                setHeadingsAndStatuses(headings);
+            } catch (err) {
+                console.error("Error fetching headings and statuses:", err);
             }
-        }
+        };
 
-        const applicationInfo = data[index];
-        console.log("Fetched applicationInfo:", applicationInfo);
+        fetchHeadingsAndStatuses();
+    }, [data, fetchServicesData]);
 
-        // Assuming fetchServicesData is an async function that returns services data
-        const servicesData = await fetchServicesData(applicationInfo.main_id, applicationInfo.services);
-        console.log("Fetched servicesData:", servicesData);
-
-        // Initialize an empty array to store headings and statuses
-        const headingsAndStatuses = [];
-
-        // Loop through servicesData and extract the heading and status
-        servicesData.forEach((service, idx) => {
-            console.log(`Processing service at index ${idx}:`, service);
-            const parsedJson = JSON.parse(service?.reportFormJson?.json || 'null');
-            const heading = parsedJson?.heading || "null";
-            console.log("Parsed heading:", heading);
-
-            if (heading) {
-                let status = 'INITIATED';
-
-                if (service.annexureData) {
-                    status = service.annexureData.status;
-                }
-
-                console.log("Initial status:", status);
-
-                // If status is null or an empty string, set it to 'N/A'
-                if (!status) {
-                    status = 'INITIATED';
-                }
-                // If the length of the status is less than 4
-                else if (status.length < 4) {
-                    status = status.replace(/[^a-zA-Z0-9\s]/g, " ").toUpperCase() || 'N/A'; // Remove special chars and make uppercase
-                }
-                // If the length of the status is 4 or more but less than 6
-                else {
-                    status = status.replace(/[^a-zA-Z0-9\s]/g, " ") // Remove special chars
-                        .toLowerCase()
-                        .replace(/\b\w/g, (char) => char.toUpperCase()) || 'N/A'; // Capitalize first letter of each word
-                }
-                setActiveService(null);
-                console.log(`Formatted status for heading "${heading}":`, status);
-
-                // Push the heading and formatted status into the array
-                headingsAndStatuses.push({ heading, status });
-            }
-        });
-        setActiveService(null);
-        console.log("Final headingsAndStatuses array:", headingsAndStatuses);
-
-        // Set the expanded row with new data
-        setExpandedRow({
-            index: index,
-            headingsAndStatuses: headingsAndStatuses,
-        });
-
-        console.log(`Expanded row set for index ${index}:`, {
-            index,
-            headingsAndStatuses,
-        });
-        setActiveService(null);
-    };
 
 
     // const handleUpload = (applicationId, ) => {
@@ -2317,7 +2371,7 @@ console.log("sub_user_id:", branchData?.id);
                                 Export to Excel
                             </button>
 
-                           {selectedRows.length > 0 &&
+                            {selectedRows.length > 0 &&
                                 filteredData.filter(
                                     (data) =>
                                         selectedRows.includes(data.id) &&
@@ -2432,7 +2486,7 @@ console.log("sub_user_id:", branchData?.id);
                         <thead className='rounded-lg'>
                             <tr className="bg-[#c1dff2] text-[#4d606b]">
                                 <th className="border border-black px-4 py-2">
-                                     <input
+                                    <input
                                         type="checkbox"
                                         className="w-5 h-5"
                                         checked={
@@ -2455,7 +2509,35 @@ console.log("sub_user_id:", branchData?.id);
                                 <th className="uppercase border border-black px-4 py-2">Initiation Date</th>
                                 <th className="uppercase border border-black px-4 py-2">Deadline Date</th>
                                 <th className="uppercase border border-black px-4 py-2">Download Status</th>
-                                <th className="uppercase border border-black px-4 py-2">View More</th>
+                                {headingsAndStatuses.map((item, idx) => {
+                                    const rawHeading = item?.heading;
+
+                                    const isEmpty =
+                                        !rawHeading ||
+                                        rawHeading.trim() === '' ||
+                                        rawHeading.trim().toLowerCase() === 'null';
+
+                                    return (
+                                        <th
+                                            key={`heading-${idx}`}
+                                            className="text-left p-2 border border-black capitalize bg-gray-200"
+                                        >
+                                            {isEmpty ? 'NIL' : sanitizeText(rawHeading)}
+                                        </th>
+                                    );
+                                })}
+
+
+
+                                <th className="text-left p-2 border border-black uppercase bg-gray-200">First Level Insuff</th>
+                                <th className="text-left p-2 border border-black uppercase bg-gray-200">First Level Insuff Date</th>
+                                <th className="text-left p-2 border border-black uppercase bg-gray-200">First Level Insuff Reopen Date</th>
+                                <th className="text-left p-2 border border-black uppercase bg-gray-200">Second Level Insuff</th>
+                                <th className="text-left p-2 border border-black uppercase bg-gray-200">Second Level Insuff Date</th>
+                                <th className="text-left p-2 border border-black uppercase bg-gray-200">Third Level Insuff Marks</th>
+                                <th className="text-left p-2 border border-black uppercase bg-gray-200">Third Level Insuff Date</th>
+                                <th className="text-left p-2 border border-black uppercase bg-gray-200">Third Level Insuff Reopen Date</th>
+                                <th className="text-left p-2 border border-black uppercase bg-gray-200">Reason For Delay</th>
                                 <th className="uppercase border border-black px-4 py-2">Overall Status</th>
                                 <th className="uppercase border border-black px-4 py-2">Report Type</th>
                                 <th className="uppercase border border-black px-4 py-2">Report Date</th>
@@ -2535,98 +2617,140 @@ console.log("sub_user_id:", branchData?.id);
                                                     <td className="border border-black px-4 py-2">{formatDate(data.updated_at)}</td>
 
 
-                                                 <td className="border border-black px-4 py-2">
-                                                                                                      {(() => {
-                                                                                                          let buttonText = "";
-                                                                                                          let buttonDisabled = false;
-                                              
-                                                                                                          if (data.overall_status === "completed") {
-                                                                                                              if (data.is_verify === "yes") {
-                                                                                                                  buttonText = "DOWNLOAD";
-                                                                                                              } else {
-                                                                                                                  buttonText = "QC Pending";
-                                                                                                                  buttonDisabled=true;
-                                                                                                              }
-                                                                                                          } else if (data.overall_status === "wip") {
-                                                                                                              buttonText = "WIP";
-                                                                                                              buttonDisabled=true;
-                                                                                                          } else {
-                                                                                                              buttonText = "NOT READY";
-                                                                                                              buttonDisabled = true;
-                                                                                                          }
-                                              
-                                                                                                          return buttonDisabled ? (
-                                                                                                              <button
-                                                                                                                  className="text-white px-4 py-2 rounded cursor-not-allowed bg-gray-500"
-                                                                                                                  disabled
-                                                                                                              >
-                                                                                                                  {buttonText}
-                                                                                                              </button>
-                                                                                                          ) : (
-                                                                                                              <button
-                                                                                                                  onClick={() => handleDownload(actualIndex, data)}
-                                                                                                                  disabled={downloadingIndex === actualIndex}
-                                                                                                                  className={`${buttonText === "DOWNLOAD"
-                                                                                                                          ? ""
-                                                                                                                          : buttonText === "QC Pending"
-                                                                                                                              ? "text-[#00aeee]"
-                                                                                                                              : "bg-green-500 hover:bg-green-300 text-white"
-                                                                                                                      } ${buttonText !== "DOWNLOAD" ? "px-4 py-2" : ""
-                                                                                                                      } hover:scale-105 uppercase border border-white rounded ${downloadingIndex === actualIndex ? "opacity-50 cursor-not-allowed" : ""
-                                                                                                                      }`}
-                                                                                                                  style={{
-                                                                                                                      backgroundColor: buttonText === "QC Pending" ? "transparent" : undefined,
-                                                                                                                  }}
-                                                                                                              >
-                                                                                                                  {downloadingIndex === actualIndex ? (
-                                                                                                                      <span className="flex items-center gap-2">
-                                                                                                                          <svg
-                                                                                                                              className="animate-spin h-5 w-5 text-white hover:text-green-500"
-                                                                                                                              viewBox="0 0 24 24"
-                                                                                                                              fill="none"
-                                                                                                                              xmlns="http://www.w3.org/2000/svg"
-                                                                                                                          >
-                                                                                                                              <circle
-                                                                                                                                  className="opacity-25"
-                                                                                                                                  cx="12"
-                                                                                                                                  cy="12"
-                                                                                                                                  r="10"
-                                                                                                                                  stroke="currentColor"
-                                                                                                                                  strokeWidth="4"
-                                                                                                                              ></circle>
-                                                                                                                              <path
-                                                                                                                                  className="opacity-75"
-                                                                                                                                  fill="currentColor"
-                                                                                                                                  d="M4 12a8 8 0 018-8v8H4z"
-                                                                                                                              ></path>
-                                                                                                                          </svg>
-                                                                                                                          Downloading...
-                                                                                                                      </span>
-                                                                                                                  ) : buttonText === "DOWNLOAD" ? (
-                                                                                                                      <img
-                                                                                                                          src={pdfIcon}
-                                                                                                                          alt="Download PDF"
-                                                                                                                          className="w-12 h-12 object-contain"
-                                                                                                                      />
-                                                                                                                  ) : (
-                                                                                                                      buttonText
-                                                                                                                  )}
-                                                                                                              </button>
-                                                                                                          );
-                                                                                                      })()}
-                                                                                                  </td>
+                                                    <td className="border border-black px-4 py-2">
+                                                        {(() => {
+                                                            let buttonText = "";
+                                                            let buttonDisabled = false;
+
+                                                            if (data.overall_status === "completed") {
+                                                                if (data.is_verify === "yes") {
+                                                                    buttonText = "DOWNLOAD";
+                                                                } else {
+                                                                    buttonText = "QC Pending";
+                                                                    buttonDisabled = true;
+                                                                }
+                                                            } else if (data.overall_status === "wip") {
+                                                                buttonText = "WIP";
+                                                                buttonDisabled = true;
+                                                            } else {
+                                                                buttonText = "NOT READY";
+                                                                buttonDisabled = true;
+                                                            }
+
+                                                            return buttonDisabled ? (
+                                                                <button
+                                                                    className="text-white px-4 py-2 rounded cursor-not-allowed bg-gray-500"
+                                                                    disabled
+                                                                >
+                                                                    {buttonText}
+                                                                </button>
+                                                            ) : (
+                                                                <button
+                                                                    onClick={() => handleDownload(actualIndex, data)}
+                                                                    disabled={downloadingIndex === actualIndex}
+                                                                    className={`${buttonText === "DOWNLOAD"
+                                                                        ? ""
+                                                                        : buttonText === "QC Pending"
+                                                                            ? "text-[#00aeee]"
+                                                                            : "bg-green-500 hover:bg-green-300 text-white"
+                                                                        } ${buttonText !== "DOWNLOAD" ? "px-4 py-2" : ""
+                                                                        } hover:scale-105 uppercase border border-white rounded ${downloadingIndex === actualIndex ? "opacity-50 cursor-not-allowed" : ""
+                                                                        }`}
+                                                                    style={{
+                                                                        backgroundColor: buttonText === "QC Pending" ? "transparent" : undefined,
+                                                                    }}
+                                                                >
+                                                                    {downloadingIndex === actualIndex ? (
+                                                                        <span className="flex items-center gap-2">
+                                                                            <svg
+                                                                                className="animate-spin h-5 w-5 text-white hover:text-green-500"
+                                                                                viewBox="0 0 24 24"
+                                                                                fill="none"
+                                                                                xmlns="http://www.w3.org/2000/svg"
+                                                                            >
+                                                                                <circle
+                                                                                    className="opacity-25"
+                                                                                    cx="12"
+                                                                                    cy="12"
+                                                                                    r="10"
+                                                                                    stroke="currentColor"
+                                                                                    strokeWidth="4"
+                                                                                ></circle>
+                                                                                <path
+                                                                                    className="opacity-75"
+                                                                                    fill="currentColor"
+                                                                                    d="M4 12a8 8 0 018-8v8H4z"
+                                                                                ></path>
+                                                                            </svg>
+                                                                            Downloading...
+                                                                        </span>
+                                                                    ) : buttonText === "DOWNLOAD" ? (
+                                                                        <img
+                                                                            src={pdfIcon}
+                                                                            alt="Download PDF"
+                                                                            className="w-12 h-12 object-contain"
+                                                                        />
+                                                                    ) : (
+                                                                        buttonText
+                                                                    )}
+                                                                </button>
+                                                            );
+                                                        })()}
+                                                    </td>
 
 
-                                                    <td className="border border-black px-4  py-2" >
-                                                        <button
-                                                            className={`bg-orange-500  hover:scale-105 uppercase border border-white hover:border-orange-500 text-white px-4 py-2 
-        ${activeService == index ? 'opacity-50 cursor-not-allowed' : ''} rounded hover:bg-white hover:text-orange-500`}
-                                                            onClick={() => handleViewMore(index)}
-                                                            disabled={activeService == index} // Ensures the button is disabled when loading
-                                                        >
-                                                            {expandedRow && expandedRow.index === index ? 'Less' : 'View'}
-                                                        </button>
+                                                    {headingsAndStatuses.map((item, idx) => {
+                                                        const rawStatus = item?.status;
 
+                                                        const isEmpty =
+                                                            !rawStatus ||
+                                                            rawStatus.trim() === '' ||
+                                                            rawStatus.trim().toLowerCase() === 'null';
+
+                                                        return (
+                                                            <td
+                                                                key={`status-${idx}`}
+                                                                className="text-left p-2 border font-bold border-black uppercase"
+                                                                style={getColorStyle(rawStatus)}
+                                                            >
+                                                                {isEmpty
+                                                                    ? 'NIL'
+                                                                    : isValidDate(rawStatus)
+                                                                        ? formatDate(rawStatus)
+                                                                        : sanitizeText(removeColorNames(rawStatus))}
+                                                            </td>
+                                                        );
+                                                    })}
+
+
+
+
+                                                    <td className="text-left p-2 border border-black capitalize font-bold">
+                                                        {formatedJson(data.first_insufficiency_marks) || 'NIL'}
+                                                    </td>
+                                                    <td className="text-left p-2 border border-black capitalize font-bold">
+                                                        {formatDate(data.first_insuff_date)}
+                                                    </td>
+                                                    <td className="text-left p-2 border border-black capitalize font-bold">
+                                                        {formatDate(data.first_insuff_reopened_date)}
+                                                    </td>
+                                                    <td className="text-left p-2 border border-black capitalize font-bold">
+                                                        {formatedJson(data.second_insufficiency_marks) || 'NIL'}
+                                                    </td>
+                                                    <td className="text-left p-2 border border-black capitalize font-bold">
+                                                        {formatDate(data.second_insuff_date)}
+                                                    </td>
+                                                    <td className="text-left p-2 border border-black capitalize font-bold">
+                                                        {formatedJson(data.third_insufficiency_marks) || 'NIL'}
+                                                    </td>
+                                                    <td className="text-left p-2 border border-black capitalize font-bold">
+                                                        {formatDate(data.third_insuff_date)}
+                                                    </td>
+                                                    <td className="text-left p-2 border border-black capitalize font-bold">
+                                                        {formatDate(data.third_insuff_reopened_date)}
+                                                    </td>
+                                                    <td className="text-left p-2 border border-black capitalize font-bold">
+                                                        {formatedJson(data.delay_reason) || 'NIL'}
                                                     </td>
                                                     <td className="border border-black px-4 uppercase py-2">{data.overall_status || 'WIP'}</td>
                                                     <td className="border border-black px-4 uppercase py-2">{data.report_type?.replace(/_/g, " ") || 'N/A'}</td>
@@ -2661,79 +2785,7 @@ console.log("sub_user_id:", branchData?.id);
 
                                                 </tr>
 
-                                                {expandedRow && expandedRow.index === index && (
-                                                    <>
-                                                        <tr>
-                                                            <td colSpan="100%" className="text-center p-4 w-1/4">
-                                                                <table className="w-1/4">
-                                                                    <tbody>
 
-                                                                        {expandedRow.headingsAndStatuses &&
-                                                                            expandedRow.headingsAndStatuses.map((item, idx) => (
-                                                                                <>
-                                                                                    {item.heading && item.heading !== "null" ? ( // Exclude string "null"
-                                                                                        <tr key={`row-${idx}`}>
-                                                                                            <td className="text-left p-2 border border-black capitalize bg-gray-200">
-                                                                                                {sanitizeText(item.heading)}
-                                                                                            </td>
-                                                                                            <td
-                                                                                                className="text-left p-2 border font-bold border-black uppercase"
-                                                                                                style={getColorStyle(item.status)}
-                                                                                            >
-                                                                                                {isValidDate(item.status) ?
-                                                                                                    formatDate(item.status) :
-                                                                                                    sanitizeText(removeColorNames(item.status))
-                                                                                                }                                                                                            </td>
-                                                                                        </tr>
-                                                                                    ) : null // Skip rendering if heading is null, undefined, or the string "null"
-                                                                                    }
-
-                                                                                </>
-                                                                            ))
-                                                                        }
-                                                                        <tr>
-                                                                            <td className="text-left p-2 border border-black uppercase bg-gray-200  ref={clientSubmitRef}" id="clientSubmit">First Level Insuff</td>
-                                                                            <td className="text-left p-2 border border-black capitalize font-bold">{formatedJson(data.first_insufficiency_marks) || ''}</td>
-                                                                        </tr>
-                                                                        <tr>
-                                                                            <td className="text-left p-2 border border-black uppercase bg-gray-200">First Level Insuff Date</td>
-                                                                            <td className="text-left p-2 border border-black capitalize font-bold">{formatDate(data.first_insuff_date)}</td>
-                                                                        </tr>
-                                                                        <tr>
-                                                                            <td className="text-left p-2 border border-black uppercase bg-gray-200">First Level Insuff Reopen Date</td>
-                                                                            <td className="text-left p-2 border border-black capitalize font-bold">{formatDate(data.first_insuff_reopened_date)}</td>
-                                                                        </tr>
-                                                                        <tr>
-                                                                            <td className="text-left p-2 border border-black uppercase bg-gray-200">Second Level Insuff</td>
-                                                                            <td className="text-left p-2 border border-black capitalize font-bold">{formatedJson(data.second_insufficiency_marks) || ''}</td>
-                                                                        </tr>
-                                                                        <tr>
-                                                                            <td className="text-left p-2 border border-black uppercase bg-gray-200">Second Level Insuff Date</td>
-                                                                            <td className="text-left p-2 border border-black capitalize font-bold">{formatDate(data.second_insuff_date)}</td>
-                                                                        </tr>
-                                                                        <tr>
-                                                                            <td className="text-left p-2 border border-black uppercase bg-gray-200">Third Level Insuff Marks</td>
-                                                                            <td className="text-left p-2 border border-black capitalize font-bold">{formatedJson(data.third_insufficiency_marks) || ''}</td>
-                                                                        </tr>
-                                                                        <tr>
-                                                                            <td className="text-left p-2 border border-black uppercase bg-gray-200">Third Level Insuff Date</td>
-                                                                            <td className="text-left p-2 border border-black capitalize font-bold">{formatDate(data.third_insuff_date)}</td>
-                                                                        </tr>
-                                                                        <tr>
-                                                                            <td className="text-left p-2 border border-black uppercase bg-gray-200">Third Level Insuff Reopen Date</td>
-                                                                            <td className="text-left p-2 border border-black capitalize font-bold">{formatDate(data.third_insuff_reopened_date)}</td>
-                                                                        </tr>
-                                                                        <tr>
-                                                                            <td className="text-left p-2 border border-black uppercase bg-gray-200">Reason For Delay</td>
-                                                                            <td className="text-left p-2 border border-black capitalize font-bold">{formatedJson(data.delay_reason) || ''}</td>
-                                                                        </tr>
-
-                                                                    </tbody>
-                                                                </table>
-                                                            </td>
-                                                        </tr>
-                                                    </>
-                                                )}
                                             </React.Fragment>
                                         )
                                     })}
