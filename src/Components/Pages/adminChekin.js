@@ -36,6 +36,7 @@ import { FaFlag } from 'react-icons/fa';
 import { FaChevronLeft } from 'react-icons/fa';
 const AdminChekin = () => {
 
+    const [servicesHeadings, setServicesHeadings] = useState([]);
 
     const [activeId, setActiveId] = useState(null);
     const [selectedValue, setSelectedValue] = useState("");
@@ -104,6 +105,37 @@ const AdminChekin = () => {
     const adminId = JSON.parse(localStorage.getItem("admin"))?.id;
     const token = localStorage.getItem('_token');
 
+    function getStatusByServiceId(annexures, serviceId) {
+
+        if (!Array.isArray(annexures)) {
+            return null;
+        }
+
+        console.log(`serviceId - `, serviceId);
+
+        const annexure = annexures.find(item => item.serviceId === serviceId);
+
+        if (!annexure) {
+            return null;
+        }
+
+        console.log('✅ Match found:', annexure);
+
+        if (!annexure.annexureData) {
+            console.warn(`⚠️ 'data' field missing in annexure for serviceId: ${serviceId}`);
+            return null;
+        }
+
+        if (!('status' in annexure.annexureData)) {
+            console.warn(`⚠️ 'status' not found in data for serviceId: ${serviceId}`);
+            return null;
+        }
+
+        console.log('📤 Returning status:', annexure.annexureData.status);
+
+        return annexure.annexureData.status || 'NIL';
+    }
+
     // Fetch data from the main API
     const fetchData = useCallback((filterStatus = null) => {
         // console.log('flsts', filterStatus)
@@ -149,6 +181,51 @@ const AdminChekin = () => {
                     deadline_date: customer.deadline_date ? customer.deadline_date : customer.new_deadline_date
                 }));
                 setData(updatedCustomers || []);
+                const applicationData = result.customers;
+
+                const allHeadings = applicationData.flatMap(customer => {
+                    if (!customer.annexureResults) {
+                        console.log('Missing annexureResults for customer:', customer.id);
+                        return [];
+                    }
+
+                    return customer.annexureResults.flatMap(item => {
+                        if (!item.reportFormJson || !item.reportFormJson.json) {
+                            console.log('Missing or invalid reportFormJson for service_id:', item.service_id);
+                            return [];
+                        }
+
+                        try {
+                            const parsedJson = JSON.parse(item.reportFormJson.json);
+                            return [{
+                                id: item.service_id,
+                                heading: parsedJson.heading || []
+                            }];
+                        } catch (e) {
+                            console.log('Failed to parse JSON for item:', item);
+                            return [];
+                        }
+                    });
+                });
+
+
+                // ✅ Deduplicate the headings
+                const uniqueHeadingsMap = new Map();
+
+                allHeadings.forEach(({ id, heading }) => {
+                    if (!uniqueHeadingsMap.has(id)) {
+                        uniqueHeadingsMap.set(id, heading);
+                    }
+                });
+
+                const uniqueHeadings = Array.from(uniqueHeadingsMap, ([id, heading]) => ({ id, heading }));
+
+
+                console.log('Unique Headings:', uniqueHeadings);
+                setServicesHeadings(uniqueHeadings);
+
+
+
 
                 const newToken = result.token || result._token || token;
                 if (newToken) {
@@ -2815,7 +2892,17 @@ const AdminChekin = () => {
                                 <th className="uppercase border border-black px-4 py-2">Completed IN</th>
                                 <th className="uppercase border border-black px-4 py-2">Days Delayed</th>
                                 <th className="uppercase border border-black px-4 py-2 ">HIGHLIGHT</th>
-                                {headingsAndStatuses.map((item, idx) => {
+                                {servicesHeadings && servicesHeadings.length > 0 ? (
+                                    servicesHeadings.map((heading, index) => {
+                                        return (
+                                            <th key={index} className="uppercase border border-black px-4 py-2">
+                                                {heading.heading}
+                                            </th>
+                                        );
+                                    })
+                                ) : null}
+
+                                {/* {headingsAndStatuses.map((item, idx) => {
                                     const rawHeading = item?.heading;
 
                                     const isEmpty =
@@ -2831,7 +2918,7 @@ const AdminChekin = () => {
                                             {isEmpty ? 'NIL' : sanitizeText(rawHeading)}
                                         </th>
                                     );
-                                })}
+                                })} */}
 
                                 <th className="border border-black px-4 py-2">First Level Insuff</th>
                                 <th className="border border-black px-4 py-2">First Insuff Date</th>
@@ -3065,29 +3152,15 @@ const AdminChekin = () => {
                                                             )}
                                                         </div>
                                                     </td>
-                                                    {headingsAndStatuses.map((item, idx) => {
-                                                        const rawStatus = item?.status;
-
-                                                        const isEmpty =
-                                                            !rawStatus ||
-                                                            rawStatus.trim() === '' ||
-                                                            rawStatus.trim().toLowerCase() === 'null';
-
-                                                        return (
-                                                            <td
-                                                                key={`status-${idx}`}
-                                                                className="text-left p-2 border font-bold border-black uppercase"
-                                                                style={getColorStyle(rawStatus)}
-                                                            >
-                                                                {isEmpty
-                                                                    ? 'NIL'
-                                                                    : isValidDate(rawStatus)
-                                                                        ? formatDate(rawStatus)
-                                                                        : sanitizeText(removeColorNames(rawStatus))}
-                                                            </td>
-                                                        );
-                                                    })}
-
+                                                    {servicesHeadings && servicesHeadings.length > 0 ? (
+                                                        servicesHeadings.map((heading, index) => {
+                                                            return (
+                                                                <th key={index} className="uppercase border border-black px-4 py-2">
+                                                                    {getStatusByServiceId(data.annexureResults, heading.id)}
+                                                                </th>
+                                                            );
+                                                        })
+                                                    ) : null}
 
                                                     <td className="border border-black px-4 py-2 font-bold">{formatedJson(data.first_insufficiency_marks) || "NOT APPLICABLE"}</td>
                                                     <td className="border border-black px-4 py-2 font-bold">{formatDate(data.first_insuff_date) || "NOT APPLICABLE"}</td>
