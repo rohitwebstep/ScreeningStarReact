@@ -724,76 +724,62 @@ const InactiveClients = () => {
     }
     const generateAddressPDF = async (address, shouldSave = true) => {
         const doc = new jsPDF({ compress: true });
+
         const pageWidth = doc.internal.pageSize.getWidth();
         const pageHeight = doc.internal.pageSize.getHeight();
-        const lineHeight = 5;
         const marginLeft = 20;
         const marginRight = 20;
         const maxWidth = pageWidth - marginLeft - marginRight;
+        const colWidth = maxWidth / 2;
+        const lineHeight = 4; // Smaller font, smaller spacing
+        const myMaxWidth = colWidth - 4;
+        let y = 20;
 
-        // ---- IMAGE + | + ADVOCATE DETAILS ----
-        const blockY = 2;
-        const imgWidth = 35;
-        const imgHeight = 35;
-        const imgX = 20;
-        const fontSizeHeading = 13;
-        const fontSizeParagraph = 10;
-
-        // Logo
-        const logoBase64 = "https://webstepdev.com/screeningstarAssets/advocate.png";
-        doc.addImage(logoBase64, "PNG", imgX, blockY, imgWidth, imgHeight);
-
-        // Divider Line
-        const lineX = pageWidth / 2;
-        const blockHeight = imgHeight;
-        doc.setDrawColor(0);
-        doc.setLineWidth(0.5);
-        doc.line(lineX, blockY + 5, lineX, blockY + blockHeight - 5);
-
-        // Advocate Details
-        const advocateX = pageWidth - 20;
-        let advocateY = blockY;
-        doc.setFontSize(9);
-        const advocateDetails = [
-            "NAVA NAYANA LEGAL CHAMBERS",
-            "MANJUNATHA H S (HSM), B.B.M., LL.B.",
-            "ADVOCATE AND LEGAL CONSULTANT",
-            "ENROLLMENT NUMBER: KAR/4765/2023",
-            "MOBILE NUMBER : +91 9738812694",
-            "MANJUNATH.9738812694@GMAIL.COM",
-        ];
-        advocateDetails.forEach(line => {
-            doc.text(line, advocateX, advocateY + 10, { align: 'right' });
-            advocateY += lineHeight;
-        });
-
-        // Horizontal line below block
-        const hrY = blockY + blockHeight + 5;
-        doc.line(20, hrY - 2, pageWidth - 20, hrY - 2);
-
-        let y = hrY + 4;
-
-        // ---- TITLE ----
+        // ---- HEADING ----
+        doc.setFontSize(11);
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(fontSizeHeading);
-        doc.text('Address Verification', pageWidth / 2, y, { align: 'center' });
 
-        y += lineHeight * 3 - 3;
+        const headingText = 'ADDRESS VERIFICATION';
+        const textWidth = doc.getTextWidth(headingText);
+        const centerX = pageWidth / 2;
+        const yOffset = y;
 
-        // ---- INTRO ----
+        // Set line color (optional)
+        doc.setDrawColor(255, 204, 0); // yellow-orange like in your image
+        doc.setLineWidth(1);
+
+        // Left line: from left margin to left of text
+        const linePadding = 4;
+        const lineLeftStartX = marginLeft;
+        const lineLeftEndX = centerX - textWidth / 2 - linePadding;
+        doc.line(lineLeftStartX, yOffset, lineLeftEndX, yOffset);
+
+        // Right line: from right of text to right margin
+        const lineRightStartX = centerX + textWidth / 2 + linePadding;
+        const lineRightEndX = pageWidth - marginRight;
+        doc.line(lineRightStartX, yOffset, lineRightEndX, yOffset);
+
+        // Draw heading text in center
+        doc.setTextColor(33, 64, 154); // Optional: dark blue (like in your image)
+        doc.text(headingText, centerX, yOffset - 1, { align: 'center' });
+
+        // Optional: reset text color if you change it
+        doc.setTextColor(0, 0, 0);
+
+        // Move down for next content
+        y += 10;
+
+        y += 10;
+
+        // ---- TABLE DATA ----
+        doc.setFontSize(9); // Reduced font size
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(fontSizeParagraph);
-        const intro = `This is with regard to the search conducted in the Police Station referred below with regard to any criminal cases filed against the person detailed below.`;
-        const introLines = doc.splitTextToSize(intro, maxWidth);
-        doc.text(introLines, 20, y - 6, { align: 'left' });
-        y += introLines.length * lineHeight;
+        doc.setDrawColor(0, 0, 0); // yellow-orange like in your image
 
-        // ---- DATA TABLE ----
-        const colWidth = (pageWidth - 40) / 2;
-        const rowHeight = lineHeight + 1;
-        const tableX = 20;
+        doc.setLineWidth(0.1);
+
         const entries = [
-            ['Reference ID ', address.reference_id || ''],
+            ['Reference ID', address.reference_id || ''],
             ['Full Name of The Candidate/Applicant/Job Seeker', address.candidateName || ''],
             ['Date of Address Verification', address.verificationDate || ''],
             ['Address as provided by the candidate/Applicant', address.providedAddress || ''],
@@ -811,181 +797,71 @@ const InactiveClients = () => {
             ['Nearby Name of the Police Station Location', address.policeStation || ''],
             ['Any Comment regarding the Address verification', address.comments || ''],
             ['Name of the Representative with date', address.representativeNameDate || ''],
-            ['Signature of Respondent', signatureDemo || '']  // ✅ now included
+            ['Signature of Respondent', signatureDemo || '']
         ];
-
-        doc.setLineWidth(0.1);
-        const myMaxWidth = colWidth - 4;
 
         for (const [label, value] of entries) {
             const isSignatureRow = label === 'Signature of Respondent';
 
             const wrappedLabel = doc.splitTextToSize(label, myMaxWidth);
-
             const linesCount = wrappedLabel.length;
-            let dynamicRowHeight = linesCount * 6;
+            let dynamicRowHeight = linesCount * lineHeight + 2;
 
-            if (isSignatureRow) {
-                dynamicRowHeight = 30; // Adjust height to fit the signature image
-            }
+            if (isSignatureRow) dynamicRowHeight = 30; // Fixed height for image
 
-            // Draw cell borders
-            doc.rect(tableX, y - 8, colWidth, dynamicRowHeight);
-            doc.rect(tableX + colWidth, y - 8, colWidth, dynamicRowHeight);
+            // Draw table cells
+            doc.rect(marginLeft, y - 4, colWidth, dynamicRowHeight);
+            doc.rect(marginLeft + colWidth, y - 4, colWidth, dynamicRowHeight);
 
-            // Left cell (label)
-            wrappedLabel.forEach((line, idx) => {
-                doc.text(line, tableX + 2, y - 4 + (idx * 5));
+            // Label cell
+            wrappedLabel.forEach((line, i) => {
+                doc.text(line, marginLeft + 2, y + (i * lineHeight));
             });
 
             if (isSignatureRow) {
-                doc.addImage(signatureDemo, "PNG", tableX + colWidth + 2, y - 6, 50, 25);
-                // try {
-                //     if (value instanceof File || value instanceof Blob) {
-                //         const base64Image = await imageToBase64(value);
-                //         doc.addImage(base64Image, "PNG", tableX + colWidth + 2, y - 6, 50, 25);
-                //     } 
-
-                //     else if (typeof value === 'string' && value.startsWith("data:image")) {
-                //         doc.addImage(value, "PNG", tableX + colWidth + 2, y - 6, 40, 25);
-                //     } else {
-                //         doc.text("Signature not available", tableX + colWidth + 2, y + 5);
-                //     }
-                // } catch (error) {
-                //     doc.text("Failed to load signature", tableX + colWidth + 2, y + 5);
-                // }
+                try {
+                    const base64Image = await loadImageAsBase64(signatureDemo); // or use signatureDemo directly if already base64
+                    doc.addImage(base64Image, "PNG", marginLeft + colWidth + 2, y, 50, 25);
+                } catch (error) {
+                    doc.text("Signature not available", marginLeft + colWidth + 2, y + 5);
+                }
             } else {
-                // Normal value cell
                 const wrappedValue = doc.splitTextToSize(String(value), myMaxWidth);
-                wrappedValue.forEach((line, idx) => {
-                    doc.text(line, tableX + colWidth + 2, y - 4 + (idx * 5));
+                wrappedValue.forEach((line, i) => {
+                    doc.text(line, marginLeft + colWidth + 2, y + (i * lineHeight));
                 });
             }
 
             y += dynamicRowHeight;
 
-            // Page break check
+            // Add page if needed
             if (y > pageHeight - 30) {
                 doc.addPage();
                 y = 20;
             }
         }
 
-
-        // ---- DISCLAIMER ----
-        y -= 2;
-        const disclaimer = `The search results are based on the available registers maintained in respect of criminal case/s and suit registers in respect of civil case/s maintained in the above-mentioned Court / Police Station having jurisdiction over the address where the candidate was said to be residing. Due care has been taken in conducting the search. The records are public records and the search has been conducted on behalf of your good self and the undersigned is not responsible for any errors, inaccuracies, omissions or deletions if any in the said court or police records. The above report is based on the verbal confirmation of the concerned authority as on the date on which it is confirmed, hence this verification is subjective. Please do contact the Local Police for Candidate Police Clearance Certificate (PCC) / Police Verification Certificate.`;
-
-        addJustifiedText(doc, disclaimer, 20, y, maxWidth, 5);
-        const disclaimerLines = doc.splitTextToSize(disclaimer, maxWidth);
-        y += disclaimerLines.length * 5 + 6;
-
-
-        doc.addPage();
-        y = 20;
-        doc.setFontSize(fontSizeParagraph);
-        doc.setFont('helvetica', 'bold');
-        doc.text('DISCLAIMER', pageWidth / 2, y - 5, { align: 'center' });
-        y += 4;
-
-        // ---- Note block ----
-        const noteLines = [
-            [
-                { text: 'Note:', bold: true },
-                { text: ' This report is provided for informational purposes only and does not constitute an official police clearance or certificate.', bold: false },
-            ],
-            [
-                { text: '', }
-            ],
-            [
-                { text: '“Nava Nayana Legal Chambers”', bold: true },
-                { text: ' does not guarantee the completeness, accuracy, or finality of the information and shall not be held liable for any decisions or actions taken by third parties based on this report.', bold: false },
-            ],
-            [
-                { text: 'This document is confidential and intended solely for the authorized recipient. Any unauthorized use, reproduction, or dissemination is strictly prohibited without prior written consent.', bold: false },
-            ],
-        ];
-
-        doc.setFontSize(fontSizeParagraph);
-
-        noteLines.forEach(lineArray => {
-            if (lineArray.length === 1 && lineArray[0].text.trim() === '') {
-                y += lineHeight - 4;
-                return;
-            }
-
-            let styleMap = [];
-
-            lineArray.forEach(part => {
-                const words = part.text.split(' ');
-                words.forEach(word => {
-                    styleMap.push({ word, bold: part.bold });
-                });
-            });
-
-            let lines = [];
-            let currentLine = [];
-            let currentWidth = 0;
-
-            styleMap.forEach(item => {
-                doc.setFont('helvetica', item.bold ? 'bold' : 'normal');
-                const wordWidth = doc.getTextWidth(item.word + ' ');
-
-                if (currentWidth + wordWidth > maxWidth && currentLine.length > 0) {
-                    lines.push(currentLine);
-                    currentLine = [item];
-                    currentWidth = wordWidth;
-                } else {
-                    currentLine.push(item);
-                    currentWidth += wordWidth;
-                }
-            });
-            if (currentLine.length) lines.push(currentLine);
-
-            lines.forEach((lineWords, index) => {
-                let totalWordsWidth = 0;
-                lineWords.forEach(item => {
-                    doc.setFont('helvetica', item.bold ? 'bold' : 'normal');
-                    totalWordsWidth += doc.getTextWidth(item.word + ' ');
-                });
-
-                const gaps = lineWords.length - 1;
-                let extraSpace = gaps > 0 ? (maxWidth - totalWordsWidth) / gaps : 0;
-                if (index === lines.length - 1) extraSpace = 0;
-
-                let x = marginLeft;
-
-                lineWords.forEach((item, i) => {
-                    doc.setFont('helvetica', item.bold ? 'bold' : 'normal');
-                    doc.text(item.word, x, y);
-                    let wordWidth = doc.getTextWidth(item.word + ' ');
-                    x += wordWidth;
-                    if (i < lineWords.length - 1) {
-                        x += extraSpace;
-                    }
-                });
-
-                y += lineHeight;
-            });
-        });
-
-        // ---- Signature Image ----
-        const signatureHeight = 25;
-        const marginBottom = 10;
-
-        if (y + signatureHeight + marginBottom > pageHeight) {
-            doc.addPage();
-            y = 10;
-        }
-
-
         // ---- Save or Return ----
         if (shouldSave) {
-            doc.save(`${address.reference_id} Address Verification.pdf`);
+            doc.save(`${address.reference_id}_Address_Verification.pdf`);
         } else {
             return doc;
         }
     };
+
+
+
+    async function loadImageAsBase64(url) {
+        const response = await fetch(url);
+        const blob = await response.blob();
+
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result); // base64 string
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    }
 
     const formFields = [
         { name: "reference_id", label: "Reference ID", type: "text" },
@@ -2040,277 +1916,194 @@ const InactiveClients = () => {
         right: { style: BorderStyle.NONE },
     };
 
-    const generateAddressDOCX = async (addressData) => {
-        const advocateDetails = [
-            "NAVA NAYANA LEGAL CHAMBERS",
-            "MANJUNATHA H S (HSM), B.B.M., LL.B.",
-            "ADVOCATE AND LEGAL CONSULTANT",
-            "ENROLLMENT NUMBER: KAR/4765/2023",
-            "MOBILE NUMBER : +91 9738812694",
-            "MANJUNATH.9738812694@GMAIL.COM",
-        ];
 
-        const headerImageUrl = "https://webstepdev.com/screeningstarAssets/advocate.png";
-        const stampImageUrl = Signature; // Make sure Signature is a URL or imported image path
+   const generateAddressDOCX = async (addressData) => {
+ const headingRow = new TableRow({
+    children: [
+        // Left Yellow Line Cell
+        new TableCell({
+            width: { size: 30, type: WidthType.PERCENTAGE },
+            borders: {
+                top: { style: BorderStyle.NONE },
+                bottom: { style: BorderStyle.SINGLE, size: 6, color: 'FFC000' }, // Yellow underline
+                left: { style: BorderStyle.NONE },
+                right: { style: BorderStyle.NONE },
+            },
+            children: [new Paragraph('')],
+        }),
 
-        const fetchImageBuffer = async (url) => {
-            const res = await fetch(url);
-            return res.arrayBuffer();
-        };
-
-        const headerImage = await fetchImageBuffer(headerImageUrl);
-        const stampImage = await fetchImageBuffer(stampImageUrl);
-
-        // Header Table
-        const headerTable = new Table({
-            width: { size: 100, type: WidthType.PERCENTAGE },
-            borders: noBorders,
-            rows: [
-                new TableRow({
+        // Center Heading Cell
+        new TableCell({
+            width: { size: 40, type: WidthType.PERCENTAGE },
+            borders: {
+                top: { style: BorderStyle.NONE },
+                bottom: { style: BorderStyle.NONE },
+                left: { style: BorderStyle.NONE },
+                right: { style: BorderStyle.NONE },
+            },
+            children: [
+                new Paragraph({
+                    alignment: AlignmentType.CENTER,
                     children: [
-                        new TableCell({
-                            width: { size: 15, type: WidthType.PERCENTAGE },
-                            borders: noBorders,
+                        new TextRun({
+                            text: "ADDRESS VERIFICATION TEMPLATE",
+                            bold: true,
+                            color: "21409A", // Deep Blue
+                            size: 28,        // 14pt
+                            font: "Arial",
+                        }),
+                    ],
+                }),
+            ],
+        }),
+
+        // Right Yellow Line Cell
+        new TableCell({
+            width: { size: 30, type: WidthType.PERCENTAGE },
+            borders: {
+                top: { style: BorderStyle.NONE },
+                bottom: { style: BorderStyle.SINGLE, size: 6, color: 'FFC000' },
+                left: { style: BorderStyle.NONE },
+                right: { style: BorderStyle.NONE },
+            },
+            children: [new Paragraph('')],
+        }),
+    ],
+});
+
+const headingTable = new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: [headingRow],
+    borders: {
+        top: { style: BorderStyle.NONE },
+        bottom: { style: BorderStyle.NONE },
+        left: { style: BorderStyle.NONE },
+        right: { style: BorderStyle.NONE },
+        insideHorizontal: { style: BorderStyle.NONE },
+        insideVertical: { style: BorderStyle.NONE },
+    },
+});
+
+
+ 
+
+    const dataRows = [
+        ["Reference ID", addressData.reference_id || ""],
+        ["Full Name of The Candidate", addressData.candidateName || ""],
+        ["Date of Address Verification", addressData.verificationDate || ""],
+        ["Address Provided", addressData.providedAddress || ""],
+        ["Does Address Match?", addressData.addressMatch || ""],
+        ["Verifier Remarks", addressData.verifierRemarks || ""],
+        ["Mode of Communication", addressData.communicationMode || ""],
+        ["Full Name of the Respondent", addressData.respondentName || ""],
+        ["Relationship", addressData.relationship || ""],
+        ["Years at Residence", addressData.yearsAtResidence || ""],
+        ["Status", addressData.residenceStatus || ""],
+        ["Respondent Address Proof", addressData.respondentProof || ""],
+        ["Confirmed with Neighbors?", addressData.confirmedWithNeighbors || ""],
+        ["Nature of Location", addressData.locationClass || ""],
+        ["Prominent Landmark", addressData.landmark || ""],
+        ["Nearby Police Station", addressData.policeStation || ""],
+        ["Comments", addressData.comments || ""],
+        ["Representative Name & Date", addressData.representativeNameDate || ""],
+    ];
+
+    const textRows = dataRows.map(([label, value]) =>
+        new TableRow({
+            children: [
+                new TableCell({
+                    children: [
+                        new Paragraph({
                             children: [
-                                new Paragraph({
-                                    alignment: AlignmentType.LEFT,
-                                    children: [
-                                        new ImageRun({
-                                            data: headerImage,
-                                            transformation: { width: 80, height: 80 },
-                                        }),
-                                    ],
-                                }),
+                                new TextRun({ text: label, bold: true, size: 20 }), // smaller font
                             ],
                         }),
-                        new TableCell({
-                            width: { size: 25, type: WidthType.PERCENTAGE },
-                            borders: noBorders,
-                            children: [new Paragraph("")],
+                    ],
+                }),
+                new TableCell({
+                    children: [
+                        new Paragraph({
+                            children: [
+                                new TextRun({ text: String(value), size: 20 }),
+                            ],
                         }),
-                        new TableCell({
-                            width: { size: 1, type: WidthType.PERCENTAGE },
-                            borders: {
-                                top: { style: BorderStyle.NONE },
-                                bottom: { style: BorderStyle.NONE },
-                                left: { style: BorderStyle.NONE },
-                                right: { style: BorderStyle.SINGLE, size: 4, color: "000000" },
-                            },
-                            children: [new Paragraph("")],
+                    ],
+                }),
+            ],
+        })
+    );
+
+    // Signature row
+    let signatureRow;
+    const signaturePath = signatureDemo;
+
+    try {
+        const base64String = await fetchImageAsBase64(signaturePath);
+        const imageBuffer = base64ToArrayBuffer(base64String);
+
+        signatureRow = new TableRow({
+            children: [
+                new TableCell({
+                    children: [
+                        new Paragraph({
+                            children: [new TextRun({ text: "Signature of Respondent", bold: true })],
                         }),
-                        new TableCell({
-                            width: { size: 59, type: WidthType.PERCENTAGE },
-                            borders: noBorders,
-                            children: advocateDetails.map(
-                                (line) =>
-                                    new Paragraph({
-                                        alignment: AlignmentType.RIGHT,
-                                        children: [new TextRun({ text: line, size: 20 })],
-                                    })
-                            ),
+                    ],
+                }),
+                new TableCell({
+                    children: [
+                        new Paragraph({
+                            children: [
+                                new ImageRun({
+                                    data: imageBuffer,
+                                    transformation: { width: 120, height: 60 },
+                                }),
+                            ],
                         }),
                     ],
                 }),
             ],
         });
-
-        // Prepare data rows (excluding signature)
-        const dataRows = [
-            ["Reference ID", addressData.reference_id || ""],
-            ["Full Name of The Candidate/Applicant/Job Seeker", addressData.candidateName || ""],
-            ["Date of Address Verification", addressData.verificationDate || ""],
-            ["Address as provided by the candidate/Applicant", addressData.providedAddress || ""],
-            ["Does physically verified address match with the above? (Yes or No)", addressData.addressMatch || ""],
-            ["Verifier remarks (if address does not match)", addressData.verifierRemarks || ""],
-            ["Mode of communication", addressData.communicationMode || ""],
-            ["Full Name of the Respondent", addressData.respondentName || ""],
-            ["Relationship with the candidate/Applicant", addressData.relationship || ""],
-            ["Number of Years staying at present/Current residence", addressData.yearsAtResidence || ""],
-            ["Status", addressData.residenceStatus || ""],
-            ["Details of the Respondent Address proof Verified", addressData.respondentProof || ""],
-            ["If the residence is locked, has the address been confirmed with neighbors?", addressData.confirmedWithNeighbors || ""],
-            ["Nature of Location", addressData.locationClass || ""],
-            ["Prominent Landmark in 1KM radius (Mandatory)", addressData.landmark || ""],
-            ["Nearby Name of the Police Station Location", addressData.policeStation || ""],
-            ["Any Comment regarding the Address verification", addressData.comments || ""],
-            ["Name of the Representative with date", addressData.representativeNameDate || ""],
-        ];
-
-        // Map text rows
-        const textRows = dataRows.map(
-            ([label, value]) =>
-                new TableRow({
+    } catch (error) {
+        console.error("Error loading signature image:", error);
+        signatureRow = new TableRow({
+            children: [
+                new TableCell({
                     children: [
-                        new TableCell({
-                            children: [new Paragraph({ children: [new TextRun({ text: label, bold: true })] })],
-                        }),
-                        new TableCell({
-                            children: [new Paragraph(String(value || ""))],
+                        new Paragraph({
+                            children: [new TextRun({ text: "Signature of Respondent", bold: true })],
                         }),
                     ],
-                })
-        );
-
-        // Prepare signature row
-
-        let signatureRow;
-        const signaturePath = signatureDemo; // from public folder
-
-        try {
-            const base64String = await fetchImageAsBase64(signaturePath);
-            const imageBuffer = base64ToArrayBuffer(base64String);
-
-            signatureRow = new TableRow({
-                children: [
-                    new TableCell({
-                        children: [new Paragraph({ children: [new TextRun({ text: "Signature of Respondent", bold: true })] })],
-                    }),
-                    new TableCell({
-                        children: [
-                            new Paragraph({
-                                children: [
-                                    new ImageRun({
-                                        data: imageBuffer,
-                                        transformation: { width: 120, height: 60 },
-                                    }),
-                                ],
-                            }),
-                        ],
-                    }),
-                ],
-            });
-        } catch (error) {
-            console.error("Error loading image from public folder:", error);
-            signatureRow = new TableRow({
-                children: [
-                    new TableCell({
-                        children: [new Paragraph({ children: [new TextRun({ text: "Signature of Respondent", bold: true })] })],
-                    }),
-                    new TableCell({
-                        children: [new Paragraph("Failed to load signature image")],
-                    }),
-                ],
-            });
-        }
-
-
-
-        const allRows = [...textRows, signatureRow];
-
-        // Data Table
-        const addressVerificationTable = new Table({
-            width: { size: 100, type: WidthType.PERCENTAGE },
-            rows: allRows,
-        });
-
-        // Build the document
-        const doc = new Document({
-            sections: [
-                {
-                    children: [
-                        headerTable,
-                        // Thin horizontal rule
-                        new Paragraph({
-                            spacing: { before: 200, after: 200 },
-                            border: {
-                                bottom: {
-                                    style: BorderStyle.SINGLE,
-                                    size: 4,
-                                    color: "000000",
-                                },
-                            },
-                            children: [new TextRun("")],
-                        }),
-                        // Title
-                        new Paragraph({
-                            alignment: AlignmentType.CENTER,
-                            children: [new TextRun({ text: "ADDRESS VERIFICATION", bold: true, size: 28 })],
-                            spacing: { after: 200 },
-                        }),
-                        // Intro paragraph
-                        new Paragraph({
-                            children: [
-                                new TextRun({
-                                    text:
-                                        "This is with regard to the search conducted in the Police Station referred below with regard to any criminal cases filed against the person detailed below.",
-                                    size: 22,
-                                }),
-                            ],
-                            spacing: { after: 300 },
-                        }),
-
-                        // Data Table
-                        addressVerificationTable,
-
-                        // Disclaimer heading
-                        new Paragraph({
-                            alignment: AlignmentType.CENTER,
-                            children: [new TextRun({ text: "DISCLAIMER", bold: true, size: 24 })],
-                            spacing: { before: 300, after: 200 },
-                        }),
-
-                        // Disclaimer body
-                        new Paragraph({
-                            children: [
-                                new TextRun({
-                                    text:
-                                        "The search results are based on the available registers maintained in respect of criminal case/s and suit registers in respect of civil case/s maintained in the above-mentioned Court / Police Station having jurisdiction over the address where the candidate was said to be residing. Due care has been taken in conducting the search. The records are public records and the search has been conducted on behalf of your good self and the undersigned is not responsible for any errors, inaccuracies, omissions or deletions if any in the said court or police records. The above report is based on the verbal confirmation of the concerned authority as on the date on which it is confirmed, hence this verification is subjective. Please do contact the Local Police for Candidate Police Clearance Certificate (PCC) / Police Verification Certificate.",
-                                    size: 20,
-                                }),
-                            ],
-                            spacing: { after: 300 },
-                        }),
-
-                        // Notes
-                        new Paragraph({
-                            children: [
-                                new TextRun({ text: "Note:", bold: true, size: 20 }),
-                                new TextRun({
-                                    text:
-                                        " This report is provided for informational purposes only and does not constitute an official police clearance or certificate.",
-                                    size: 20,
-                                }),
-                            ],
-                            spacing: { after: 150 },
-                        }),
-
-                        new Paragraph({
-                            children: [
-                                new TextRun({ text: "“Nava Nayana Legal Chambers”", bold: true, size: 20 }),
-                                new TextRun({
-                                    text:
-                                        " does not guarantee the completeness, accuracy, or finality of the information and shall not be held liable for any decisions or actions taken by third parties based on this report.",
-                                    size: 20,
-                                }),
-                            ],
-                            spacing: { after: 150 },
-                        }),
-
-                        new Paragraph({
-                            children: [
-                                new TextRun({
-                                    text:
-                                        "This document is confidential and intended solely for the authorized recipient. Any unauthorized use, reproduction, or dissemination is strictly prohibited without prior written consent.",
-                                    size: 20,
-                                }),
-                            ],
-                            spacing: { after: 300 },
-                        }),
-
-                        // Stamp Image
-                        new Paragraph({
-                            children: [
-                                new ImageRun({ data: stampImage, transformation: { width: 150, height: 70 } }),
-                            ],
-                        }),
-                    ],
-                },
+                }),
+                new TableCell({
+                    children: [new Paragraph("Failed to load signature image")],
+                }),
             ],
         });
+    }
 
-        const blob = await Packer.toBlob(doc);
-        saveAs(blob, `${addressData.reference_id} Address Verification.docx`);
-    };
+    const dataTable = new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        rows: [...textRows, signatureRow],
+    });
+
+    const doc = new Document({
+        sections: [
+            {
+                children: [
+                    headingTable,
+                    new Paragraph({ text: "", spacing: { after: 300 } }), // spacer
+                    dataTable,
+                ],
+            },
+        ],
+    });
+
+    const blob = await Packer.toBlob(doc);
+    saveAs(blob, `${addressData.reference_id || "address"}_verification.docx`);
+};
+
+
     async function fetchImageAsBase64(url) {
         const response = await fetch(url);
         const blob = await response.blob();
