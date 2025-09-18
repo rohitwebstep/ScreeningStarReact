@@ -1523,24 +1523,24 @@ const GenerateReport = () => {
   ${safeHeaderTableData.map(row => `
     <tr>
         ${row.map((cell, i) => {
-            const safeCell = (cell === null || cell === undefined || cell === '') ? 'N/A' : cell;
+                const safeCell = (cell === null || cell === undefined || cell === '') ? 'N/A' : cell;
 
-            // Default styling
-            let cellStyle = `font-weight: ${i % 2 === 0 ? 'bold' : 'normal'};`;
+                // Default styling
+                let cellStyle = `font-weight: ${i % 2 === 0 ? 'bold' : 'normal'};`;
 
-            // Check if this is the Verification Status column
-            if (row[i - 1] && row[i - 1].toString().toLowerCase().includes("verification status")) {
-                const value = safeCell.toUpperCase();
-                if (value === "GREEN") {
-                    cellStyle += " color: green; font-weight: bold;";
-                } else if (value === "RED") {
-                    cellStyle += " color: red; font-weight: bold;";
-                } else if (value === "YELLOW") {
-                    cellStyle += " color: orange; font-weight: bold;";
+                // Check if this is the Verification Status column
+                if (row[i - 1] && row[i - 1].toString().toLowerCase().includes("verification status")) {
+                    const value = safeCell.toUpperCase();
+                    if (value === "GREEN") {
+                        cellStyle += " color: green; font-weight: bold;";
+                    } else if (value === "RED") {
+                        cellStyle += " color: red; font-weight: bold;";
+                    } else if (value === "YELLOW") {
+                        cellStyle += " color: orange; font-weight: bold;";
+                    }
                 }
-            }
 
-            return `
+                return `
                 <td 
                     class="border border-blue-500 px-2 py-1" 
                     style="${cellStyle}"
@@ -1548,7 +1548,7 @@ const GenerateReport = () => {
                     ${safeCell}
                 </td>
             `;
-        }).join('')}
+            }).join('')}
     </tr>
 `).join('')}
 
@@ -3249,7 +3249,7 @@ const GenerateReport = () => {
 
                                 <div className="mb-4">
                                     <label className='capitalize text-gray-500' htmlFor="first_insufficiency_marks">First Level Insufficiency Remarks</label>
-                                    <MultiSelect
+                                    {/* <MultiSelect
                                         id="first_insufficiency_marks"
                                         name="first_insufficiency_marks"
                                         className="text-xl"
@@ -3257,8 +3257,8 @@ const GenerateReport = () => {
                                         onChange={handleMultiSelectChange}
                                         options={optionsData}
                                         isDisabled={true}
-                                    />
-                                    {/* <input
+                                    /> */}
+                                    <input
                                         type="text"
                                         id="first_insufficiency_marks"
                                         name="first_insufficiency_marks"
@@ -3276,7 +3276,7 @@ const GenerateReport = () => {
                                                 },
                                             }))
                                         }
-                                    /> */}
+                                    />
                                 </div>
                                 <div className="mb-4">
                                     <label className='capitalize text-gray-500' htmlFor="first_insuff_date">First Insuff Raised Date:</label>
@@ -3330,15 +3330,15 @@ const GenerateReport = () => {
                                 </div>
                                 <div className="mb-4">
                                     <label className='capitalize text-gray-500' htmlFor="second Level Insufficiency Remarks">Second Level Insufficiency Remarks</label>
-                                    <MultiSelect
+                                    {/* <MultiSelect
                                         id="second_insufficiency_marks"
                                         name="second_insufficiency_marks"
                                         value={formData.updated_json?.insuffDetails?.second_insufficiency_marks || []}
                                         onChange={handleMultiSelectChange}
                                         options={optionsData}
                                         isDisabled={true}
-                                    />
-                                    {/* <input
+                                    /> */}
+                                    <input
                                         type="text"
                                         id="second_insufficiency_marks"
                                         name="second_insufficiency_marks"
@@ -3356,7 +3356,7 @@ const GenerateReport = () => {
                                                 },
                                             }))
                                         }
-                                    /> */}
+                                    />
 
 
                                 </div>
@@ -3408,15 +3408,15 @@ const GenerateReport = () => {
                                 </div>
                                 <div className="mb-4">
                                     <label className='capitalize text-gray-500' htmlFor="third Level Insufficiency Remarks">third Level Insufficiency Remarks</label>
-                                    <MultiSelect
+                                    {/* <MultiSelect
                                         id="third_insufficiency_marks"
                                         name="third_insufficiency_marks"
                                         value={formData.updated_json?.insuffDetails?.third_insufficiency_marks || []}
                                         onChange={handleMultiSelectChange}
                                         options={optionsData}
                                         isDisabled={true}
-                                    />
-                                    {/* <input
+                                    /> */}
+                                    <input
                                         type="text"
                                         id="third_insufficiency_marks"
                                         name="third_insufficiency_marks"
@@ -3434,7 +3434,7 @@ const GenerateReport = () => {
                                                 },
                                             }))
                                         }
-                                    /> */}
+                                    />
 
                                 </div>
                                 <div className='flex grid md:grid-cols-2  gap-2'>
@@ -3723,13 +3723,25 @@ const GenerateReport = () => {
                                 </div>
                                 <div className="mb-4">
                                     <label className='capitalize text-gray-500' htmlFor="Remarks & reason for Delay:">Remarks & reason for Delay:</label>
-                                    <MultiSelect
+                                    <input
+                                        type="text"
                                         id="delay_reason"
                                         name="delay_reason"
-                                        value={formData.updated_json?.insuffDetails?.delay_reason || []}
-                                        onChange={handleMultiSelectChange}
-                                        options={optionsData}
+                                        value={formData.updated_json?.insuffDetails?.delay_reason || ""}
+                                        onChange={(e) =>
+                                            setFormData((prev) => ({
+                                                ...prev,
+                                                updated_json: {
+                                                    ...prev.updated_json,
+                                                    insuffDetails: {
+                                                        ...prev.updated_json?.insuffDetails,
+                                                        delay_reason: e.target.value,
+                                                    },
+                                                },
+                                            }))
+                                        }
                                     />
+
 
                                 </div>
                                 <div className="grid md:grid-cols-2 gap-3">

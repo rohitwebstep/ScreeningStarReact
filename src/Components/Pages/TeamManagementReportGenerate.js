@@ -1527,7 +1527,7 @@ Object.entries(attachments).forEach(([section, files]) => {
 
                                 <div className="mb-4">
                                     <label className='capitalize text-gray-500' htmlFor="first_insufficiency_marks">First Level Insufficiency Remarks</label>
-                                    <MultiSelect
+                                    {/* <MultiSelect
                                         id="first_insufficiency_marks"
                                         name="first_insufficiency_marks"
                                         className="text-xl"
@@ -1535,8 +1535,8 @@ Object.entries(attachments).forEach(([section, files]) => {
                                         onChange={handleMultiSelectChange}
                                         options={optionsData}
                                         isDisabled={true}
-                                    />
-                                    {/* <input
+                                    /> */}
+                                    <input
                                         type="text"
                                         id="first_insufficiency_marks"
                                         name="first_insufficiency_marks"
@@ -1555,7 +1555,7 @@ Object.entries(attachments).forEach(([section, files]) => {
                                             }))
                                         }
 
-                                    /> */}
+                                    />
 
 
                                 </div>
@@ -1597,7 +1597,7 @@ Object.entries(attachments).forEach(([section, files]) => {
                                 </div>
                                 <div className="mb-4">
                                     <label className='capitalize text-gray-500' htmlFor="second Level Insufficiency Remarks">Second Level Insufficiency Remarks</label>
-                                    {/* <input
+                                    <input
                                         type="text"
                                         id="second_insufficiency_marks"
                                         name="second_insufficiency_marks"
@@ -1615,15 +1615,15 @@ Object.entries(attachments).forEach(([section, files]) => {
                                                 },
                                             }))
                                         }
-                                    /> */}
-                                    <MultiSelect
+                                    />
+                                    {/* <MultiSelect
                                         id="second_insufficiency_marks"
                                         name="second_insufficiency_marks"
                                         className="w-full p-3 mb-4 border border-gray-300 rounded-md"
                                         value={formData.updated_json?.insuffDetails?.second_insufficiency_marks || []}
                                         onChange={handleMultiSelectChange}
                                         options={optionsData}
-                                    />
+                                    /> */}
 
 
 
@@ -1663,7 +1663,7 @@ Object.entries(attachments).forEach(([section, files]) => {
                                 </div>
                                 <div className="mb-4">
                                     <label className='capitalize text-gray-500' htmlFor="third Level Insufficiency Remarks">third Level Insufficiency Remarks</label>
-                                    {/* <input
+                                    <input
                                         type="text"
                                         id="third_insufficiency_marks"
                                         name="third_insufficiency_marks"
@@ -1681,15 +1681,15 @@ Object.entries(attachments).forEach(([section, files]) => {
                                                 },
                                             }))
                                         }
-                                    /> */}
-                                    <MultiSelect
+                                    />
+                                    {/* <MultiSelect
                                         id="third_insufficiency_marks"
                                         name="third_insufficiency_marks"
                                         className="w-full p-3 mb-4 border border-gray-300 rounded-md"
                                         value={formData.updated_json?.insuffDetails?.third_insufficiency_marks || []}
                                         onChange={handleMultiSelectChange}
                                         options={optionsData}
-                                    />
+                                    /> */}
 
                                 </div>
                                 <div className='flex grid md:grid-cols-2  gap-2'>

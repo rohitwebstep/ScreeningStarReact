@@ -271,12 +271,19 @@ const InactiveClients = () => {
     };
 
     const handleChange = (e) => {
-        const { name, value } = e.target;
+        const { name, type, files, value } = e.target;
+
         setFormData((prev) => ({
             ...prev,
-            [selectedService]: { ...prev[selectedService], [name]: value },
+            [selectedService]: {
+                ...(prev[selectedService] || {}),
+                [name]: type === "file" ? files[0] : value,
+            },
         }));
     };
+
+
+
 
     const handleFileUpload = (e, type) => {
         const file = e.target.files[0];
@@ -361,11 +368,11 @@ const InactiveClients = () => {
         document.body.removeChild(link);
     };
     const downloadSampleFileCourt = () => {
-        const sampleFile = "/court-record.csv"; // make sure this file exists in public/
+        const sampleFile = "/court-records.csv"; // make sure this file exists in public/
 
         const link = document.createElement("a");
         link.href = sampleFile;
-        link.download = "court-record.csv"; // name of the downloaded file
+        link.download = "court-records.csv"; // name of the downloaded file
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -545,13 +552,13 @@ const InactiveClients = () => {
         const entries = [
             ['Reference ID', policeData.reference_id || ''],
             ['Full Name', policeData.full_name || ''],
-            ["Father's Name", policeData["father's_name"] || ''],
+            ["Father's Name", policeData["fathers_name"] || ''],
             ['Date of Birth', policeData.date_of_birth || ''],
             ['Address', policeData.address || ''],
             ['Name of the Police Station', policeData.name_of_the_police_station || ''],
-            ['Locality / Jurisdiction', policeData["locality_/_jurisdiction"] || ''],
+            ['Locality / Jurisdiction', policeData["locality_jurisdiction"] || ''],
             ['Name of the Station House Officer', policeData.name_of_the_station_house_officer || ''],
-            ['Designation of the officer / SHO', policeData["designation_of_the_officer_/_sho"] || ''],
+            ['Designation of the officer / SHO', policeData["designation_of_the_officer_sho"] || ''],
             ['Phone Number of Police Station', policeData.phone_number_of_police_station || ''],
             ['Number of Years covered in the station', policeData.number_of_years_covered_in_the_station || ''],
             ['Date of Verification at Station', policeData.date_of_verification_at_station || ''],
@@ -713,12 +720,76 @@ const InactiveClients = () => {
 
 
         if (shouldSave) {
-            doc.save('Police_Record_Report.pdf');
+            doc.save(`${formData.police.reference_id} Police Report.pdf`);
         } else {
             return doc;
         }
 
     }
+    const formFields = [
+        { name: "candidateName", label: "Full Name of The Candidate/Applicant/Job Seeker", type: "text" },
+        { name: "verificationDate", label: "Date of Address Verification", type: "date" },
+        { name: "providedAddress", label: "Address as provided by the candidate/Applicant", type: "textarea" },
+
+        // 👇 SELECT field: Yes/No
+        {
+            name: "addressMatch",
+            label: "Does physically verified address match with the above? (Yes or No)",
+            type: "select",
+            options: ["Yes", "No"]
+        },
+
+        { name: "verifierRemarks", label: "Verifier remarks (if address does not match)", type: "textarea" },
+
+        // 👇 SELECT field: communication mode
+        {
+            name: "communicationMode",
+            label: "Mode of communication",
+            type: "select",
+            options: ["Verbal", "Written", "Digitally"]
+        },
+
+        { name: "respondentName", label: "Full Name of the Respondent", type: "text" },
+        { name: "relationship", label: "Relationship with the candidate/Applicant", type: "text" },
+        { name: "yearsAtResidence", label: "Number of Years staying at present/Current residence", type: "text" },
+
+        // 👇 SELECT field: residence status
+        {
+            name: "residenceStatus",
+            label: "Status",
+            type: "select",
+            options: ["Ownership", "Rental", "Hostel", "PG"]
+        },
+
+        { name: "respondentProof", label: "Details of the Respondent Address proof Verified", type: "textarea" },
+        {
+            name: "confirmedWithNeighbors",
+            label: "If the residence is locked, has the address been confirmed with neighbors?",
+            type: "select",
+            options: ["Yes", "No"]
+        },
+
+        // 👇 SELECT field: location class
+        {
+            name: "locationClass",
+            label: "Nature of Location",
+            type: "select",
+            options: ["Lower", "Middle", "Upper"]
+        },
+
+        { name: "landmark", label: "Prominent Landmark in 1KM radius (Mandatory)", type: "text" },
+        { name: "policeStation", label: "Nearby Name of the Police Station Location", type: "text" },
+        { name: "comments", label: "Any Comment regarding the Address verification", type: "textarea" },
+        { name: "representativeNameDate", label: "Name of the Representative with date", type: "text" },
+        {
+            name: "respondentSignature",
+            label: "Signature of Respondent",
+            type: "file"
+        }
+    ];
+
+
+
     const generateCourtPDF = async (courtData, shouldSave = true) => {
         const doc = new jsPDF({ compress: true });
         const pageWidth = doc.internal.pageSize.getWidth();
@@ -865,7 +936,7 @@ const InactiveClients = () => {
         const entries = [
             ['Reference ID', courtData.reference_id || ''],
             ['Full Name', courtData.full_name || ''],
-            ["Father's Name", courtData["father's_name"] || ''],
+            ["Father's Name", courtData["fathers_name"] || ''],
             ['Date of Birth', courtData.date_of_birth || ''],
             ['Permanent Address', courtData.permanent_address || ''],
             ['Current Address', courtData.current_address || ''],
@@ -1168,7 +1239,461 @@ const InactiveClients = () => {
         }
 
         if (shouldSave) {
-            doc.save('Court_Record_Report.pdf');
+            doc.save(`${formData.court.reference_id} Court Report.pdf`);
+        } else {
+            return doc;
+        }
+    }
+    const generateAddressPDF = async (courtData, shouldSave = true) => {
+        const doc = new jsPDF({ compress: true });
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const lineHeight = 6;
+
+        // ---- IMAGE + | + ADVOCATE DETAILS ----
+        const blockY = 2;
+        const imgWidth = 35;
+        const imgHeight = 35;
+        const imgX = 20;
+
+        const qrCodeBase64 = "https://webstepdev.com/screeningstarAssets/advocate.png";
+        doc.addImage(qrCodeBase64, "PNG", imgX, blockY, imgWidth, imgHeight);
+
+        // Draw vertical line next to image
+        const lineX = pageWidth / 2;
+        const blockHeight = imgHeight; // Enough for image + details
+
+        doc.setDrawColor(0);
+        doc.setLineWidth(0.5);
+        doc.line(lineX, blockY + 5, lineX, blockY + blockHeight - 5);
+
+        // Advocate Details
+        const advocateX = pageWidth - 20;
+        let advocateY = blockY;
+
+        doc.setFontSize(10);
+        const advocateDetails = [
+            // "NAVA NAYANA LEGAL CHAMBERS",
+            // "MANJUNATHA H S (HSM), B.B.M., LL.B.",
+            // "ADVOCATE AND LEGAL CONSULTANT",
+            // "ENROLLMENT NUMBER: KAR/4765/2023",
+            // "MOBILE NUMBER : +91 9738812694",
+            // "MANJUNATH.9738812694@GMAIL.COM",
+        ];
+
+        advocateDetails.forEach(line => {
+            doc.text(line, advocateX, advocateY + 10, { align: 'right' });
+            advocateY += lineHeight;
+        });
+
+        // Horizontal line below the block
+        const hrY = blockY + blockHeight + 5;
+        doc.line(20, hrY - 2, pageWidth - 20, hrY - 2);
+
+
+        let y = hrY + 7;
+
+        // ---- TITLE ----
+        doc.setFont('helvetica', 'bold'); // closest to semibold
+        doc.setFontSize(15);
+        doc.text('COURT RECORD REPORT', pageWidth / 2, y, { align: 'center' });
+
+        y += lineHeight * 3 - 5;
+
+
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(14);
+        // Intro
+        const intro = `This information is given with regard to search conducted at the Jurisdictional Court. `;
+        const introLines = doc.splitTextToSize(intro, pageWidth - 30);
+        doc.text(introLines, 20, y);
+        y += introLines.length * lineHeight + 5;
+
+        // === Civil Proceedings ===
+        const civilTitle = 'Civil Proceedings:';
+        const civilText = ' Original Suit / Miscellaneous Suit / Execution / Arbitration Cases before the Civil Court and High Court in its Original and Appellate Stage.';
+
+        // Combine and split for wrapping
+        const civilCombined = civilTitle + civilText;
+        const civilLines = doc.splitTextToSize(civilCombined, pageWidth - 40);
+
+        // First line: separate bold and normal
+        const firstLine = civilLines[0];
+        if (firstLine.startsWith(civilTitle)) {
+            const normalPart = firstLine.slice(civilTitle.length);
+
+            doc.setFont('helvetica', 'bold');
+            doc.text(civilTitle, 20, y);
+
+            const boldWidth = doc.getTextWidth(civilTitle);
+            doc.setFont('helvetica', 'normal');
+            doc.text(normalPart, 20 + boldWidth, y);
+        } else {
+            // fallback
+            doc.setFont('helvetica', 'normal');
+            doc.text(firstLine, 20, y);
+        }
+
+        y += lineHeight;
+
+        // Other lines: normal font
+        for (let i = 1; i < civilLines.length; i++) {
+            doc.setFont('helvetica', 'normal');
+            doc.text(civilLines[i], 20, y);
+            y += lineHeight;
+        }
+
+        y += 4;
+
+        // === Criminal Proceedings ===
+        const criminalTitle = 'Criminal Proceedings:';
+        const criminalText = ' Criminal Petition / Criminal Appeal / Sessions Case / Special Sessions Case / Criminal Miscellaneous Petition / Criminal Revision Appeal before the Magistrate Court, Sessions Court and High Court in its Criminal Cases, Private Complaint Report, Criminal Appeals, respectively.';
+
+        const criminalCombined = criminalTitle + criminalText;
+        const criminalLines = doc.splitTextToSize(criminalCombined, pageWidth - 40);
+
+        // First line: separate bold and normal
+        const firstCriminalLine = criminalLines[0];
+        if (firstCriminalLine.startsWith(criminalTitle)) {
+            const normalPart = firstCriminalLine.slice(criminalTitle.length);
+
+            doc.setFont('helvetica', 'bold');
+            doc.text(criminalTitle, 20, y);
+
+            const boldWidth = doc.getTextWidth(criminalTitle);
+            doc.setFont('helvetica', 'normal');
+            doc.text(normalPart, 20 + boldWidth, y);
+        } else {
+            doc.setFont('helvetica', 'normal');
+            doc.text(firstCriminalLine, 20, y);
+        }
+
+        y += lineHeight;
+
+        // Other lines
+        for (let i = 1; i < criminalLines.length; i++) {
+            doc.setFont('helvetica', 'normal');
+            doc.text(criminalLines[i], 20, y);
+            y += lineHeight;
+        }
+
+
+
+        y += 6;
+
+        // ---- DATA TABLE ----
+        doc.setFontSize(12);
+        const colWidth = (pageWidth - 40) / 2;
+        const rowHeight = lineHeight + 1;
+        const tableX = 20;
+
+        const entries = [
+            ['Reference ID', courtData.reference_id || ''],
+            ['Full Name', courtData.full_name || ''],
+            ["Father's Name", courtData["fathers_name"] || ''],
+            ['Date of Birth', courtData.date_of_birth || ''],
+            ['Permanent Address', courtData.permanent_address || ''],
+            ['Current Address', courtData.current_address || ''],
+            ['Number of Years Search', courtData.number_of_years_search || ''],
+            ['Date of Verification', courtData.date_of_verification || ''],
+            ['Verification Status', courtData.verification_status || ''],
+
+        ];
+        doc.setLineWidth(0.1);
+        const mymaxwidth = colWidth - 4;
+
+        entries.forEach(([label, value]) => {
+            const wrappedLabel = doc.splitTextToSize(label, mymaxwidth);
+            const wrappedValue = doc.splitTextToSize(String(value), mymaxwidth);
+
+            const linesCount = Math.max(wrappedLabel.length, wrappedValue.length);
+            const dynamicRowHeight = linesCount * 7; // 7 is approx line height
+
+            // Borders
+            doc.rect(tableX, y - 6, colWidth, dynamicRowHeight);
+            doc.rect(tableX + colWidth, y - 6, colWidth, dynamicRowHeight);
+
+            // Text
+            wrappedLabel.forEach((line, idx) => {
+                doc.text(line, tableX + 2, y - 1 + (idx * 7));
+            });
+
+            wrappedValue.forEach((line, idx) => {
+                doc.text(line, tableX + colWidth + 2, y - 1 + (idx * 7));
+            });
+
+            y += dynamicRowHeight;
+
+            // Page break logic
+            if (y > doc.internal.pageSize.getHeight() - 30) {
+                doc.addPage();
+                y = 20;
+            }
+        });
+        y += 2;
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(15);
+        doc.text('RESULT', pageWidth / 2, y, { align: 'center' });
+        // ---- DISCLAIMER ----
+        y += 8;
+
+        const tableColumn = [
+            "COURT/CHECK TYPE",
+            "JURISDICTION",
+            "LOCATION",
+            "VERIFICATION RESULT"
+        ];
+
+        const courtTableData = courtData.courtTable;
+        const tableRows = courtTableData.map(item => [
+            item.courtCheckType,
+            item.jurisdiction,
+            item.location,
+            item.verificationResult
+        ]);
+        const margin = 20; // left/right margin
+
+        const tableWidth = pageWidth - 2 * margin;
+
+        doc.autoTable({
+            head: [tableColumn],
+            body: tableRows,
+            startY: y,
+            styles: {
+                halign: 'center',
+                valign: 'middle',
+                fontSize: 10,
+                lineColor: [0, 0, 0], // black borders
+                lineWidth: 0.1,
+            },
+            didDrawPage: function (data) {
+                navbar(doc);
+            },
+            headStyles: {
+                fillColor: [200, 200, 200], // white header background
+                textColor: [0, 0, 0],
+                fontStyle: 'bold',
+                lineColor: [0, 0, 0],
+                lineWidth: 0.1,
+                cellPadding: 1, // smaller padding for header
+            },
+
+            bodyStyles: {
+                cellPadding: { top: 1, right: 1, bottom: 1, left: 1 }, // extra left padding
+                fillColor: [255, 255, 255], // white background for rows
+                textColor: [0, 0, 0],
+                lineColor: [0, 0, 0],
+                lineWidth: 0.1,
+            },
+            alternateRowStyles: {
+                fillColor: [255, 255, 255] // sets fill for all rows
+            },
+            columnStyles: {
+                0: { halign: 'left' },   // First column left
+                1: { halign: 'left' }, // Second column center (optional)
+                2: { halign: 'center' }, // Third column center (optional)
+                3: { halign: 'center' }  // Fourth column center
+            },
+            tableLineColor: [0, 0, 0],
+            tableLineWidth: 0.1,
+            margin: { left: margin, right: margin }, // set left/right margin
+            tableWidth: tableWidth, // this is optional since margin already controls it
+        });
+
+
+
+        doc.addPage();
+        navbar(doc)
+        y = hrY + 5;
+
+
+
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+
+        doc.text('DISCLAIMER', pageWidth / 2, y, { align: 'center' });
+
+
+
+
+        if (y > doc.internal.pageSize.getHeight() - 30) {
+            doc.addPage();
+            navbar(doc)
+            y = hrY + 5;
+        }
+        else {
+            y += 8;
+        }
+
+        const noteLines = [
+            [
+                { text: 'It has been verified that the above individual has', bold: false },
+                { text: 'no case pending or disposed of', bold: true },
+                { text: 'in his/her name within the jurisdiction of the court, as per available data.', bold: false },
+            ],
+            [
+                { text: '', }
+            ],
+            [
+                { text: `No adverse court records were found against the applicant as of ${courtData.date_of_verification}.`, bold: false },],
+            [
+                { text: '', }
+            ],
+            [
+                { text: 'If certified or physical records are required, the same can be obtained through the appropriate legal process as per the relevant court or authority.', }
+            ],
+            [
+                { text: '', }
+            ],
+            [
+                { text: 'This report is issued based on data retrieved from', },
+                { text: 'public domain sources, e-Courts portals, and/or officially permitted access.', bold: true },
+            ],
+            [
+                { text: '', }
+            ],
+            [
+                { text: '“Nava Nayana Legal Chambers” ', bold: true },
+                { text: 'does not guarantee the completeness or finality of the information and shall not be held liable for any actions taken by third parties based on this report.', bold: false },
+            ],
+            [
+                { text: '', }
+            ],
+            [
+                { text: 'This document is confidential and intended solely for the authorized recipient. Any unauthorized sharing, copying, or reliance is not permitted without prior written consent.', bold: false },
+            ],
+        ];
+
+        doc.setFontSize(12);
+        const marginLeft = 20;
+        const marginRight = 20;
+        const maxWidth = pageWidth - marginLeft - marginRight;
+        const wordSpacing = 1.5; // adjust as needed
+
+        // --- 1) Measure total height ---
+        let totalNoteHeight = 0;
+        const tempY = y;  // Current position
+        const tempLineHeight = lineHeight;
+        doc.setFontSize(12);
+        noteLines.forEach(lineArray => {
+            if (lineArray.length === 1 && lineArray[0].text.trim() === '') {
+                totalNoteHeight += tempLineHeight;
+            } else {
+                // Estimate line splits
+                let styleMap = [];
+                lineArray.forEach(part => {
+                    const words = part.text.split(' ');
+                    words.forEach(word => {
+                        styleMap.push({ word, bold: part.bold });
+                    });
+                });
+
+                let currentWidth = 0;
+                let lineCount = 1;
+
+                styleMap.forEach(item => {
+                    doc.setFont('helvetica', item.bold ? 'bold' : 'normal');
+                    const wordWidth = doc.getTextWidth(item.word + ' ');
+                    if (currentWidth + wordWidth > maxWidth) {
+                        lineCount++;
+                        currentWidth = wordWidth;
+                    } else {
+                        currentWidth += wordWidth;
+                    }
+                });
+
+                totalNoteHeight += lineCount * tempLineHeight;
+            }
+        });
+
+        // --- 2) Add new page if needed ---
+        if (y + totalNoteHeight > doc.internal.pageSize.getHeight() - 30) {
+            doc.addPage();
+            doc.setFontSize(12);
+            navbar(doc);
+            y = hrY + 5;  // or whatever top Y you use
+        }
+        doc.setFontSize(12);
+        // --- 3) Now render noteLines as usual ---
+        noteLines.forEach(lineArray => {
+            if (lineArray.length === 1 && lineArray[0].text.trim() === '') {
+                y += lineHeight;
+                return;
+            }
+
+            let styleMap = [];
+            lineArray.forEach(part => {
+                const words = part.text.split(' ');
+                words.forEach(word => {
+                    styleMap.push({ word, bold: part.bold });
+                });
+            });
+
+            let lines = [];
+            let currentLine = [];
+            let currentWidth = 0;
+
+            styleMap.forEach(item => {
+                doc.setFont('helvetica', item.bold ? 'bold' : 'normal');
+                const wordWidth = doc.getTextWidth(item.word + ' ');
+
+                if (currentWidth + wordWidth > maxWidth && currentLine.length > 0) {
+                    lines.push(currentLine);
+                    currentLine = [item];
+                    currentWidth = wordWidth;
+                } else {
+                    currentLine.push(item);
+                    currentWidth += wordWidth;
+                }
+            });
+            if (currentLine.length) lines.push(currentLine);
+
+            lines.forEach((lineWords, index) => {
+                let totalWordsWidth = 0;
+                lineWords.forEach(item => {
+                    doc.setFont('helvetica', item.bold ? 'bold' : 'normal');
+                    totalWordsWidth += doc.getTextWidth(item.word + ' ');
+                });
+
+                const gaps = lineWords.length - 1;
+                let extraSpace = gaps > 0 ? (maxWidth - totalWordsWidth) / gaps : 0;
+
+                if (index === lines.length - 1) extraSpace = 0;
+
+                let x = marginLeft;
+
+                lineWords.forEach((item, i) => {
+                    doc.setFont('helvetica', item.bold ? 'bold' : 'normal');
+                    doc.text(item.word, x, y);
+
+                    let wordWidth = doc.getTextWidth(item.word + ' ');
+                    x += wordWidth;
+
+                    if (i < lineWords.length - 1) {
+                        x += extraSpace;
+                    }
+                });
+
+                y += lineHeight;
+            });
+        });
+
+
+        const qrCodeBase64w = Signature;
+        doc.addImage(qrCodeBase64w, "PNG", imgX, y, 60, 25);
+        if (y > doc.internal.pageSize.getHeight() - 30) {
+            doc.addPage();
+            doc.setFontSize(12);
+            navbar(doc)
+            y = hrY + 5;
+        }
+        else {
+            y += 8;
+        }
+
+        if (shouldSave) {
+            doc.save(`${formData.court.reference_id} Court Report.pdf`);
         } else {
             return doc;
         }
@@ -1915,6 +2440,9 @@ const InactiveClients = () => {
                     await generateCourtPDF(formData.court);
                 } else if (selectedService === "police") {
                     await generatePolicePDF(formData.police);
+                
+                } else if (selectedService === "addres") {
+                    await generateAddressPDF(formData.police);
                 }
             }
 
@@ -1925,6 +2453,9 @@ const InactiveClients = () => {
                     blob = await generateCourtPDFBlob(formData.court);
                 } else if (selectedService === "police") {
                     blob = await generatePolicePDFBlob(formData.police);
+                }
+                else if (selectedService === "address") {
+                    blob = await generateAddressPDF(formData.police);
                 }
 
                 const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.js');
@@ -1950,7 +2481,7 @@ const InactiveClients = () => {
                         ? formData?.court?.reference_id || "Unknown"
                         : formData?.police?.reference_id || "Unknown";
 
-                a.download = `${referenceId} ${selectedService === "court" ? "Court Report" : "Police Report"}.${type || "pdf"}`;
+                a.download = `${referenceId} ${selectedService === "court" ? `${formData?.court?.reference_id} Court Report` : `${formData?.police?.reference_id} Police Report`}.${type || "pdf"}`;
                 a.click();
             }
 
@@ -1960,6 +2491,9 @@ const InactiveClients = () => {
                     await generateCourtDOCX(formData.court);
                 } else if (selectedService === "police") {
                     await generatePoliceDOCX(formData.police);
+                }
+                else if (selectedService === "address") {
+                     await generateAddressPDF(formData.police);
                 }
             }
 
@@ -2093,6 +2627,7 @@ const InactiveClients = () => {
                                         <option value="">-- Select a Service --</option>
                                         <option value="police">Police Record Report [LAW FIRM]</option>
                                         <option value="court">Court Record Report</option>
+                                        <option value="address">Address Verification</option>
                                     </select>
                                 </div>
 
@@ -2147,7 +2682,9 @@ const InactiveClients = () => {
                                         </div>
                                         <div className="grid md:grid-cols-2 gap-6">
                                             {policeFields.map((field) => {
-                                                const name = field.toLowerCase().replace(/ /g, "_");
+                                                const name = field.toLowerCase().replace(/[^a-z0-9\s_]/g, '')      // Remove special characters
+                                                    .replace(/\s+/g, '_')              // Replace spaces with underscores
+                                                    .replace(/__+/g, '_');;
                                                 return (
                                                     <>
 
@@ -2169,6 +2706,60 @@ const InactiveClients = () => {
                                     </>
                                 )}
                                 {/* Court Report Fields */}
+                                {selectedService === "address" && (
+                                    <div className="grid md:grid-cols-2 gap-6">
+
+                                        {formFields.map(({ name, label, type, options }) => (
+                                            <div key={name} className="mb-4">
+                                                <label className="block mb-1 font-medium">{label}</label>
+
+                                                {type === "textarea" ? (
+                                                    <textarea
+                                                        name={name}
+                                                        value={formData[selectedService]?.[name] || ""}
+                                                        onChange={handleChange}
+                                                        className="w-full rounded-md p-3 border border-gray-300 bg-[#f7f6fb] focus:border-blue-500"
+
+                                                    />
+                                                ) : type === "select" ? (
+                                                    <select
+                                                        name={name}
+                                                        value={formData[selectedService]?.[name] || ""}
+                                                        onChange={handleChange}
+                                                        className="w-full rounded-md p-3 border border-gray-300 bg-[#f7f6fb] focus:border-blue-500"
+
+                                                    >
+                                                        <option value="">-- Select --</option>
+                                                        {(options || []).map((opt) => (
+                                                            <option key={opt} value={opt}>
+                                                                {opt}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                ) : type === "file" ? (
+                                                    <input
+                                                        type="file"
+                                                        name={name}
+                                                        onChange={handleChange}
+                                                        className="w-full rounded-md p-3 border border-gray-300 bg-[#f7f6fb] focus:border-blue-500"
+
+                                                        accept="image/*"
+                                                    />
+                                                ) : (
+                                                    <input
+                                                        type={type}
+                                                        name={name}
+                                                        value={formData[selectedService]?.[name] || ""}
+                                                        onChange={handleChange}
+                                                        className="w-full rounded-md p-3 border border-gray-300 bg-[#f7f6fb] focus:border-blue-500"
+
+                                                    />
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                )}
                                 {selectedService === "court" && (
                                     <>
                                         <div className="border border-gray-200 p-3 rounded-md mb-3">
@@ -2218,7 +2809,9 @@ const InactiveClients = () => {
                                             </div></div>
                                         <div className="grid md:grid-cols-2 gap-6">
                                             {courtFields.map((field) => {
-                                                const name = field.toLowerCase().replace(/ /g, "_");
+                                                const name = field.toLowerCase().replace(/[^a-z0-9\s_]/g, '')      // Remove special characters
+                                                    .replace(/\s+/g, '_')              // Replace spaces with underscores
+                                                    .replace(/__+/g, '_');;
                                                 return (
                                                     <>
 

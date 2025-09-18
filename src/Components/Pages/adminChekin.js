@@ -27,7 +27,6 @@ import yellowShield from "../../imgs/yellowShield.png";
 import orangeShield from "../../imgs/orangeShield.png";
 import emailIconGreen from "../../imgs/emailIconGreen.png";
 import Signature from "../../imgs/Signature.png";
-
 import Default from "../../imgs/default.png"
 import { useApiLoading } from '../ApiLoadingContext';
 import JSZip from 'jszip';
@@ -37,6 +36,7 @@ import { FaChevronLeft } from 'react-icons/fa';
 const AdminChekin = () => {
 
     const [servicesHeadings, setServicesHeadings] = useState([]);
+  const [viewServices, setViewServices] = useState(false);
 
     const [activeId, setActiveId] = useState(null);
     const [selectedValue, setSelectedValue] = useState("");
@@ -106,34 +106,26 @@ const AdminChekin = () => {
     const token = localStorage.getItem('_token');
 
     function getStatusByServiceId(annexures, serviceId) {
-
         if (!Array.isArray(annexures)) {
-            return null;
+            return 'NIL';
         }
 
-        console.log(`serviceId - `, serviceId);
-
-        const annexure = annexures.find(item => item.serviceId === serviceId);
+        // Match with service_id instead of serviceId
+        const annexure = annexures.find(item => String(item.service_id) === String(serviceId));
 
         if (!annexure) {
-            return null;
+            return 'NIL';
         }
 
         console.log('✅ Match found:', annexure);
 
-        if (!annexure.annexureData) {
-            console.warn(`⚠️ 'data' field missing in annexure for serviceId: ${serviceId}`);
-            return null;
+        // Prefer annexureData.status if it exists
+        if (annexure.annexureData && 'status' in annexure.annexureData) {
+            console.log('📤 Returning annexureData.status:', annexure.annexureData.status);
+            return annexure.annexureData.status || 'NIL';
         }
 
-        if (!('status' in annexure.annexureData)) {
-            console.warn(`⚠️ 'status' not found in data for serviceId: ${serviceId}`);
-            return null;
-        }
-
-        console.log('📤 Returning status:', annexure.annexureData.status);
-
-        return annexure.annexureData.status || 'NIL';
+        return 'NIL';
     }
 
     // Fetch data from the main API
@@ -777,11 +769,12 @@ const AdminChekin = () => {
 
         // === 3. PROFILE PHOTO (rounded)
         let profilePhoto = applicationInfo.gender === "Female" ? PDFuserGirl : PDFuser;
+        let isProfileExist = false;
         if (applicationInfo?.photo) {
             const imgUrl = await fetchImageToBase(applicationInfo.photo.trim());
             profilePhoto = imgUrl?.[0]?.base64 || profilePhoto;
+            isProfileExist = true;
         }
-
         doc.setFillColor(255);
 
 
@@ -854,16 +847,19 @@ const AdminChekin = () => {
         // === Draw Profile Image (on top of left bar)
         doc.setLineWidth(borderThickness);
         doc.setDrawColor(...borderColorr);
-        doc.circle(centerXx, centerY, borderRadiuss, "S"); // "S" = stroke only
-        const roundedImage = await getRoundedImage(profilePhoto, 100);
-        doc.addImage(
-            roundedImage,
-            "PNG",
-            imageX,
-            profileY + 30,
-            profileImageWidth,
-            profileImageWidth
-        );
+        if (isProfileExist) {
+            doc.circle(centerXx, centerY, borderRadiuss, "S"); // "S" = stroke only
+            const roundedImage = await getRoundedImage(profilePhoto, 100);
+            doc.addImage(
+                roundedImage,
+                "PNG",
+                imageX,
+                profileY + 30,
+                profileImageWidth,
+                profileImageWidth
+            );
+
+        }
         // === Company Name Text (centered in right bar)
         doc.setFontSize(companyFontSize);
         doc.setTextColor(255);
@@ -2728,12 +2724,20 @@ const AdminChekin = () => {
 
                 <div className='md:flex justify-between items-baseline mb-6 '>
                     <div className=" text-left">
-                        <div className='flex items-center gap-5'>   <button
-                            className="bg-green-500 hover:scale-105  hover:bg-green-600 text-white px-6 py-2 rounded"
-                            onClick={handleExportToExcel}
-                        >
-                            Export to Excel
-                        </button>
+                        <div className='flex items-center gap-5'>
+                            <button
+                                className="bg-green-500 hover:scale-105  hover:bg-green-600 text-white px-6 py-2 rounded"
+                                onClick={handleExportToExcel}
+                            >
+                                Export to Excel
+                            </button>
+                            <button
+                                className="bg-orange-500 hover:scale-105  hover:bg-orange-600 text-white px-6 py-2 rounded"
+                               onClick={() => setViewServices(prev => !prev)}
+
+                            >
+                               {viewServices ? "Hide Services" :"View Services"} 
+                            </button>
                             {selectedRows.length > 0 &&
                                 filteredData.filter(
                                     (data) =>
@@ -2879,6 +2883,15 @@ const AdminChekin = () => {
                                 <th className="uppercase border border-black px-4 py-2">Photo</th>
                                 <th className="uppercase border border-black px-4 py-2">Employee Id</th>
                                 <th className="uppercase border border-black px-4 py-2">Initiation Date</th>
+                                {viewServices && servicesHeadings && servicesHeadings.length > 0 ? (
+                                    servicesHeadings.map((heading, index) => {
+                                        return (
+                                            <th key={index} className="uppercase border border-black px-4 py-2">
+                                                {heading.heading}
+                                            </th>
+                                        );
+                                    })
+                                ) : null}
                                 <th className="uppercase border border-black px-4 py-2">Deadline Date</th>
                                 <th className="uppercase border border-black px-4 py-2">Report Data</th>
                                 <th className="uppercase border border-black px-4 py-2">Download Status</th>
@@ -2892,15 +2905,6 @@ const AdminChekin = () => {
                                 <th className="uppercase border border-black px-4 py-2">Completed IN</th>
                                 <th className="uppercase border border-black px-4 py-2">Days Delayed</th>
                                 <th className="uppercase border border-black px-4 py-2 ">HIGHLIGHT</th>
-                                {servicesHeadings && servicesHeadings.length > 0 ? (
-                                    servicesHeadings.map((heading, index) => {
-                                        return (
-                                            <th key={index} className="uppercase border border-black px-4 py-2">
-                                                {heading.heading}
-                                            </th>
-                                        );
-                                    })
-                                ) : null}
 
                                 {/* {headingsAndStatuses.map((item, idx) => {
                                     const rawHeading = item?.heading;
@@ -2993,6 +2997,15 @@ const AdminChekin = () => {
                                                             ? new Date(data.initiation_date).toLocaleDateString('en-GB').replace(/\//g, '-')
                                                             : 'NIL'}
                                                     </td>
+                                                    {viewServices && servicesHeadings && servicesHeadings.length > 0 ? (
+                                                        servicesHeadings.map((heading, index) => {
+                                                            return (
+                                                                <th key={index} className="uppercase border border-black px-4 py-2">
+                                                                    {getStatusByServiceId(data.annexureResults, heading.id)}
+                                                                </th>
+                                                            );
+                                                        })
+                                                    ) : null}
                                                     <td className="border border-black px-4 py-2">
                                                         {data.deadline_date
                                                             ? new Date(data.deadline_date).toLocaleDateString('en-GB').replace(/\//g, '-')
@@ -3152,15 +3165,7 @@ const AdminChekin = () => {
                                                             )}
                                                         </div>
                                                     </td>
-                                                    {servicesHeadings && servicesHeadings.length > 0 ? (
-                                                        servicesHeadings.map((heading, index) => {
-                                                            return (
-                                                                <th key={index} className="uppercase border border-black px-4 py-2">
-                                                                    {getStatusByServiceId(data.annexureResults, heading.id)}
-                                                                </th>
-                                                            );
-                                                        })
-                                                    ) : null}
+
 
                                                     <td className="border border-black px-4 py-2 font-bold">{formatedJson(data.first_insufficiency_marks) || "NOT APPLICABLE"}</td>
                                                     <td className="border border-black px-4 py-2 font-bold">{formatDate(data.first_insuff_date) || "NOT APPLICABLE"}</td>
