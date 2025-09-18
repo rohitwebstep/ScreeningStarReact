@@ -5,6 +5,7 @@ import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf';
 import pdfjsWorker from 'pdfjs-dist/legacy/build/pdf.worker.entry';
 // import "pdfjs-dist/build/pdf.worker.entry";
 import Signature from "../../imgs/servicesSeal.jpg";
+import signatureDemo from "../../imgs/signaturex-demo.png";
 
 import {
     Packer,
@@ -465,12 +466,7 @@ const InactiveClients = () => {
         "Verification Status",
     ];
 
-    const noBorders = {
-        top: { style: BorderStyle.NONE },
-        bottom: { style: BorderStyle.NONE },
-        left: { style: BorderStyle.NONE },
-        right: { style: BorderStyle.NONE },
-    };
+
 
     const generatePolicePDF = async (policeData, shouldSave = true) => {
         const doc = new jsPDF({ compress: true });
@@ -726,7 +722,273 @@ const InactiveClients = () => {
         }
 
     }
+    const generateAddressPDF = async (address, shouldSave = true) => {
+        const doc = new jsPDF({ compress: true });
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const lineHeight = 5;
+        const marginLeft = 20;
+        const marginRight = 20;
+        const maxWidth = pageWidth - marginLeft - marginRight;
+
+        // ---- IMAGE + | + ADVOCATE DETAILS ----
+        const blockY = 2;
+        const imgWidth = 35;
+        const imgHeight = 35;
+        const imgX = 20;
+        const fontSizeHeading = 13;
+        const fontSizeParagraph = 10;
+
+        // Logo
+        const logoBase64 = "https://webstepdev.com/screeningstarAssets/advocate.png";
+        doc.addImage(logoBase64, "PNG", imgX, blockY, imgWidth, imgHeight);
+
+        // Divider Line
+        const lineX = pageWidth / 2;
+        const blockHeight = imgHeight;
+        doc.setDrawColor(0);
+        doc.setLineWidth(0.5);
+        doc.line(lineX, blockY + 5, lineX, blockY + blockHeight - 5);
+
+        // Advocate Details
+        const advocateX = pageWidth - 20;
+        let advocateY = blockY;
+        doc.setFontSize(9);
+        const advocateDetails = [
+            "NAVA NAYANA LEGAL CHAMBERS",
+            "MANJUNATHA H S (HSM), B.B.M., LL.B.",
+            "ADVOCATE AND LEGAL CONSULTANT",
+            "ENROLLMENT NUMBER: KAR/4765/2023",
+            "MOBILE NUMBER : +91 9738812694",
+            "MANJUNATH.9738812694@GMAIL.COM",
+        ];
+        advocateDetails.forEach(line => {
+            doc.text(line, advocateX, advocateY + 10, { align: 'right' });
+            advocateY += lineHeight;
+        });
+
+        // Horizontal line below block
+        const hrY = blockY + blockHeight + 5;
+        doc.line(20, hrY - 2, pageWidth - 20, hrY - 2);
+
+        let y = hrY + 4;
+
+        // ---- TITLE ----
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(fontSizeHeading);
+        doc.text('Address Verification', pageWidth / 2, y, { align: 'center' });
+
+        y += lineHeight * 3 - 3;
+
+        // ---- INTRO ----
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(fontSizeParagraph);
+        const intro = `This is with regard to the search conducted in the Police Station referred below with regard to any criminal cases filed against the person detailed below.`;
+        const introLines = doc.splitTextToSize(intro, maxWidth);
+        doc.text(introLines, 20, y - 6, { align: 'left' });
+        y += introLines.length * lineHeight;
+
+        // ---- DATA TABLE ----
+        const colWidth = (pageWidth - 40) / 2;
+        const rowHeight = lineHeight + 1;
+        const tableX = 20;
+        const entries = [
+            ['Reference ID ', address.reference_id || ''],
+            ['Full Name of The Candidate/Applicant/Job Seeker', address.candidateName || ''],
+            ['Date of Address Verification', address.verificationDate || ''],
+            ['Address as provided by the candidate/Applicant', address.providedAddress || ''],
+            ['Does physically verified address match with the above? (Yes or No)', address.addressMatch || ''],
+            ['Verifier remarks (if address does not match)', address.verifierRemarks || ''],
+            ['Mode of communication', address.communicationMode || ''],
+            ['Full Name of the Respondent', address.respondentName || ''],
+            ['Relationship with the candidate/Applicant', address.relationship || ''],
+            ['Number of Years staying at present/Current residence', address.yearsAtResidence || ''],
+            ['Status', address.residenceStatus || ''],
+            ['Details of the Respondent Address proof Verified', address.respondentProof || ''],
+            ['If the residence is locked, has the address been confirmed with neighbors?', address.confirmedWithNeighbors || ''],
+            ['Nature of Location', address.locationClass || ''],
+            ['Prominent Landmark in 1KM radius (Mandatory)', address.landmark || ''],
+            ['Nearby Name of the Police Station Location', address.policeStation || ''],
+            ['Any Comment regarding the Address verification', address.comments || ''],
+            ['Name of the Representative with date', address.representativeNameDate || ''],
+            ['Signature of Respondent', signatureDemo || '']  // ✅ now included
+        ];
+
+        doc.setLineWidth(0.1);
+        const myMaxWidth = colWidth - 4;
+
+        for (const [label, value] of entries) {
+            const isSignatureRow = label === 'Signature of Respondent';
+
+            const wrappedLabel = doc.splitTextToSize(label, myMaxWidth);
+
+            const linesCount = wrappedLabel.length;
+            let dynamicRowHeight = linesCount * 6;
+
+            if (isSignatureRow) {
+                dynamicRowHeight = 30; // Adjust height to fit the signature image
+            }
+
+            // Draw cell borders
+            doc.rect(tableX, y - 8, colWidth, dynamicRowHeight);
+            doc.rect(tableX + colWidth, y - 8, colWidth, dynamicRowHeight);
+
+            // Left cell (label)
+            wrappedLabel.forEach((line, idx) => {
+                doc.text(line, tableX + 2, y - 4 + (idx * 5));
+            });
+
+            if (isSignatureRow) {
+                doc.addImage(signatureDemo, "PNG", tableX + colWidth + 2, y - 6, 50, 25);
+                // try {
+                //     if (value instanceof File || value instanceof Blob) {
+                //         const base64Image = await imageToBase64(value);
+                //         doc.addImage(base64Image, "PNG", tableX + colWidth + 2, y - 6, 50, 25);
+                //     } 
+
+                //     else if (typeof value === 'string' && value.startsWith("data:image")) {
+                //         doc.addImage(value, "PNG", tableX + colWidth + 2, y - 6, 40, 25);
+                //     } else {
+                //         doc.text("Signature not available", tableX + colWidth + 2, y + 5);
+                //     }
+                // } catch (error) {
+                //     doc.text("Failed to load signature", tableX + colWidth + 2, y + 5);
+                // }
+            } else {
+                // Normal value cell
+                const wrappedValue = doc.splitTextToSize(String(value), myMaxWidth);
+                wrappedValue.forEach((line, idx) => {
+                    doc.text(line, tableX + colWidth + 2, y - 4 + (idx * 5));
+                });
+            }
+
+            y += dynamicRowHeight;
+
+            // Page break check
+            if (y > pageHeight - 30) {
+                doc.addPage();
+                y = 20;
+            }
+        }
+
+
+        // ---- DISCLAIMER ----
+        y -= 2;
+        const disclaimer = `The search results are based on the available registers maintained in respect of criminal case/s and suit registers in respect of civil case/s maintained in the above-mentioned Court / Police Station having jurisdiction over the address where the candidate was said to be residing. Due care has been taken in conducting the search. The records are public records and the search has been conducted on behalf of your good self and the undersigned is not responsible for any errors, inaccuracies, omissions or deletions if any in the said court or police records. The above report is based on the verbal confirmation of the concerned authority as on the date on which it is confirmed, hence this verification is subjective. Please do contact the Local Police for Candidate Police Clearance Certificate (PCC) / Police Verification Certificate.`;
+
+        addJustifiedText(doc, disclaimer, 20, y, maxWidth, 5);
+        const disclaimerLines = doc.splitTextToSize(disclaimer, maxWidth);
+        y += disclaimerLines.length * 5 + 6;
+
+
+        doc.addPage();
+        y = 20;
+        doc.setFontSize(fontSizeParagraph);
+        doc.setFont('helvetica', 'bold');
+        doc.text('DISCLAIMER', pageWidth / 2, y - 5, { align: 'center' });
+        y += 4;
+
+        // ---- Note block ----
+        const noteLines = [
+            [
+                { text: 'Note:', bold: true },
+                { text: ' This report is provided for informational purposes only and does not constitute an official police clearance or certificate.', bold: false },
+            ],
+            [
+                { text: '', }
+            ],
+            [
+                { text: '“Nava Nayana Legal Chambers”', bold: true },
+                { text: ' does not guarantee the completeness, accuracy, or finality of the information and shall not be held liable for any decisions or actions taken by third parties based on this report.', bold: false },
+            ],
+            [
+                { text: 'This document is confidential and intended solely for the authorized recipient. Any unauthorized use, reproduction, or dissemination is strictly prohibited without prior written consent.', bold: false },
+            ],
+        ];
+
+        doc.setFontSize(fontSizeParagraph);
+
+        noteLines.forEach(lineArray => {
+            if (lineArray.length === 1 && lineArray[0].text.trim() === '') {
+                y += lineHeight - 4;
+                return;
+            }
+
+            let styleMap = [];
+
+            lineArray.forEach(part => {
+                const words = part.text.split(' ');
+                words.forEach(word => {
+                    styleMap.push({ word, bold: part.bold });
+                });
+            });
+
+            let lines = [];
+            let currentLine = [];
+            let currentWidth = 0;
+
+            styleMap.forEach(item => {
+                doc.setFont('helvetica', item.bold ? 'bold' : 'normal');
+                const wordWidth = doc.getTextWidth(item.word + ' ');
+
+                if (currentWidth + wordWidth > maxWidth && currentLine.length > 0) {
+                    lines.push(currentLine);
+                    currentLine = [item];
+                    currentWidth = wordWidth;
+                } else {
+                    currentLine.push(item);
+                    currentWidth += wordWidth;
+                }
+            });
+            if (currentLine.length) lines.push(currentLine);
+
+            lines.forEach((lineWords, index) => {
+                let totalWordsWidth = 0;
+                lineWords.forEach(item => {
+                    doc.setFont('helvetica', item.bold ? 'bold' : 'normal');
+                    totalWordsWidth += doc.getTextWidth(item.word + ' ');
+                });
+
+                const gaps = lineWords.length - 1;
+                let extraSpace = gaps > 0 ? (maxWidth - totalWordsWidth) / gaps : 0;
+                if (index === lines.length - 1) extraSpace = 0;
+
+                let x = marginLeft;
+
+                lineWords.forEach((item, i) => {
+                    doc.setFont('helvetica', item.bold ? 'bold' : 'normal');
+                    doc.text(item.word, x, y);
+                    let wordWidth = doc.getTextWidth(item.word + ' ');
+                    x += wordWidth;
+                    if (i < lineWords.length - 1) {
+                        x += extraSpace;
+                    }
+                });
+
+                y += lineHeight;
+            });
+        });
+
+        // ---- Signature Image ----
+        const signatureHeight = 25;
+        const marginBottom = 10;
+
+        if (y + signatureHeight + marginBottom > pageHeight) {
+            doc.addPage();
+            y = 10;
+        }
+
+
+        // ---- Save or Return ----
+        if (shouldSave) {
+            doc.save(`${address.reference_id} Address Verification.pdf`);
+        } else {
+            return doc;
+        }
+    };
+
     const formFields = [
+        { name: "reference_id", label: "Reference ID", type: "text" },
         { name: "candidateName", label: "Full Name of The Candidate/Applicant/Job Seeker", type: "text" },
         { name: "verificationDate", label: "Date of Address Verification", type: "date" },
         { name: "providedAddress", label: "Address as provided by the candidate/Applicant", type: "textarea" },
@@ -781,13 +1043,32 @@ const InactiveClients = () => {
         { name: "policeStation", label: "Nearby Name of the Police Station Location", type: "text" },
         { name: "comments", label: "Any Comment regarding the Address verification", type: "textarea" },
         { name: "representativeNameDate", label: "Name of the Representative with date", type: "text" },
-        {
-            name: "respondentSignature",
-            label: "Signature of Respondent",
-            type: "file"
-        }
+        // {
+        //     name: "respondentSignature",
+        //     label: "Signature of Respondent",
+        //     type: "file"
+        // }
     ];
 
+    function imageToBase64(file) {
+        return new Promise((resolve, reject) => {
+            if (!file || !(file instanceof Blob)) {
+                return reject(new Error("Invalid file input"));
+            }
+
+            const reader = new FileReader();
+
+            reader.onloadend = () => {
+                resolve(reader.result); // Base64 string
+            };
+
+            reader.onerror = () => {
+                reject(new Error("Error reading file"));
+            };
+
+            reader.readAsDataURL(file);
+        });
+    }
 
 
     const generateCourtPDF = async (courtData, shouldSave = true) => {
@@ -1244,460 +1525,7 @@ const InactiveClients = () => {
             return doc;
         }
     }
-    const generateAddressPDF = async (courtData, shouldSave = true) => {
-        const doc = new jsPDF({ compress: true });
-        const pageWidth = doc.internal.pageSize.getWidth();
-        const lineHeight = 6;
 
-        // ---- IMAGE + | + ADVOCATE DETAILS ----
-        const blockY = 2;
-        const imgWidth = 35;
-        const imgHeight = 35;
-        const imgX = 20;
-
-        const qrCodeBase64 = "https://webstepdev.com/screeningstarAssets/advocate.png";
-        doc.addImage(qrCodeBase64, "PNG", imgX, blockY, imgWidth, imgHeight);
-
-        // Draw vertical line next to image
-        const lineX = pageWidth / 2;
-        const blockHeight = imgHeight; // Enough for image + details
-
-        doc.setDrawColor(0);
-        doc.setLineWidth(0.5);
-        doc.line(lineX, blockY + 5, lineX, blockY + blockHeight - 5);
-
-        // Advocate Details
-        const advocateX = pageWidth - 20;
-        let advocateY = blockY;
-
-        doc.setFontSize(10);
-        const advocateDetails = [
-            // "NAVA NAYANA LEGAL CHAMBERS",
-            // "MANJUNATHA H S (HSM), B.B.M., LL.B.",
-            // "ADVOCATE AND LEGAL CONSULTANT",
-            // "ENROLLMENT NUMBER: KAR/4765/2023",
-            // "MOBILE NUMBER : +91 9738812694",
-            // "MANJUNATH.9738812694@GMAIL.COM",
-        ];
-
-        advocateDetails.forEach(line => {
-            doc.text(line, advocateX, advocateY + 10, { align: 'right' });
-            advocateY += lineHeight;
-        });
-
-        // Horizontal line below the block
-        const hrY = blockY + blockHeight + 5;
-        doc.line(20, hrY - 2, pageWidth - 20, hrY - 2);
-
-
-        let y = hrY + 7;
-
-        // ---- TITLE ----
-        doc.setFont('helvetica', 'bold'); // closest to semibold
-        doc.setFontSize(15);
-        doc.text('COURT RECORD REPORT', pageWidth / 2, y, { align: 'center' });
-
-        y += lineHeight * 3 - 5;
-
-
-
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(14);
-        // Intro
-        const intro = `This information is given with regard to search conducted at the Jurisdictional Court. `;
-        const introLines = doc.splitTextToSize(intro, pageWidth - 30);
-        doc.text(introLines, 20, y);
-        y += introLines.length * lineHeight + 5;
-
-        // === Civil Proceedings ===
-        const civilTitle = 'Civil Proceedings:';
-        const civilText = ' Original Suit / Miscellaneous Suit / Execution / Arbitration Cases before the Civil Court and High Court in its Original and Appellate Stage.';
-
-        // Combine and split for wrapping
-        const civilCombined = civilTitle + civilText;
-        const civilLines = doc.splitTextToSize(civilCombined, pageWidth - 40);
-
-        // First line: separate bold and normal
-        const firstLine = civilLines[0];
-        if (firstLine.startsWith(civilTitle)) {
-            const normalPart = firstLine.slice(civilTitle.length);
-
-            doc.setFont('helvetica', 'bold');
-            doc.text(civilTitle, 20, y);
-
-            const boldWidth = doc.getTextWidth(civilTitle);
-            doc.setFont('helvetica', 'normal');
-            doc.text(normalPart, 20 + boldWidth, y);
-        } else {
-            // fallback
-            doc.setFont('helvetica', 'normal');
-            doc.text(firstLine, 20, y);
-        }
-
-        y += lineHeight;
-
-        // Other lines: normal font
-        for (let i = 1; i < civilLines.length; i++) {
-            doc.setFont('helvetica', 'normal');
-            doc.text(civilLines[i], 20, y);
-            y += lineHeight;
-        }
-
-        y += 4;
-
-        // === Criminal Proceedings ===
-        const criminalTitle = 'Criminal Proceedings:';
-        const criminalText = ' Criminal Petition / Criminal Appeal / Sessions Case / Special Sessions Case / Criminal Miscellaneous Petition / Criminal Revision Appeal before the Magistrate Court, Sessions Court and High Court in its Criminal Cases, Private Complaint Report, Criminal Appeals, respectively.';
-
-        const criminalCombined = criminalTitle + criminalText;
-        const criminalLines = doc.splitTextToSize(criminalCombined, pageWidth - 40);
-
-        // First line: separate bold and normal
-        const firstCriminalLine = criminalLines[0];
-        if (firstCriminalLine.startsWith(criminalTitle)) {
-            const normalPart = firstCriminalLine.slice(criminalTitle.length);
-
-            doc.setFont('helvetica', 'bold');
-            doc.text(criminalTitle, 20, y);
-
-            const boldWidth = doc.getTextWidth(criminalTitle);
-            doc.setFont('helvetica', 'normal');
-            doc.text(normalPart, 20 + boldWidth, y);
-        } else {
-            doc.setFont('helvetica', 'normal');
-            doc.text(firstCriminalLine, 20, y);
-        }
-
-        y += lineHeight;
-
-        // Other lines
-        for (let i = 1; i < criminalLines.length; i++) {
-            doc.setFont('helvetica', 'normal');
-            doc.text(criminalLines[i], 20, y);
-            y += lineHeight;
-        }
-
-
-
-        y += 6;
-
-        // ---- DATA TABLE ----
-        doc.setFontSize(12);
-        const colWidth = (pageWidth - 40) / 2;
-        const rowHeight = lineHeight + 1;
-        const tableX = 20;
-
-        const entries = [
-            ['Reference ID', courtData.reference_id || ''],
-            ['Full Name', courtData.full_name || ''],
-            ["Father's Name", courtData["fathers_name"] || ''],
-            ['Date of Birth', courtData.date_of_birth || ''],
-            ['Permanent Address', courtData.permanent_address || ''],
-            ['Current Address', courtData.current_address || ''],
-            ['Number of Years Search', courtData.number_of_years_search || ''],
-            ['Date of Verification', courtData.date_of_verification || ''],
-            ['Verification Status', courtData.verification_status || ''],
-
-        ];
-        doc.setLineWidth(0.1);
-        const mymaxwidth = colWidth - 4;
-
-        entries.forEach(([label, value]) => {
-            const wrappedLabel = doc.splitTextToSize(label, mymaxwidth);
-            const wrappedValue = doc.splitTextToSize(String(value), mymaxwidth);
-
-            const linesCount = Math.max(wrappedLabel.length, wrappedValue.length);
-            const dynamicRowHeight = linesCount * 7; // 7 is approx line height
-
-            // Borders
-            doc.rect(tableX, y - 6, colWidth, dynamicRowHeight);
-            doc.rect(tableX + colWidth, y - 6, colWidth, dynamicRowHeight);
-
-            // Text
-            wrappedLabel.forEach((line, idx) => {
-                doc.text(line, tableX + 2, y - 1 + (idx * 7));
-            });
-
-            wrappedValue.forEach((line, idx) => {
-                doc.text(line, tableX + colWidth + 2, y - 1 + (idx * 7));
-            });
-
-            y += dynamicRowHeight;
-
-            // Page break logic
-            if (y > doc.internal.pageSize.getHeight() - 30) {
-                doc.addPage();
-                y = 20;
-            }
-        });
-        y += 2;
-
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(15);
-        doc.text('RESULT', pageWidth / 2, y, { align: 'center' });
-        // ---- DISCLAIMER ----
-        y += 8;
-
-        const tableColumn = [
-            "COURT/CHECK TYPE",
-            "JURISDICTION",
-            "LOCATION",
-            "VERIFICATION RESULT"
-        ];
-
-        const courtTableData = courtData.courtTable;
-        const tableRows = courtTableData.map(item => [
-            item.courtCheckType,
-            item.jurisdiction,
-            item.location,
-            item.verificationResult
-        ]);
-        const margin = 20; // left/right margin
-
-        const tableWidth = pageWidth - 2 * margin;
-
-        doc.autoTable({
-            head: [tableColumn],
-            body: tableRows,
-            startY: y,
-            styles: {
-                halign: 'center',
-                valign: 'middle',
-                fontSize: 10,
-                lineColor: [0, 0, 0], // black borders
-                lineWidth: 0.1,
-            },
-            didDrawPage: function (data) {
-                navbar(doc);
-            },
-            headStyles: {
-                fillColor: [200, 200, 200], // white header background
-                textColor: [0, 0, 0],
-                fontStyle: 'bold',
-                lineColor: [0, 0, 0],
-                lineWidth: 0.1,
-                cellPadding: 1, // smaller padding for header
-            },
-
-            bodyStyles: {
-                cellPadding: { top: 1, right: 1, bottom: 1, left: 1 }, // extra left padding
-                fillColor: [255, 255, 255], // white background for rows
-                textColor: [0, 0, 0],
-                lineColor: [0, 0, 0],
-                lineWidth: 0.1,
-            },
-            alternateRowStyles: {
-                fillColor: [255, 255, 255] // sets fill for all rows
-            },
-            columnStyles: {
-                0: { halign: 'left' },   // First column left
-                1: { halign: 'left' }, // Second column center (optional)
-                2: { halign: 'center' }, // Third column center (optional)
-                3: { halign: 'center' }  // Fourth column center
-            },
-            tableLineColor: [0, 0, 0],
-            tableLineWidth: 0.1,
-            margin: { left: margin, right: margin }, // set left/right margin
-            tableWidth: tableWidth, // this is optional since margin already controls it
-        });
-
-
-
-        doc.addPage();
-        navbar(doc)
-        y = hrY + 5;
-
-
-
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
-
-        doc.text('DISCLAIMER', pageWidth / 2, y, { align: 'center' });
-
-
-
-
-        if (y > doc.internal.pageSize.getHeight() - 30) {
-            doc.addPage();
-            navbar(doc)
-            y = hrY + 5;
-        }
-        else {
-            y += 8;
-        }
-
-        const noteLines = [
-            [
-                { text: 'It has been verified that the above individual has', bold: false },
-                { text: 'no case pending or disposed of', bold: true },
-                { text: 'in his/her name within the jurisdiction of the court, as per available data.', bold: false },
-            ],
-            [
-                { text: '', }
-            ],
-            [
-                { text: `No adverse court records were found against the applicant as of ${courtData.date_of_verification}.`, bold: false },],
-            [
-                { text: '', }
-            ],
-            [
-                { text: 'If certified or physical records are required, the same can be obtained through the appropriate legal process as per the relevant court or authority.', }
-            ],
-            [
-                { text: '', }
-            ],
-            [
-                { text: 'This report is issued based on data retrieved from', },
-                { text: 'public domain sources, e-Courts portals, and/or officially permitted access.', bold: true },
-            ],
-            [
-                { text: '', }
-            ],
-            [
-                { text: '“Nava Nayana Legal Chambers” ', bold: true },
-                { text: 'does not guarantee the completeness or finality of the information and shall not be held liable for any actions taken by third parties based on this report.', bold: false },
-            ],
-            [
-                { text: '', }
-            ],
-            [
-                { text: 'This document is confidential and intended solely for the authorized recipient. Any unauthorized sharing, copying, or reliance is not permitted without prior written consent.', bold: false },
-            ],
-        ];
-
-        doc.setFontSize(12);
-        const marginLeft = 20;
-        const marginRight = 20;
-        const maxWidth = pageWidth - marginLeft - marginRight;
-        const wordSpacing = 1.5; // adjust as needed
-
-        // --- 1) Measure total height ---
-        let totalNoteHeight = 0;
-        const tempY = y;  // Current position
-        const tempLineHeight = lineHeight;
-        doc.setFontSize(12);
-        noteLines.forEach(lineArray => {
-            if (lineArray.length === 1 && lineArray[0].text.trim() === '') {
-                totalNoteHeight += tempLineHeight;
-            } else {
-                // Estimate line splits
-                let styleMap = [];
-                lineArray.forEach(part => {
-                    const words = part.text.split(' ');
-                    words.forEach(word => {
-                        styleMap.push({ word, bold: part.bold });
-                    });
-                });
-
-                let currentWidth = 0;
-                let lineCount = 1;
-
-                styleMap.forEach(item => {
-                    doc.setFont('helvetica', item.bold ? 'bold' : 'normal');
-                    const wordWidth = doc.getTextWidth(item.word + ' ');
-                    if (currentWidth + wordWidth > maxWidth) {
-                        lineCount++;
-                        currentWidth = wordWidth;
-                    } else {
-                        currentWidth += wordWidth;
-                    }
-                });
-
-                totalNoteHeight += lineCount * tempLineHeight;
-            }
-        });
-
-        // --- 2) Add new page if needed ---
-        if (y + totalNoteHeight > doc.internal.pageSize.getHeight() - 30) {
-            doc.addPage();
-            doc.setFontSize(12);
-            navbar(doc);
-            y = hrY + 5;  // or whatever top Y you use
-        }
-        doc.setFontSize(12);
-        // --- 3) Now render noteLines as usual ---
-        noteLines.forEach(lineArray => {
-            if (lineArray.length === 1 && lineArray[0].text.trim() === '') {
-                y += lineHeight;
-                return;
-            }
-
-            let styleMap = [];
-            lineArray.forEach(part => {
-                const words = part.text.split(' ');
-                words.forEach(word => {
-                    styleMap.push({ word, bold: part.bold });
-                });
-            });
-
-            let lines = [];
-            let currentLine = [];
-            let currentWidth = 0;
-
-            styleMap.forEach(item => {
-                doc.setFont('helvetica', item.bold ? 'bold' : 'normal');
-                const wordWidth = doc.getTextWidth(item.word + ' ');
-
-                if (currentWidth + wordWidth > maxWidth && currentLine.length > 0) {
-                    lines.push(currentLine);
-                    currentLine = [item];
-                    currentWidth = wordWidth;
-                } else {
-                    currentLine.push(item);
-                    currentWidth += wordWidth;
-                }
-            });
-            if (currentLine.length) lines.push(currentLine);
-
-            lines.forEach((lineWords, index) => {
-                let totalWordsWidth = 0;
-                lineWords.forEach(item => {
-                    doc.setFont('helvetica', item.bold ? 'bold' : 'normal');
-                    totalWordsWidth += doc.getTextWidth(item.word + ' ');
-                });
-
-                const gaps = lineWords.length - 1;
-                let extraSpace = gaps > 0 ? (maxWidth - totalWordsWidth) / gaps : 0;
-
-                if (index === lines.length - 1) extraSpace = 0;
-
-                let x = marginLeft;
-
-                lineWords.forEach((item, i) => {
-                    doc.setFont('helvetica', item.bold ? 'bold' : 'normal');
-                    doc.text(item.word, x, y);
-
-                    let wordWidth = doc.getTextWidth(item.word + ' ');
-                    x += wordWidth;
-
-                    if (i < lineWords.length - 1) {
-                        x += extraSpace;
-                    }
-                });
-
-                y += lineHeight;
-            });
-        });
-
-
-        const qrCodeBase64w = Signature;
-        doc.addImage(qrCodeBase64w, "PNG", imgX, y, 60, 25);
-        if (y > doc.internal.pageSize.getHeight() - 30) {
-            doc.addPage();
-            doc.setFontSize(12);
-            navbar(doc)
-            y = hrY + 5;
-        }
-        else {
-            y += 8;
-        }
-
-        if (shouldSave) {
-            doc.save(`${formData.court.reference_id} Court Report.pdf`);
-        } else {
-            return doc;
-        }
-    }
     const generateCourtDOCX = async (courtData) => {
         const advocateDetails = [
             "NAVA NAYANA LEGAL CHAMBERS",
@@ -1992,7 +1820,7 @@ const InactiveClients = () => {
         });
 
         const blob = await Packer.toBlob(doc);
-        saveAs(blob, "Court_Record_Report.docx");
+        saveAs(blob, `${formData.court.referenceId} Court Report.docx`);
     };
 
 
@@ -2202,12 +2030,318 @@ const InactiveClients = () => {
         });
 
         const blob = await Packer.toBlob(doc);
-        saveAs(blob, "Police_Record_Report.docx");
+        saveAs(blob, `${formData.court.reference_id} Police Report.docx`);
     };
 
+    const noBorders = {
+        top: { style: BorderStyle.NONE },
+        bottom: { style: BorderStyle.NONE },
+        left: { style: BorderStyle.NONE },
+        right: { style: BorderStyle.NONE },
+    };
+
+    const generateAddressDOCX = async (addressData) => {
+        const advocateDetails = [
+            "NAVA NAYANA LEGAL CHAMBERS",
+            "MANJUNATHA H S (HSM), B.B.M., LL.B.",
+            "ADVOCATE AND LEGAL CONSULTANT",
+            "ENROLLMENT NUMBER: KAR/4765/2023",
+            "MOBILE NUMBER : +91 9738812694",
+            "MANJUNATH.9738812694@GMAIL.COM",
+        ];
+
+        const headerImageUrl = "https://webstepdev.com/screeningstarAssets/advocate.png";
+        const stampImageUrl = Signature; // Make sure Signature is a URL or imported image path
+
+        const fetchImageBuffer = async (url) => {
+            const res = await fetch(url);
+            return res.arrayBuffer();
+        };
+
+        const headerImage = await fetchImageBuffer(headerImageUrl);
+        const stampImage = await fetchImageBuffer(stampImageUrl);
+
+        // Header Table
+        const headerTable = new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            borders: noBorders,
+            rows: [
+                new TableRow({
+                    children: [
+                        new TableCell({
+                            width: { size: 15, type: WidthType.PERCENTAGE },
+                            borders: noBorders,
+                            children: [
+                                new Paragraph({
+                                    alignment: AlignmentType.LEFT,
+                                    children: [
+                                        new ImageRun({
+                                            data: headerImage,
+                                            transformation: { width: 80, height: 80 },
+                                        }),
+                                    ],
+                                }),
+                            ],
+                        }),
+                        new TableCell({
+                            width: { size: 25, type: WidthType.PERCENTAGE },
+                            borders: noBorders,
+                            children: [new Paragraph("")],
+                        }),
+                        new TableCell({
+                            width: { size: 1, type: WidthType.PERCENTAGE },
+                            borders: {
+                                top: { style: BorderStyle.NONE },
+                                bottom: { style: BorderStyle.NONE },
+                                left: { style: BorderStyle.NONE },
+                                right: { style: BorderStyle.SINGLE, size: 4, color: "000000" },
+                            },
+                            children: [new Paragraph("")],
+                        }),
+                        new TableCell({
+                            width: { size: 59, type: WidthType.PERCENTAGE },
+                            borders: noBorders,
+                            children: advocateDetails.map(
+                                (line) =>
+                                    new Paragraph({
+                                        alignment: AlignmentType.RIGHT,
+                                        children: [new TextRun({ text: line, size: 20 })],
+                                    })
+                            ),
+                        }),
+                    ],
+                }),
+            ],
+        });
+
+        // Prepare data rows (excluding signature)
+        const dataRows = [
+            ["Reference ID", addressData.reference_id || ""],
+            ["Full Name of The Candidate/Applicant/Job Seeker", addressData.candidateName || ""],
+            ["Date of Address Verification", addressData.verificationDate || ""],
+            ["Address as provided by the candidate/Applicant", addressData.providedAddress || ""],
+            ["Does physically verified address match with the above? (Yes or No)", addressData.addressMatch || ""],
+            ["Verifier remarks (if address does not match)", addressData.verifierRemarks || ""],
+            ["Mode of communication", addressData.communicationMode || ""],
+            ["Full Name of the Respondent", addressData.respondentName || ""],
+            ["Relationship with the candidate/Applicant", addressData.relationship || ""],
+            ["Number of Years staying at present/Current residence", addressData.yearsAtResidence || ""],
+            ["Status", addressData.residenceStatus || ""],
+            ["Details of the Respondent Address proof Verified", addressData.respondentProof || ""],
+            ["If the residence is locked, has the address been confirmed with neighbors?", addressData.confirmedWithNeighbors || ""],
+            ["Nature of Location", addressData.locationClass || ""],
+            ["Prominent Landmark in 1KM radius (Mandatory)", addressData.landmark || ""],
+            ["Nearby Name of the Police Station Location", addressData.policeStation || ""],
+            ["Any Comment regarding the Address verification", addressData.comments || ""],
+            ["Name of the Representative with date", addressData.representativeNameDate || ""],
+        ];
+
+        // Map text rows
+        const textRows = dataRows.map(
+            ([label, value]) =>
+                new TableRow({
+                    children: [
+                        new TableCell({
+                            children: [new Paragraph({ children: [new TextRun({ text: label, bold: true })] })],
+                        }),
+                        new TableCell({
+                            children: [new Paragraph(String(value || ""))],
+                        }),
+                    ],
+                })
+        );
+
+        // Prepare signature row
+
+        let signatureRow;
+        const signaturePath = signatureDemo; // from public folder
+
+        try {
+            const base64String = await fetchImageAsBase64(signaturePath);
+            const imageBuffer = base64ToArrayBuffer(base64String);
+
+            signatureRow = new TableRow({
+                children: [
+                    new TableCell({
+                        children: [new Paragraph({ children: [new TextRun({ text: "Signature of Respondent", bold: true })] })],
+                    }),
+                    new TableCell({
+                        children: [
+                            new Paragraph({
+                                children: [
+                                    new ImageRun({
+                                        data: imageBuffer,
+                                        transformation: { width: 120, height: 60 },
+                                    }),
+                                ],
+                            }),
+                        ],
+                    }),
+                ],
+            });
+        } catch (error) {
+            console.error("Error loading image from public folder:", error);
+            signatureRow = new TableRow({
+                children: [
+                    new TableCell({
+                        children: [new Paragraph({ children: [new TextRun({ text: "Signature of Respondent", bold: true })] })],
+                    }),
+                    new TableCell({
+                        children: [new Paragraph("Failed to load signature image")],
+                    }),
+                ],
+            });
+        }
+
+
+
+        const allRows = [...textRows, signatureRow];
+
+        // Data Table
+        const addressVerificationTable = new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            rows: allRows,
+        });
+
+        // Build the document
+        const doc = new Document({
+            sections: [
+                {
+                    children: [
+                        headerTable,
+                        // Thin horizontal rule
+                        new Paragraph({
+                            spacing: { before: 200, after: 200 },
+                            border: {
+                                bottom: {
+                                    style: BorderStyle.SINGLE,
+                                    size: 4,
+                                    color: "000000",
+                                },
+                            },
+                            children: [new TextRun("")],
+                        }),
+                        // Title
+                        new Paragraph({
+                            alignment: AlignmentType.CENTER,
+                            children: [new TextRun({ text: "ADDRESS VERIFICATION", bold: true, size: 28 })],
+                            spacing: { after: 200 },
+                        }),
+                        // Intro paragraph
+                        new Paragraph({
+                            children: [
+                                new TextRun({
+                                    text:
+                                        "This is with regard to the search conducted in the Police Station referred below with regard to any criminal cases filed against the person detailed below.",
+                                    size: 22,
+                                }),
+                            ],
+                            spacing: { after: 300 },
+                        }),
+
+                        // Data Table
+                        addressVerificationTable,
+
+                        // Disclaimer heading
+                        new Paragraph({
+                            alignment: AlignmentType.CENTER,
+                            children: [new TextRun({ text: "DISCLAIMER", bold: true, size: 24 })],
+                            spacing: { before: 300, after: 200 },
+                        }),
+
+                        // Disclaimer body
+                        new Paragraph({
+                            children: [
+                                new TextRun({
+                                    text:
+                                        "The search results are based on the available registers maintained in respect of criminal case/s and suit registers in respect of civil case/s maintained in the above-mentioned Court / Police Station having jurisdiction over the address where the candidate was said to be residing. Due care has been taken in conducting the search. The records are public records and the search has been conducted on behalf of your good self and the undersigned is not responsible for any errors, inaccuracies, omissions or deletions if any in the said court or police records. The above report is based on the verbal confirmation of the concerned authority as on the date on which it is confirmed, hence this verification is subjective. Please do contact the Local Police for Candidate Police Clearance Certificate (PCC) / Police Verification Certificate.",
+                                    size: 20,
+                                }),
+                            ],
+                            spacing: { after: 300 },
+                        }),
+
+                        // Notes
+                        new Paragraph({
+                            children: [
+                                new TextRun({ text: "Note:", bold: true, size: 20 }),
+                                new TextRun({
+                                    text:
+                                        " This report is provided for informational purposes only and does not constitute an official police clearance or certificate.",
+                                    size: 20,
+                                }),
+                            ],
+                            spacing: { after: 150 },
+                        }),
+
+                        new Paragraph({
+                            children: [
+                                new TextRun({ text: "“Nava Nayana Legal Chambers”", bold: true, size: 20 }),
+                                new TextRun({
+                                    text:
+                                        " does not guarantee the completeness, accuracy, or finality of the information and shall not be held liable for any decisions or actions taken by third parties based on this report.",
+                                    size: 20,
+                                }),
+                            ],
+                            spacing: { after: 150 },
+                        }),
+
+                        new Paragraph({
+                            children: [
+                                new TextRun({
+                                    text:
+                                        "This document is confidential and intended solely for the authorized recipient. Any unauthorized use, reproduction, or dissemination is strictly prohibited without prior written consent.",
+                                    size: 20,
+                                }),
+                            ],
+                            spacing: { after: 300 },
+                        }),
+
+                        // Stamp Image
+                        new Paragraph({
+                            children: [
+                                new ImageRun({ data: stampImage, transformation: { width: 150, height: 70 } }),
+                            ],
+                        }),
+                    ],
+                },
+            ],
+        });
+
+        const blob = await Packer.toBlob(doc);
+        saveAs(blob, `${addressData.reference_id} Address Verification.docx`);
+    };
+    async function fetchImageAsBase64(url) {
+        const response = await fetch(url);
+        const blob = await response.blob();
+
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result); // base64 string
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    }
+
+
+
+    function base64ToArrayBuffer(base64) {
+        const cleaned = base64.replace(/^data:image\/\w+;base64,/, "");
+        const binary = atob(cleaned);
+        const len = binary.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+            bytes[i] = binary.charCodeAt(i);
+        }
+        return bytes; // return Uint8Array (docx supports this)
+    }
 
     const generatePolicePDFBlob = async (policeData) => {
         const doc = await generatePolicePDF(policeData, false);
+        return doc.output('blob');
+    };
+    const generateAddressPDFBlob = async (addressData) => {
+        const doc = await generateAddressPDF(addressData, false);
         return doc.output('blob');
     };
     const generateCourtPDFBlob = async (courtData) => {
@@ -2282,8 +2416,13 @@ const InactiveClients = () => {
                 type: selectedService, // just use the selectedService value
                 export_format: type, // the format you want to export
                 data: JSON.stringify(
-                    selectedService === "police" ? formData.police : formData.court
+                    selectedService === "police"
+                        ? formData.police
+                        : selectedService === "address"
+                            ? formData.address
+                            : formData.court
                 ),
+
                 admin_id: adminData?.id,
                 _token: token
             }
@@ -2440,9 +2579,9 @@ const InactiveClients = () => {
                     await generateCourtPDF(formData.court);
                 } else if (selectedService === "police") {
                     await generatePolicePDF(formData.police);
-                
-                } else if (selectedService === "addres") {
-                    await generateAddressPDF(formData.police);
+
+                } else if (selectedService === "address") {
+                    await generateAddressPDF(formData.address);
                 }
             }
 
@@ -2455,7 +2594,7 @@ const InactiveClients = () => {
                     blob = await generatePolicePDFBlob(formData.police);
                 }
                 else if (selectedService === "address") {
-                    blob = await generateAddressPDF(formData.police);
+                    blob = await generateAddressPDFBlob(formData.address);
                 }
 
                 const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.js');
@@ -2479,10 +2618,22 @@ const InactiveClients = () => {
                 const referenceId =
                     selectedService === "court"
                         ? formData?.court?.reference_id || "Unknown"
-                        : formData?.police?.reference_id || "Unknown";
+                        : selectedService === "address"
+                            ? formData?.address?.candidateName || "Unknown"
+                            : formData?.police?.reference_id || "Unknown";
 
-                a.download = `${referenceId} ${selectedService === "court" ? `${formData?.court?.reference_id} Court Report` : `${formData?.police?.reference_id} Police Report`}.${type || "pdf"}`;
+                // Construct download name
+                const downloadName =
+                    selectedService === "court"
+                        ? `${formData?.court?.reference_id || "Unknown"} Court Report`
+                        : selectedService === "address"
+                            ? `${formData?.address?.reference_id || "Unknown"} Address Report`
+                            : `${formData?.police?.reference_id || "Unknown"} Police Report`;
+
+                // Set download attribute and trigger click
+                a.download = `${referenceId} ${downloadName}.${type || "pdf"}`;
                 a.click();
+
             }
 
             // Word
@@ -2493,7 +2644,7 @@ const InactiveClients = () => {
                     await generatePoliceDOCX(formData.police);
                 }
                 else if (selectedService === "address") {
-                     await generateAddressPDF(formData.police);
+                    await generateAddressDOCX(formData.address);
                 }
             }
 
@@ -2591,11 +2742,18 @@ const InactiveClients = () => {
             if (row.type === "police") {
                 setSelectedService("police");
                 setFormData((prev) => ({ ...prev, police: parsedData }));
-            } else if (row.type === "court") {
+            } if (row.type === "court") {
                 setSelectedService("court");
                 setFormData((prev) => ({
                     ...prev,
                     court: { ...parsedData, courtTable: parsedData.courtTable || [] },
+                }));
+            }
+            if (row.type === "address") {
+                setSelectedService("address");
+                setFormData((prev) => ({
+                    ...prev,
+                    address: { ...parsedData, address: parsedData.address || [] },
                 }));
             }
         }
@@ -2710,7 +2868,7 @@ const InactiveClients = () => {
                                     <div className="grid md:grid-cols-2 gap-6">
 
                                         {formFields.map(({ name, label, type, options }) => (
-                                            <div key={name} className="mb-4">
+                                            <div key={name} className="mb-1">
                                                 <label className="block mb-1 font-medium">{label}</label>
 
                                                 {type === "textarea" ? (
@@ -2718,6 +2876,7 @@ const InactiveClients = () => {
                                                         name={name}
                                                         value={formData[selectedService]?.[name] || ""}
                                                         onChange={handleChange}
+                                                        rows={1}
                                                         className="w-full rounded-md p-3 border border-gray-300 bg-[#f7f6fb] focus:border-blue-500"
 
                                                     />
@@ -2977,7 +3136,7 @@ const InactiveClients = () => {
                                                     {index + 1 + (currentPage - 1) * rowsPerPage}
                                                 </td>
                                                 <td className="border text-center px-2 py-2">
-                                                    {JSON.parse(row.data).full_name || 'N/A'}
+                                                    {JSON.parse(row.data).full_name || JSON.parse(row.data).candidateName || 'N/A'}
                                                 </td>
                                                 <td className="border text-center px-2 py-2">
                                                     {JSON.parse(row.data).reference_id || 'N/A'}

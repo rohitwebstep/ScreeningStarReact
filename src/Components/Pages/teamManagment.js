@@ -191,7 +191,7 @@ const TeamManagement = () => {
     };
 
     const filteredData = clientData.filter((data) =>
-        data.name.toLowerCase().includes(searchTerm.toLowerCase())
+        data.name.toLowerCase().includes(searchTerm.toLowerCase()) || data.client_unique_id.toLowerCase().includes(searchTerm.toLowerCase())
     );
         const paginatedData = filteredData.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
     const handleBlock = async (id) => {

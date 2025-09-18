@@ -2731,13 +2731,7 @@ const AdminChekin = () => {
                             >
                                 Export to Excel
                             </button>
-                            <button
-                                className="bg-orange-500 hover:scale-105  hover:bg-orange-600 text-white px-6 py-2 rounded"
-                               onClick={() => setViewServices(prev => !prev)}
-
-                            >
-                               {viewServices ? "Hide Services" :"View Services"} 
-                            </button>
+                          
                             {selectedRows.length > 0 &&
                                 filteredData.filter(
                                     (data) =>
@@ -2882,7 +2876,15 @@ const AdminChekin = () => {
 
                                 <th className="uppercase border border-black px-4 py-2">Photo</th>
                                 <th className="uppercase border border-black px-4 py-2">Employee Id</th>
-                                <th className="uppercase border border-black px-4 py-2">Initiation Date</th>
+                                <th className="uppercase border border-black px-4 py-2">
+                                      <button
+                                className="bg-orange-500 hover:scale-105  hover:bg-orange-600 text-white px-6 py-2 rounded"
+                               onClick={() => setViewServices(prev => !prev)}
+
+                            >
+                               {viewServices ? "Hide Services" :"View Services"} 
+                            </button><br/>
+                                    Initiation Date</th>
                                 {viewServices && servicesHeadings && servicesHeadings.length > 0 ? (
                                     servicesHeadings.map((heading, index) => {
                                         return (

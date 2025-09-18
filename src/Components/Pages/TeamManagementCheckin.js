@@ -1968,12 +1968,18 @@ console.log('applicationInfo',applicationInfo)
         setSearchTerm(e.target.value);
     };
 
-    const filteredData = paginatedData.filter((data) =>
-        data.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        data.application_id.toLowerCase().includes(searchTerm.toLowerCase())
-        ||
-        data.status.toLowerCase().includes(searchTerm.toLowerCase())
+const filteredData = paginatedData.filter((data) => {
+    const search = searchTerm?.toLowerCase() || "";
+
+    return (
+        data.name?.toLowerCase().includes(search) ||
+        data.application_id?.toLowerCase().includes(search) ||
+        data.status?.toLowerCase().includes(search) ||
+        data.employee_id?.toLowerCase().includes(search)
     );
+});
+
+
     const handleGoBack = () => {
         navigate('/admin-team-management');
     };
