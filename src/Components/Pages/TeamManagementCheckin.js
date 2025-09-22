@@ -1968,7 +1968,7 @@ console.log('applicationInfo',applicationInfo)
         setSearchTerm(e.target.value);
     };
 
-const filteredData = paginatedData.filter((data) => {
+const filteredData = data.filter((data) => {
     const search = searchTerm?.toLowerCase() || "";
 
     return (

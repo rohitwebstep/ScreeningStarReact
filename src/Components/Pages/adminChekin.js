@@ -2926,14 +2926,14 @@ const AdminChekin = () => {
                                     );
                                 })} */}
 
-                                <th className="border border-black px-4 py-2">First Level Insuff</th>
-                                <th className="border border-black px-4 py-2">First Insuff Date</th>
-                                <th className="border border-black px-4 py-2">First Insuff Reopen</th>
-                                <th className="border border-black px-4 py-2">Second Level Insuff</th>
-                                <th className="border border-black px-4 py-2">Second Insuff Date</th>
-                                <th className="border border-black px-4 py-2">Third Level Insuff</th>
-                                <th className="border border-black px-4 py-2">Third Insuff Date</th>
-                                <th className="border border-black px-4 py-2">Reason for Delay</th>
+                                <th className="border border-black uppercase px-4 py-2">First Level Insuff</th>
+                                <th className="border border-black uppercase px-4 py-2">First Insuff Date</th>
+                                <th className="border border-black uppercase px-4 py-2">First Insuff Reopen</th>
+                                <th className="border border-black uppercase px-4 py-2">Second Level Insuff</th>
+                                <th className="border border-black uppercase px-4 py-2">Second Insuff Date</th>
+                                <th className="border border-black uppercase px-4 py-2">Third Level Insuff</th>
+                                <th className="border border-black uppercase px-4 py-2">Third Insuff Date</th>
+                                <th className="border border-black uppercase px-4 py-2">Reason for Delay</th>
 
 
                             </tr>
@@ -3035,6 +3035,8 @@ const AdminChekin = () => {
                                                                 }
                                                             } else if (data.overall_status === "wip") {
                                                                 buttonText = "WIP";
+                                                                buttonDisabled = true;
+
                                                             } else {
                                                                 buttonText = "NOT READY";
                                                                 buttonDisabled = true;

@@ -797,7 +797,7 @@ const InactiveClients = () => {
             ['Nearby Name of the Police Station Location', address.policeStation || ''],
             ['Any Comment regarding the Address verification', address.comments || ''],
             ['Name of the Representative with date', address.representativeNameDate || ''],
-            ['Signature of Respondent', signatureDemo || '']
+            // ['Signature of Respondent', signatureDemo || '']
         ];
 
         for (const [label, value] of entries) {
@@ -1917,191 +1917,191 @@ const InactiveClients = () => {
     };
 
 
-   const generateAddressDOCX = async (addressData) => {
- const headingRow = new TableRow({
-    children: [
-        // Left Yellow Line Cell
-        new TableCell({
-            width: { size: 30, type: WidthType.PERCENTAGE },
-            borders: {
-                top: { style: BorderStyle.NONE },
-                bottom: { style: BorderStyle.SINGLE, size: 6, color: 'FFC000' }, // Yellow underline
-                left: { style: BorderStyle.NONE },
-                right: { style: BorderStyle.NONE },
-            },
-            children: [new Paragraph('')],
-        }),
-
-        // Center Heading Cell
-        new TableCell({
-            width: { size: 40, type: WidthType.PERCENTAGE },
-            borders: {
-                top: { style: BorderStyle.NONE },
-                bottom: { style: BorderStyle.NONE },
-                left: { style: BorderStyle.NONE },
-                right: { style: BorderStyle.NONE },
-            },
+    const generateAddressDOCX = async (addressData) => {
+        const headingRow = new TableRow({
             children: [
-                new Paragraph({
-                    alignment: AlignmentType.CENTER,
-                    children: [
-                        new TextRun({
-                            text: "ADDRESS VERIFICATION TEMPLATE",
-                            bold: true,
-                            color: "21409A", // Deep Blue
-                            size: 28,        // 14pt
-                            font: "Arial",
-                        }),
-                    ],
-                }),
-            ],
-        }),
-
-        // Right Yellow Line Cell
-        new TableCell({
-            width: { size: 30, type: WidthType.PERCENTAGE },
-            borders: {
-                top: { style: BorderStyle.NONE },
-                bottom: { style: BorderStyle.SINGLE, size: 6, color: 'FFC000' },
-                left: { style: BorderStyle.NONE },
-                right: { style: BorderStyle.NONE },
-            },
-            children: [new Paragraph('')],
-        }),
-    ],
-});
-
-const headingTable = new Table({
-    width: { size: 100, type: WidthType.PERCENTAGE },
-    rows: [headingRow],
-    borders: {
-        top: { style: BorderStyle.NONE },
-        bottom: { style: BorderStyle.NONE },
-        left: { style: BorderStyle.NONE },
-        right: { style: BorderStyle.NONE },
-        insideHorizontal: { style: BorderStyle.NONE },
-        insideVertical: { style: BorderStyle.NONE },
-    },
-});
-
-
- 
-
-    const dataRows = [
-        ["Reference ID", addressData.reference_id || ""],
-        ["Full Name of The Candidate", addressData.candidateName || ""],
-        ["Date of Address Verification", addressData.verificationDate || ""],
-        ["Address Provided", addressData.providedAddress || ""],
-        ["Does Address Match?", addressData.addressMatch || ""],
-        ["Verifier Remarks", addressData.verifierRemarks || ""],
-        ["Mode of Communication", addressData.communicationMode || ""],
-        ["Full Name of the Respondent", addressData.respondentName || ""],
-        ["Relationship", addressData.relationship || ""],
-        ["Years at Residence", addressData.yearsAtResidence || ""],
-        ["Status", addressData.residenceStatus || ""],
-        ["Respondent Address Proof", addressData.respondentProof || ""],
-        ["Confirmed with Neighbors?", addressData.confirmedWithNeighbors || ""],
-        ["Nature of Location", addressData.locationClass || ""],
-        ["Prominent Landmark", addressData.landmark || ""],
-        ["Nearby Police Station", addressData.policeStation || ""],
-        ["Comments", addressData.comments || ""],
-        ["Representative Name & Date", addressData.representativeNameDate || ""],
-    ];
-
-    const textRows = dataRows.map(([label, value]) =>
-        new TableRow({
-            children: [
+                // Left Yellow Line Cell
                 new TableCell({
+                    width: { size: 30, type: WidthType.PERCENTAGE },
+                    borders: {
+                        top: { style: BorderStyle.NONE },
+                        bottom: { style: BorderStyle.SINGLE, size: 6, color: 'FFC000' }, // Yellow underline
+                        left: { style: BorderStyle.NONE },
+                        right: { style: BorderStyle.NONE },
+                    },
+                    children: [new Paragraph('')],
+                }),
+
+                // Center Heading Cell
+                new TableCell({
+                    width: { size: 40, type: WidthType.PERCENTAGE },
+                    borders: {
+                        top: { style: BorderStyle.NONE },
+                        bottom: { style: BorderStyle.NONE },
+                        left: { style: BorderStyle.NONE },
+                        right: { style: BorderStyle.NONE },
+                    },
                     children: [
                         new Paragraph({
+                            alignment: AlignmentType.CENTER,
                             children: [
-                                new TextRun({ text: label, bold: true, size: 20 }), // smaller font
-                            ],
-                        }),
-                    ],
-                }),
-                new TableCell({
-                    children: [
-                        new Paragraph({
-                            children: [
-                                new TextRun({ text: String(value), size: 20 }),
-                            ],
-                        }),
-                    ],
-                }),
-            ],
-        })
-    );
-
-    // Signature row
-    let signatureRow;
-    const signaturePath = signatureDemo;
-
-    try {
-        const base64String = await fetchImageAsBase64(signaturePath);
-        const imageBuffer = base64ToArrayBuffer(base64String);
-
-        signatureRow = new TableRow({
-            children: [
-                new TableCell({
-                    children: [
-                        new Paragraph({
-                            children: [new TextRun({ text: "Signature of Respondent", bold: true })],
-                        }),
-                    ],
-                }),
-                new TableCell({
-                    children: [
-                        new Paragraph({
-                            children: [
-                                new ImageRun({
-                                    data: imageBuffer,
-                                    transformation: { width: 120, height: 60 },
+                                new TextRun({
+                                    text: "ADDRESS VERIFICATION TEMPLATE",
+                                    bold: true,
+                                    color: "21409A", // Deep Blue
+                                    size: 28,        // 14pt
+                                    font: "Arial",
                                 }),
                             ],
                         }),
                     ],
                 }),
-            ],
-        });
-    } catch (error) {
-        console.error("Error loading signature image:", error);
-        signatureRow = new TableRow({
-            children: [
+
+                // Right Yellow Line Cell
                 new TableCell({
-                    children: [
-                        new Paragraph({
-                            children: [new TextRun({ text: "Signature of Respondent", bold: true })],
-                        }),
-                    ],
-                }),
-                new TableCell({
-                    children: [new Paragraph("Failed to load signature image")],
+                    width: { size: 30, type: WidthType.PERCENTAGE },
+                    borders: {
+                        top: { style: BorderStyle.NONE },
+                        bottom: { style: BorderStyle.SINGLE, size: 6, color: 'FFC000' },
+                        left: { style: BorderStyle.NONE },
+                        right: { style: BorderStyle.NONE },
+                    },
+                    children: [new Paragraph('')],
                 }),
             ],
         });
-    }
 
-    const dataTable = new Table({
-        width: { size: 100, type: WidthType.PERCENTAGE },
-        rows: [...textRows, signatureRow],
-    });
-
-    const doc = new Document({
-        sections: [
-            {
-                children: [
-                    headingTable,
-                    new Paragraph({ text: "", spacing: { after: 300 } }), // spacer
-                    dataTable,
-                ],
+        const headingTable = new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            rows: [headingRow],
+            borders: {
+                top: { style: BorderStyle.NONE },
+                bottom: { style: BorderStyle.NONE },
+                left: { style: BorderStyle.NONE },
+                right: { style: BorderStyle.NONE },
+                insideHorizontal: { style: BorderStyle.NONE },
+                insideVertical: { style: BorderStyle.NONE },
             },
-        ],
-    });
+        });
 
-    const blob = await Packer.toBlob(doc);
-    saveAs(blob, `${addressData.reference_id || "address"}_verification.docx`);
-};
+
+
+
+        const dataRows = [
+            ["Reference ID", addressData.reference_id || ""],
+            ["Full Name of The Candidate", addressData.candidateName || ""],
+            ["Date of Address Verification", addressData.verificationDate || ""],
+            ["Address Provided", addressData.providedAddress || ""],
+            ["Does Address Match?", addressData.addressMatch || ""],
+            ["Verifier Remarks", addressData.verifierRemarks || ""],
+            ["Mode of Communication", addressData.communicationMode || ""],
+            ["Full Name of the Respondent", addressData.respondentName || ""],
+            ["Relationship", addressData.relationship || ""],
+            ["Years at Residence", addressData.yearsAtResidence || ""],
+            ["Status", addressData.residenceStatus || ""],
+            ["Respondent Address Proof", addressData.respondentProof || ""],
+            ["Confirmed with Neighbors?", addressData.confirmedWithNeighbors || ""],
+            ["Nature of Location", addressData.locationClass || ""],
+            ["Prominent Landmark", addressData.landmark || ""],
+            ["Nearby Police Station", addressData.policeStation || ""],
+            ["Comments", addressData.comments || ""],
+            ["Representative Name & Date", addressData.representativeNameDate || ""],
+        ];
+
+        const textRows = dataRows.map(([label, value]) =>
+            new TableRow({
+                children: [
+                    new TableCell({
+                        children: [
+                            new Paragraph({
+                                children: [
+                                    new TextRun({ text: label, bold: true, size: 20 }), // smaller font
+                                ],
+                            }),
+                        ],
+                    }),
+                    new TableCell({
+                        children: [
+                            new Paragraph({
+                                children: [
+                                    new TextRun({ text: String(value), size: 20 }),
+                                ],
+                            }),
+                        ],
+                    }),
+                ],
+            })
+        );
+
+        // Signature row
+        // let signatureRow;
+        // const signaturePath = signatureDemo;
+
+        // try {
+        //     const base64String = await fetchImageAsBase64(signaturePath);
+        //     const imageBuffer = base64ToArrayBuffer(base64String);
+
+        //     signatureRow = new TableRow({
+        //         children: [
+        //             new TableCell({
+        //                 children: [
+        //                     new Paragraph({
+        //                         children: [new TextRun({ text: "Signature of Respondent", bold: true })],
+        //                     }),
+        //                 ],
+        //             }),
+        //             new TableCell({
+        //                 children: [
+        //                     new Paragraph({
+        //                         children: [
+        //                             new ImageRun({
+        //                                 data: imageBuffer,
+        //                                 transformation: { width: 120, height: 60 },
+        //                             }),
+        //                         ],
+        //                     }),
+        //                 ],
+        //             }),
+        //         ],
+        //     });
+        // } catch (error) {
+        //     console.error("Error loading signature image:", error);
+        //     signatureRow = new TableRow({
+        //         children: [
+        //             new TableCell({
+        //                 children: [
+        //                     new Paragraph({
+        //                         children: [new TextRun({ text: "Signature of Respondent", bold: true })],
+        //                     }),
+        //                 ],
+        //             }),
+        //             new TableCell({
+        //                 children: [new Paragraph("Failed to load signature image")],
+        //             }),
+        //         ],
+        //     });
+        // }
+
+        const dataTable = new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            rows: [...textRows],
+        });
+
+        const doc = new Document({
+            sections: [
+                {
+                    children: [
+                        headingTable,
+                        new Paragraph({ text: "", spacing: { after: 300 } }), // spacer
+                        dataTable,
+                    ],
+                },
+            ],
+        });
+
+        const blob = await Packer.toBlob(doc);
+        saveAs(blob, `${addressData.reference_id || "address"}_verification.docx`);
+    };
 
 
     async function fetchImageAsBase64(url) {
