@@ -934,7 +934,7 @@ const AdminChekin = () => {
         if (generate_report_type == 'CONFIDENTIAL BACKGROUND SCREENING REPORT') {
             headerTableData = [
                 ["REFERENCE ID", String(applicationInfo.application_id).toUpperCase(), "DATE OF BIRTH", formatDate(applicationInfo.dob) || "N/A"],
-                ["EMPLOYEE ID", String(applicationInfo.employee_id || "N/A").toUpperCase(), "INSUFF CLEARED", formatDate(applicationInfo.first_insuff_reopened_date) || "N/A"],
+                ["EMPLOYEE ID", String(applicationInfo.employee_id || "N/A").toUpperCase(), "INSUFF CLEARED", formatDate(applicationInfo.first_insuff_reopened_date, true) || "N/A"],
                 ["VERIFICATION INITIATED", formatDate(applicationInfo.initiation_date).toUpperCase() || "N/A", "FINAL REPORT DATE", formatDate(applicationInfo.report_date) || "N/A"],
                 ["VERIFICATION PURPOSE", (applicationInfo.verification_purpose || "EMPLOYMENT").toUpperCase(), "VERIFICATION STATUS", (applicationInfo.final_verification_status || "N/A").toUpperCase()],
                 ["REPORT TYPE", (applicationInfo.report_type || "EMPLOYMENT").replace(/_/g, " ").toUpperCase(), "REPORT STATUS", (applicationInfo.report_status || "N/A").toUpperCase()]
@@ -942,7 +942,7 @@ const AdminChekin = () => {
         } else if (generate_report_type == 'VENDOR CONFIDENTIAL SCREENING REPORT') {
             headerTableData = [
                 ["REFERENCE ID", String(applicationInfo.application_id).toUpperCase(), "DATE OF INCORPORATION", formatDate(applicationInfo.dob) || "N/A"],
-                ["EMPLOYEE ID", String(applicationInfo.employee_id || "N/A").toUpperCase(), "INSUFF CLEARED", formatDate(applicationInfo.first_insuff_reopened_date) || "N/A"],
+                ["EMPLOYEE ID", String(applicationInfo.employee_id || "N/A").toUpperCase(), "INSUFF CLEARED", formatDate(applicationInfo.first_insuff_reopened_date, true) || "N/A"],
                 ["VERIFICATION INITIATED", formatDate(applicationInfo.initiation_date).toUpperCase() || "N/A", "FINAL REPORT DATE", formatDate(applicationInfo.report_date) || "N/A"],
                 // This row has only 2 cells (spans full row)
                 ["VERIFICATION STATUS", (applicationInfo.final_verification_status || "N/A").toUpperCase(), "REPORT STATUS", (applicationInfo.report_status || "N/A").toUpperCase()],
@@ -2323,10 +2323,24 @@ const AdminChekin = () => {
     };
 
     // Function to format the date to "Month Day, Year" format
-    const formatDate = (date) => {
-        if (!date) return "No Insuff"; // Check for null, undefined, or empty
+    const formatDate = (date, isInsuff = false) => {
+        if (!date) {
+            if (isInsuff) {
+                return "No Insuff"; // Check for null, undefined, or empty
+            } else {
+                return "N/A";
+            }
+        }
+
         const dateObj = new Date(date);
-        if (isNaN(dateObj.getTime())) return "Nill"; // Check for invalid date
+        if (isNaN(dateObj.getTime())) {
+            if (isInsuff) {
+                return "N/A"; // Check for null, undefined, or empty
+            } else {
+                return "N/A";
+            }
+        }
+
         const day = String(dateObj.getDate()).padStart(2, '0');
         const month = String(dateObj.getMonth() + 1).padStart(2, '0');
         const year = dateObj.getFullYear();
@@ -3198,12 +3212,12 @@ const AdminChekin = () => {
 
 
                                                         <td className="border border-black px-4 py-2">{formatedJson(data.first_insufficiency_marks) || "No Insuff"}</td>
-                                                        <td className="border border-black px-4 py-2">{formatDate(data.first_insuff_date) || "No Insuff"}</td>
+                                                        <td className="border border-black px-4 py-2">{formatDate(data.first_insuff_date, true) || "No Insuff"}</td>
                                                         <td className="border border-black px-4 py-2">{formatDate(data.first_insuff_reopened_date) || "No Insuff"}</td>
                                                         <td className="border border-black px-4 py-2">{formatedJson(data.second_insufficiency_marks) || "No Insuff"}</td>
-                                                        <td className="border border-black px-4 py-2">{formatDate(data.second_insuff_date) || "No Insuff"}</td>
+                                                        <td className="border border-black px-4 py-2">{formatDate(data.second_insuff_date, true) || "No Insuff"}</td>
                                                         <td className="border border-black px-4 py-2">{formatedJson(data.third_insufficiency_marks) || "No Insuff"}</td>
-                                                        <td className="border border-black px-4 py-2">{formatDate(data.third_insuff_date) || "No Insuff"}</td>
+                                                        <td className="border border-black px-4 py-2">{formatDate(data.third_insuff_date, true) || "No Insuff"}</td>
                                                         <td className="border border-black px-4 py-2">{formatedJson(data.delay_reason) || "No Insuff"}</td>
 
 

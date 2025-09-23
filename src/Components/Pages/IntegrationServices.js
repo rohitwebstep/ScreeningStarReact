@@ -290,29 +290,36 @@ const InactiveClients = () => {
             .replace(/^_+|_+$/g, '')     // Remove leading/trailing underscores
             .replace(/_+/g, '_');        // Merge multiple underscores
 
-    const parseCSV = (text) => {
-        const lines = text.split('\n').filter(line => line.trim() !== '');
-        if (lines.length === 0) return [];
+  const parseCSV = (text) => {
+    const lines = text.split('\n').filter(line => line.trim() !== '');
+    if (lines.length === 0) return [];
 
-        const headers = lines[0].match(/(?:\"([^\"]*)\"|([^,]+))/g).map(h => h.replace(/^"|"$/g, '').trim());
-        const data = [];
+    // Extract headers
+    const headers = lines[0]
+        .split(',')
+        .map(h => h.replace(/^"|"$/g, '').trim());
 
-        for (let i = 1; i < lines.length; i++) {
-            const rowValues = lines[i].match(/(?:\"([^\"]*)\"|([^,]+))/g);
-            if (!rowValues) continue;
+    const data = [];
 
-            const rowObj = {};
-            headers.forEach((header, idx) => {
-                let value = rowValues[idx] || '';
-                value = value.replace(/^"|"$/g, '').trim(); // Remove quotes and trim
-                rowObj[normalizeKey(header)] = value;      // Normalize key
-            });
-            data.push(rowObj);
-        }
+    for (let i = 1; i < lines.length; i++) {
+        // ✅ split with respect to commas but keep empty values
+        const rowValues = lines[i]
+            .split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/) // handles commas inside quotes
+            .map(val => val.replace(/^"|"$/g, '').trim());
 
-        return data;
-    };
+        if (rowValues.length === 0) continue;
 
+        const rowObj = {};
+        headers.forEach((header, idx) => {
+            // 🔹 Always assign something (empty if missing)
+            rowObj[normalizeKey(header)] = rowValues[idx] !== undefined ? rowValues[idx] : '';
+        });
+
+        data.push(rowObj);
+    }
+
+    return data;
+};
 
 
 
@@ -330,117 +337,114 @@ const InactiveClients = () => {
 
 
 
-    const handleFileUpload = (e, type) => {
-        const file = e.target.files[0];
-        if (file && file.type === 'text/csv') {
-            console.log("File selected:", file.name);
+   const handleFileUpload = (e, type) => {
+    const file = e.target.files[0];
+    if (file && file.type === 'text/csv') {
+        console.log("File selected:", file.name);
 
-            const reader = new FileReader();
-            reader.onload = () => {
-                const fileContent = reader.result;
-                console.log("File content loaded:", fileContent);
-                setFileName(file.name);
-                setIsFileValid(true);
-                const parsedData = parseCSV(fileContent);
-                const csvHeaders = csvHeadings(fileContent);
-                console.log("Headers:", csvHeaders);
+        const reader = new FileReader();
+        reader.onload = () => {
+            const fileContent = reader.result;
+            console.log("File content loaded:", fileContent);
+            setFileName(file.name);
+            setIsFileValid(true);
+            const parsedData = parseCSV(fileContent);
+            const csvHeaders = csvHeadings(fileContent);
+            console.log("Headers:", csvHeaders);
 
-                const newData = [];
-                let hasError = false;
+            const newData = [];
+            let hasError = false;
 
-                parsedData.forEach((row, index) => {
-                    const values = Object.values(row).map((value) => value.trim());
-                    const allEmpty = values.every((val) => val === '');
-                    const someEmpty = values.some((val) => val === '') && !allEmpty;
+            parsedData.forEach((row, index) => {
+                const values = Object.values(row).map((value) => value.trim());
+                const allEmpty = values.every((val) => val === '');
+                const someEmpty = values.some((val) => val === '') && !allEmpty;
 
-                    if (allEmpty) {
-                        console.log(`Skipping row ${index + 1}: Empty row.`);
-                    } else if (someEmpty) {
-                        setFileName('');
-                        setIsFileValid(false);
-                        console.log(`Error in row ${index + 1}: Missing values.`);
-                        hasError = true;
+                if (allEmpty) {
+                    console.log(`Skipping row ${index + 1}: Empty row.`);
+                } else if (!row.reference_id || row.reference_id.trim() === "") {
+                    setFileName('');
+                    setIsFileValid(false);
+                    hasError = true;
 
-                        const missingFields = csvHeaders.filter((header, i) => !values[i] || values[i] === '');
-                        const errorMessage = `Row ${index + 1} is incomplete. Missing fields: ${missingFields.join(', ')}`;
-
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error',
-                            text: errorMessage,
-                        });
-                    } else {
-                        let cleaned = cleanFieldNames(row);
-
-                        if (type === "court") {
-                            // 🔹 Transform into desired format
-                            cleaned = {
-                                courtTable: [
-                                    {
-                                        courtCheckType: "Civil",
-                                        jurisdiction: cleaned.civil_jurisdiction || "City Civil Court",
-                                        location: cleaned.civil_location,
-                                        verificationResult: cleaned.civil_verification_result
-                                    },
-                                    {
-                                        courtCheckType: "Magistrate",
-                                        jurisdiction: cleaned.magistrate_jurisdiction || "Chief Judicial Magistrate",
-                                        location: cleaned.magistrate_location,
-                                        verificationResult: cleaned.magistrate_verification_result
-                                    },
-                                    {
-                                        courtCheckType: "Sessions",
-                                        jurisdiction: cleaned.sessions_jurisdiction || "District & Session Court",
-                                        location: cleaned.sessions_location,
-                                        verificationResult: cleaned.sessions_verification_result
-                                    },
-                                    {
-                                        courtCheckType: "High Court",
-                                        jurisdiction: cleaned.high_court_jurisdiction || "Karnataka High Court",
-                                        location: cleaned.high_court_location,
-                                        verificationResult: cleaned.high_court_verification_result
-                                    }
-                                ],
-                                reference_id: cleaned.reference_id,
-                                full_name: cleaned.full_name,
-                                fathers_name: cleaned.fathers_name,
-                                date_of_birth: cleaned.date_of_birth,
-                                permanent_address: cleaned.permanent_address,
-                                current_address: cleaned.current_address,
-                                number_of_years_search: cleaned.number_of_years_search,
-                                date_of_verification: cleaned.date_of_verification,
-                                verification_status: cleaned.verification_status
-                            };
-                        }
-
-                        newData.push(cleaned);
-                    }
-                });
-
-                if (hasError) {
-                    console.log("Errors found. Not processing file further.");
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: `Row ${index + 1} is incomplete. "Reference ID" is required.`,
+                    });
                     return;
-                }
-
-                if (type === "court") {
-                    setCourtData(newData);
                 } else {
-                    setPoliceData(newData);
+                    let cleaned = cleanFieldNames(row);
+
+                    if (type === "court") {
+                        // 🔹 Transform into desired format
+                        cleaned = {
+                            courtTable: [
+                                {
+                                    courtCheckType: "Civil",
+                                    jurisdiction: cleaned.civil_jurisdiction || "City Civil Court",
+                                    location: cleaned.civil_location,
+                                    verificationResult: cleaned.civil_verification_result
+                                },
+                                {
+                                    courtCheckType: "Magistrate",
+                                    jurisdiction: cleaned.magistrate_jurisdiction || "Chief Judicial Magistrate",
+                                    location: cleaned.magistrate_location,
+                                    verificationResult: cleaned.magistrate_verification_result
+                                },
+                                {
+                                    courtCheckType: "Sessions",
+                                    jurisdiction: cleaned.sessions_jurisdiction || "District & Session Court",
+                                    location: cleaned.sessions_location,
+                                    verificationResult: cleaned.sessions_verification_result
+                                },
+                                {
+                                    courtCheckType: "High Court",
+                                    jurisdiction: cleaned.high_court_jurisdiction || "Karnataka High Court",
+                                    location: cleaned.high_court_location,
+                                    verificationResult: cleaned.high_court_verification_result
+                                }
+                            ],
+                            reference_id: cleaned.reference_id,
+                            full_name: cleaned.full_name,
+                            fathers_name: cleaned.fathers_name,
+                            date_of_birth: cleaned.date_of_birth,
+                            permanent_address: cleaned.permanent_address,
+                            current_address: cleaned.current_address,
+                            number_of_years_search: cleaned.number_of_years_search,
+                            date_of_verification: cleaned.date_of_verification,
+                            verification_status: cleaned.verification_status
+                        };
+                    }
+
+                    newData.push(cleaned);
                 }
-
-                console.log("Processed and set valid data:", newData);
-            };
-
-            reader.readAsText(file);
-        } else {
-            console.log("Invalid file type selected.");
-            Swal.fire({
-                icon: 'error',
-                title: 'Invalid File',
-                text: 'Please upload a valid CSV file.',
             });
-        }
-    };
+
+            if (hasError) {
+                console.log("Errors found. Not processing file further.");
+                return;
+            }
+
+            if (type === "court") {
+                setCourtData(newData);
+            } else {
+                setPoliceData(newData);
+            }
+
+            console.log("Processed and set valid data:", newData);
+        };
+
+        reader.readAsText(file);
+    } else {
+        console.log("Invalid file type selected.");
+        Swal.fire({
+            icon: 'error',
+            title: 'Invalid File',
+            text: 'Please upload a valid CSV file.',
+        });
+    }
+};
     const downloadSampleFile = () => {
         const sampleFile = "/police-record.csv"; // make sure this file exists in public/
 

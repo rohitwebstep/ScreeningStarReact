@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState,useRef, useCallback } from 'react';
 import Modal from 'react-modal';
 import { useApiLoading } from '../ApiLoadingContext';
 import * as XLSX from 'xlsx';
@@ -12,7 +12,15 @@ Modal.setAppElement('#root'); // Make sure to set the app element for accessibil
 const ActiveAccounts = () => {
   const { validateAdminLogin, setApiLoading, apiLoading } = useApiLoading();
   const [responseError, setResponseError] = useState(null);
+  const tableScrollRef = useRef(null);
+  const topScrollRef = useRef(null);
 
+  const syncScroll = () => {
+    if (tableScrollRef.current && topScrollRef.current) {
+      topScrollRef.current.scrollLeft = tableScrollRef.current.scrollLeft;
+      tableScrollRef.current.scrollLeft = topScrollRef.current.scrollLeft;
+    }
+  };
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalServices, setModalServices] = useState([]);
   const navigate = useNavigate();
@@ -637,8 +645,22 @@ const ActiveAccounts = () => {
           </div>
         </div>
 
+<div className="table-container rounded-lg">
+      {/* Top Scroll */}
+      <div
+        className="top-scroll"
+        ref={topScrollRef}
+        onScroll={syncScroll}
+      >
+        <div className="top-scroll-inner" style={{ width: tableScrollRef.current?.scrollWidth || "100%" }} />
+      </div>
 
-        <div className=" overflow-scroll">
+      {/* Actual Table Scroll */}
+      <div
+        className="table-scroll rounded-lg"
+        ref={tableScrollRef}
+        onScroll={syncScroll}
+      >
           <table className="min-w-full border-collapse border border-black rounded-lg">
             <thead className="rounded-lg border border-black">
               <tr className="bg-[#c1dff2] text-[#4d606b] whitespace-nowrap text-left">
@@ -806,6 +828,7 @@ const ActiveAccounts = () => {
               </tbody>
             )}
           </table>
+        </div>
 
         </div>
         <div className="flex justify-between items-center mt-4">
