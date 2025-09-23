@@ -22,7 +22,7 @@ const PackageManagement = () => {
     const navigate = useNavigate();
     const storedToken = localStorage.getItem("_token");
     const [packagesPerPage, setPackagesPerPage] = useState(10);
-    const optionsPerPage = [10, 50, 100, 200];
+    const optionsPerPage = [10, 50, 100, 200,500,1000];
     const fetchPackages = useCallback(async () => {
         setLoading(true);
         setApiLoading(true);

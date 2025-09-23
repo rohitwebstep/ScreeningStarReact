@@ -15,6 +15,10 @@ import isoLogo from "../../imgs/iso.png"
 import isoLogo2 from "../../imgs/iso2.png"
 
 const TeamManagementCheckin = () => {
+
+
+    const [servicesHeadings, setServicesHeadings] = useState([]);
+    const [viewServices, setViewServices] = useState(false);
     const [servicesDataInfo, setServicesDataInfo] = useState('');
     const [loadingIndex, setLoadingIndex] = useState(null);
     const { validateAdminLogin, setApiLoading, apiLoading } = useApiLoading();
@@ -44,7 +48,7 @@ const TeamManagementCheckin = () => {
     };
     const [currentPage, setCurrentPage] = useState(1);
     const [rowsPerPage, setRowsPerPage] = useState(10);
-    const optionsPerPage = [10, 50, 100, 200]; const totalPages = Math.ceil(data.length / rowsPerPage);
+    const optionsPerPage = [10, 50, 100, 200, 500, 1000]; const totalPages = Math.ceil(data.length / rowsPerPage);
     const paginatedData = data.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
     const colorNames = ['red', 'green', 'blue', 'yellow', 'orange', 'purple', 'pink'];
     const getColorStyle = (status) => {
@@ -70,6 +74,29 @@ const TeamManagementCheckin = () => {
     const token = localStorage.getItem('_token');
 
     // Fetch data from the main API
+
+    function getStatusByServiceId(annexures, serviceId) {
+        if (!Array.isArray(annexures)) {
+            return 'NIL';
+        }
+
+        // Match with service_id instead of serviceId
+        const annexure = annexures.find(item => String(item.service_id) === String(serviceId));
+
+        if (!annexure) {
+            return 'NIL';
+        }
+
+        console.log('✅ Match found:', annexure);
+
+        // Prefer annexureData.status if it exists
+        if (annexure.annexureData && 'status' in annexure.annexureData) {
+            console.log('📤 Returning annexureData.status:', annexure.annexureData.status);
+            return annexure.annexureData.status || 'INITIATED';
+        }
+
+        return 'INITIATED';
+    }
     const fetchData = useCallback((filterStatus = null) => {
         if (!branchId || !adminId || !token) {
             return;
@@ -115,6 +142,48 @@ const TeamManagementCheckin = () => {
             })
             .then((result) => {
                 setData(result.customers || []);
+                const applicationData = result.customers;
+
+                const allHeadings = applicationData.flatMap(customer => {
+                    if (!customer.annexureResults) {
+                        console.log('Missing annexureResults for customer:', customer.id);
+                        return [];
+                    }
+
+                    return customer.annexureResults.flatMap(item => {
+                        if (!item.reportFormJson || !item.reportFormJson.json) {
+                            console.log('Missing or invalid reportFormJson for service_id:', item.service_id);
+                            return [];
+                        }
+
+                        try {
+                            const parsedJson = JSON.parse(item.reportFormJson.json);
+                            return [{
+                                id: item.service_id,
+                                heading: parsedJson.heading || []
+                            }];
+                        } catch (e) {
+                            console.log('Failed to parse JSON for item:', item);
+                            return [];
+                        }
+                    });
+                });
+
+
+                // ✅ Deduplicate the headings
+                const uniqueHeadingsMap = new Map();
+
+                allHeadings.forEach(({ id, heading }) => {
+                    if (!uniqueHeadingsMap.has(id)) {
+                        uniqueHeadingsMap.set(id, heading);
+                    }
+                });
+
+                const uniqueHeadings = Array.from(uniqueHeadingsMap, ([id, heading]) => ({ id, heading }));
+
+
+                console.log('Unique Headings:', uniqueHeadings);
+                setServicesHeadings(uniqueHeadings);
                 setFilterData(result?.filterOptions || []);
                 setBranchName(result.branchName);
                 setAdminTAT(result.tatDays);
@@ -518,11 +587,11 @@ const TeamManagementCheckin = () => {
         let profilePhoto;
 
         if (applicationInfo.gender === 'Male') {
-          profilePhoto = PDFuser;
+            profilePhoto = PDFuser;
         } else if (applicationInfo.gender === 'Female') {
-          profilePhoto = PDFuserGirl;
+            profilePhoto = PDFuserGirl;
         } else {
-          profilePhoto = PDFuser;
+            profilePhoto = PDFuser;
         }
         if (applicationInfo?.photo) {
             const imgUrl = await fetchImageToBase(applicationInfo.photo.trim());
@@ -597,7 +666,7 @@ const TeamManagementCheckin = () => {
         // Add text centered horizontally and vertically
         doc.text(mainTitle, pageWidth / 2, verticalCenter, { align: 'center' });
 
-console.log('applicationInfo',applicationInfo)
+        console.log('applicationInfo', applicationInfo)
         const headerTableData = [
             ["REFERENCE ID", String(applicationInfo.application_id).toUpperCase(), "DATE OF BIRTH", formatDate(applicationInfo.dob) || "N/A"],
             ["EMPLOYEE ID", String(applicationInfo.employee_id || "N/A").toUpperCase(), "INSUFF CLEARED", formatDate(applicationInfo.first_insuff_reopened_date) || "N/A"],
@@ -741,106 +810,106 @@ console.log('applicationInfo',applicationInfo)
                 ]
             ],
             body: servicesData
-            .filter(service => service?.annexureData?.status) // Filter out rows with no status
-            .slice(0, 10)
-            .map(service => {
-              const colorMapping = {
-                Yellow: 'yellow',
-                Red: 'red',
-                Blue: 'blue',
-                Green: 'green',
-                Orange: 'orange',
-                Pink: 'pink',
-              };
-          
-              const rawStatus = service?.annexureData?.status || "Not Verified";
-          
-              let statusContent = rawStatus
-                .replace(/_/g, ' ') // Replace underscores with spaces
-                .replace(/[^a-zA-Z0-9 ]/g, '') // Remove special characters
-                .replace(/\b\w/g, char => char.toUpperCase()) // Capitalize words
-                .trim();
-          
-              if (!statusContent || statusContent.toLowerCase() === 'nil') {
-                return null; // Skip this row
-              }
-          
-              let filteredStatusContent = statusContent;
-              let textColorr = 'black';
-          
-              for (let color in colorMapping) {
-                if (filteredStatusContent.includes(color)) {
-                  filteredStatusContent = filteredStatusContent.replace(new RegExp(color, 'g'), '').trim();
-                  textColorr = colorMapping[color];
-                }
-              }
-          
-              return [
-                {
-                  content: service?.reportFormJson?.json
-                    ? JSON.parse(service.reportFormJson.json)?.heading
-                    : null,
-                  styles: {
-                    fontStyle: 'bold',
-                    halign: 'left',
-                  },
-                },
-                {
-                  content:
-                    service?.annexureData &&
-                    Object.keys(service.annexureData).find(
-                      key =>
-                        key.endsWith('info_source') ||
-                        key.endsWith('information_source') ||
-                        key.startsWith('info_source') ||
-                        key.startsWith('information_source')
-                    )
-                      ? service.annexureData[
-                          Object.keys(service.annexureData).find(
-                            key =>
-                              key.endsWith('info_source') ||
-                              key.endsWith('information_source') ||
-                              key.startsWith('info_source') ||
-                              key.startsWith('information_source')
-                          )
-                        ]
-                      : null,
-                  styles: {
-                    fontStyle: 'bold',
-                    halign: 'left',
-                  },
-                },
-                {
-                  content: (() => {
-                    const annexure = service?.annexureData || {};
-                    const matchKey = Object.keys(annexure).find(key =>
-                      key.includes('date_of_verification')
-                    );
-                    if (matchKey && annexure[matchKey]) {
-                      return new Date(annexure[matchKey])
-                        .toLocaleDateString('en-GB')
-                        .replace(/\//g, '-');
-                    } else {
-                      return 'N/A';
+                .filter(service => service?.annexureData?.status) // Filter out rows with no status
+                .slice(0, 10)
+                .map(service => {
+                    const colorMapping = {
+                        Yellow: 'yellow',
+                        Red: 'red',
+                        Blue: 'blue',
+                        Green: 'green',
+                        Orange: 'orange',
+                        Pink: 'pink',
+                    };
+
+                    const rawStatus = service?.annexureData?.status || "Not Verified";
+
+                    let statusContent = rawStatus
+                        .replace(/_/g, ' ') // Replace underscores with spaces
+                        .replace(/[^a-zA-Z0-9 ]/g, '') // Remove special characters
+                        .replace(/\b\w/g, char => char.toUpperCase()) // Capitalize words
+                        .trim();
+
+                    if (!statusContent || statusContent.toLowerCase() === 'nil') {
+                        return null; // Skip this row
                     }
-                  })(),
-                  styles: {
-                    fontWeight: 'bold',
-                    fontStyle: 'normal',
-                  },
-                },
-                {
-                  content: formatStatus(filteredStatusContent).toUpperCase(),
-                  styles: {
-                    fontStyle: 'bold',
-                    font: 'TimesNewRomanBold',
-                    textColor: textColorr,
-                  },
-                },
-              ];
-            })
-            .filter(Boolean), // Remove null entries from the map result
-          
+
+                    let filteredStatusContent = statusContent;
+                    let textColorr = 'black';
+
+                    for (let color in colorMapping) {
+                        if (filteredStatusContent.includes(color)) {
+                            filteredStatusContent = filteredStatusContent.replace(new RegExp(color, 'g'), '').trim();
+                            textColorr = colorMapping[color];
+                        }
+                    }
+
+                    return [
+                        {
+                            content: service?.reportFormJson?.json
+                                ? JSON.parse(service.reportFormJson.json)?.heading
+                                : null,
+                            styles: {
+                                fontStyle: 'bold',
+                                halign: 'left',
+                            },
+                        },
+                        {
+                            content:
+                                service?.annexureData &&
+                                    Object.keys(service.annexureData).find(
+                                        key =>
+                                            key.endsWith('info_source') ||
+                                            key.endsWith('information_source') ||
+                                            key.startsWith('info_source') ||
+                                            key.startsWith('information_source')
+                                    )
+                                    ? service.annexureData[
+                                    Object.keys(service.annexureData).find(
+                                        key =>
+                                            key.endsWith('info_source') ||
+                                            key.endsWith('information_source') ||
+                                            key.startsWith('info_source') ||
+                                            key.startsWith('information_source')
+                                    )
+                                    ]
+                                    : null,
+                            styles: {
+                                fontStyle: 'bold',
+                                halign: 'left',
+                            },
+                        },
+                        {
+                            content: (() => {
+                                const annexure = service?.annexureData || {};
+                                const matchKey = Object.keys(annexure).find(key =>
+                                    key.includes('date_of_verification')
+                                );
+                                if (matchKey && annexure[matchKey]) {
+                                    return new Date(annexure[matchKey])
+                                        .toLocaleDateString('en-GB')
+                                        .replace(/\//g, '-');
+                                } else {
+                                    return 'N/A';
+                                }
+                            })(),
+                            styles: {
+                                fontWeight: 'bold',
+                                fontStyle: 'normal',
+                            },
+                        },
+                        {
+                            content: formatStatus(filteredStatusContent).toUpperCase(),
+                            styles: {
+                                fontStyle: 'bold',
+                                font: 'TimesNewRomanBold',
+                                textColor: textColorr,
+                            },
+                        },
+                    ];
+                })
+                .filter(Boolean), // Remove null entries from the map result
+
             startY: nextContentYPosition - 2,
             styles: {
                 fontSize: 9,
@@ -1052,7 +1121,7 @@ console.log('applicationInfo',applicationInfo)
                         },
                     ]
                 ],
-            
+
                 body: remainingServices
                     .filter(service => service?.annexureData?.status !== 'nil') // <-- Filter here
                     .map(service => {
@@ -1064,20 +1133,20 @@ console.log('applicationInfo',applicationInfo)
                             Orange: 'orange',
                             Pink: 'pink',
                         };
-            
+
                         const notstatusContent = service?.annexureData?.status || "Not Verified";
                         const statusContent = notstatusContent
                             .replace(/_/g, ' ')
                             .replace(/[^a-zA-Z0-9 ]/g, '')
                             .replace(/\b\w/g, char => char.toUpperCase());
-            
+
                         let textColorr = 'black';
                         for (let color in colorMapping) {
                             if (statusContent.includes(color)) {
                                 textColorr = colorMapping[color];
                             }
                         }
-            
+
                         return [
                             {
                                 content: service?.reportFormJson?.json
@@ -1091,22 +1160,22 @@ console.log('applicationInfo',applicationInfo)
                             {
                                 content:
                                     service?.annexureData &&
-                                    Object.keys(service.annexureData).find(
-                                        key =>
-                                            key.endsWith('info_source') ||
-                                            key.endsWith('information_source') ||
-                                            key.startsWith('info_source') ||
-                                            key.startsWith('information_source')
-                                    )
+                                        Object.keys(service.annexureData).find(
+                                            key =>
+                                                key.endsWith('info_source') ||
+                                                key.endsWith('information_source') ||
+                                                key.startsWith('info_source') ||
+                                                key.startsWith('information_source')
+                                        )
                                         ? service.annexureData[
-                                              Object.keys(service.annexureData).find(
-                                                  key =>
-                                                      key.endsWith('info_source') ||
-                                                      key.endsWith('information_source') ||
-                                                      key.startsWith('info_source') ||
-                                                      key.startsWith('information_source')
-                                              )
-                                          ]
+                                        Object.keys(service.annexureData).find(
+                                            key =>
+                                                key.endsWith('info_source') ||
+                                                key.endsWith('information_source') ||
+                                                key.startsWith('info_source') ||
+                                                key.startsWith('information_source')
+                                        )
+                                        ]
                                         : null,
                                 styles: {
                                     fontStyle: 'bold',
@@ -1116,8 +1185,8 @@ console.log('applicationInfo',applicationInfo)
                             {
                                 content: service?.annexureData?.created_at
                                     ? new Date(service.annexureData.created_at)
-                                          .toLocaleDateString('en-GB')
-                                          .replace(/\//g, '-')
+                                        .toLocaleDateString('en-GB')
+                                        .replace(/\//g, '-')
                                     : 'N/A',
                                 styles: {
                                     fontStyle: 'bold',
@@ -1133,7 +1202,7 @@ console.log('applicationInfo',applicationInfo)
                             },
                         ];
                     }),
-            
+
                 startY: doc.previousAutoTable ? doc.previousAutoTable.finalY + 20 : 20,
                 styles: {
                     fontSize: 9,
@@ -1166,7 +1235,7 @@ console.log('applicationInfo',applicationInfo)
                     3: { cellWidth: 'auto', halign: 'center' },
                 },
             });
-            
+
 
             addFooter(doc, index);
         }
@@ -1186,105 +1255,105 @@ console.log('applicationInfo',applicationInfo)
             const rows = reportFormJson?.rows || [];
             const serviceData = [];
             if (service?.annexureData?.status !== 'nil') {
-            if (headingText) {
-                // console.log('headingText',headingText)
-                doc.addPage();
-                addFooter(doc, index);
+                if (headingText) {
+                    // console.log('headingText',headingText)
+                    doc.addPage();
+                    addFooter(doc, index);
 
-                rows.forEach((row) => {
-                    const inputLabel = row.label || "";
-                    const valuesObj = {};
+                    rows.forEach((row) => {
+                        const inputLabel = row.label || "";
+                        const valuesObj = {};
 
-                    row.inputs.forEach((input) => {
-                        const inputName = input.name;
-                        let verifiedInputName = `verified_${inputName}`;
+                        row.inputs.forEach((input) => {
+                            const inputName = input.name;
+                            let verifiedInputName = `verified_${inputName}`;
 
-                        verifiedInputName = verifiedInputName.replace("verified_verified_", "verified_");
+                            verifiedInputName = verifiedInputName.replace("verified_verified_", "verified_");
 
-                        const value = service?.annexureData?.[inputName] || "";
-                        const verifiedValue = service?.annexureData?.[verifiedInputName] || "";
+                            const value = service?.annexureData?.[inputName] || "";
+                            const verifiedValue = service?.annexureData?.[verifiedInputName] || "";
 
-                        valuesObj[inputName] = value;
-                        valuesObj["isVerifiedExist"] = !!verifiedValue;
-                        if (verifiedValue) valuesObj[verifiedInputName] = verifiedValue;
+                            valuesObj[inputName] = value;
+                            valuesObj["isVerifiedExist"] = !!verifiedValue;
+                            if (verifiedValue) valuesObj[verifiedInputName] = verifiedValue;
 
-                        valuesObj["name"] = inputName.replace("verified_", "");
+                            valuesObj["name"] = inputName.replace("verified_", "");
+                        });
+
+                        serviceData.push({
+                            label: inputLabel,
+                            values: valuesObj,
+                        });
                     });
 
-                    serviceData.push({
-                        label: inputLabel,
-                        values: valuesObj,
-                    });
-                });
+                    const tableData = serviceData
+                        .map((data) => {
+                            if (!data || !data.values) return null;
 
-                const tableData = serviceData
-                    .map((data) => {
-                        if (!data || !data.values) return null;
+                            const name = data.values.name;
+                            if (!name || name.startsWith("annexure")) return null;
 
-                        const name = data.values.name;
-                        if (!name || name.startsWith("annexure")) return null;
+                            const isVerifiedExist = data.values.isVerifiedExist;
+                            const value = data.values[name];
+                            const verified = data.values[`verified_${name}`];
 
-                        const isVerifiedExist = data.values.isVerifiedExist;
-                        const value = data.values[name];
-                        const verified = data.values[`verified_${name}`];
+                            // Function to format the date from yyyy-mm-dd to dd-mm-yyyy
+                            const formatDate = (dateStr) => {
+                                const date = new Date(dateStr);
+                                if (isNaN(date)) return dateStr; // If it's not a valid date, return the original string
+                                const day = String(date.getDate()).padStart(2, '0');
+                                const month = String(date.getMonth() + 1).padStart(2, '0');
+                                const year = date.getFullYear();
+                                return `${day}-${month}-${year}`;
+                            };
 
-                        // Function to format the date from yyyy-mm-dd to dd-mm-yyyy
-                        const formatDate = (dateStr) => {
-                            const date = new Date(dateStr);
-                            if (isNaN(date)) return dateStr; // If it's not a valid date, return the original string
-                            const day = String(date.getDate()).padStart(2, '0');
-                            const month = String(date.getMonth() + 1).padStart(2, '0');
-                            const year = date.getFullYear();
-                            return `${day}-${month}-${year}`;
+                            if (value === undefined) return null;
+
+                            // If value is a date, format it
+                            const formattedValue = (typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}$/)) ? formatDate(value) : value;
+                            const formattedVerified = (typeof verified === 'string' && verified.match(/^\d{4}-\d{2}-\d{2}$/)) ? formatDate(verified) : verified;
+
+                            return formattedVerified ? [data.label, formattedValue, formattedVerified] : [data.label, formattedValue];
+                        })
+                        .filter((item) => item !== null);
+
+                    if (tableData.length > 0) {
+
+                        const pageWidth = doc.internal.pageSize.width;
+                        const backgroundColor = "#f5f5f5";
+                        const borderColor = "#3d75a6";
+                        const xsPosition = 10;
+                        const rectHeight = 8;
+
+                        doc.setLineWidth(0.2); // Set border thickness to 0.2
+                        doc.setFillColor(backgroundColor);
+                        doc.setDrawColor(borderColor);
+                        doc.rect(xsPosition, yPosition, pageWidth - 20, rectHeight, "FD");
+
+                        doc.setFontSize(10);
+                        doc.setFont('TimesNewRomanBold');
+                        doc.setTextColor(0, 0, 0);
+
+                        const textHeight = doc.getTextDimensions(headingText).h + 1;
+                        const verticalCenter = yPosition + rectHeight / 2 + textHeight / 4;
+
+                        doc.text(headingText, pageWidth / 2, verticalCenter, { align: "center" });
+
+                        yPosition += rectHeight;
+                        const colorMap = {
+                            red: [255, 0, 0],
+                            green: [0, 128, 0],
+                            blue: [0, 0, 255],
+                            yellow: [255, 255, 0],
+                            black: [0, 0, 0],
+                            white: [255, 255, 255],
+                            orange: [255, 165, 0],
+                            purple: [128, 0, 128],
+                            pink: [255, 192, 203],
+                            gray: [128, 128, 128]
                         };
 
-                        if (value === undefined) return null;
 
-                        // If value is a date, format it
-                        const formattedValue = (typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}$/)) ? formatDate(value) : value;
-                        const formattedVerified = (typeof verified === 'string' && verified.match(/^\d{4}-\d{2}-\d{2}$/)) ? formatDate(verified) : verified;
-
-                        return formattedVerified ? [data.label, formattedValue, formattedVerified] : [data.label, formattedValue];
-                    })
-                    .filter((item) => item !== null);
-                   
-                if (tableData.length > 0) {
-
-                    const pageWidth = doc.internal.pageSize.width;
-                    const backgroundColor = "#f5f5f5";
-                    const borderColor = "#3d75a6";
-                    const xsPosition = 10;
-                    const rectHeight = 8;
-
-                    doc.setLineWidth(0.2); // Set border thickness to 0.2
-                    doc.setFillColor(backgroundColor);
-                    doc.setDrawColor(borderColor);
-                    doc.rect(xsPosition, yPosition, pageWidth - 20, rectHeight, "FD");
-
-                    doc.setFontSize(10);
-                    doc.setFont('TimesNewRomanBold');
-                    doc.setTextColor(0, 0, 0);
-
-                    const textHeight = doc.getTextDimensions(headingText).h + 1;
-                    const verticalCenter = yPosition + rectHeight / 2 + textHeight / 4;
-
-                    doc.text(headingText, pageWidth / 2, verticalCenter, { align: "center" });
-
-                    yPosition += rectHeight;
-                    const colorMap = {
-                        red: [255, 0, 0],
-                        green: [0, 128, 0],
-                        blue: [0, 0, 255],
-                        yellow: [255, 255, 0],
-                        black: [0, 0, 0],
-                        white: [255, 255, 255],
-                        orange: [255, 165, 0],
-                        purple: [128, 0, 128],
-                        pink: [255, 192, 203],
-                        gray: [128, 128, 128]
-                    };
-              
-                   
                         doc.autoTable({
                             head: [[
                                 { content: "PARTICULARS", styles: { halign: "left", fontStyle: "bold" } },
@@ -1298,14 +1367,14 @@ console.log('applicationInfo',applicationInfo)
                                         console.warn('Invalid row or missing index 0:', row);
                                         return null;
                                     }
-                    
+
                                     const cell = row[0].toLowerCase();
                                     if (cell.includes('addition') && cell.includes('fee')) {
                                         return null;
                                     }
-                    
+
                                     const isColourCodeRow = row[0] === "Colour Code:";
-                    
+
                                     return row.length === 2
                                         ? [
                                             { content: row[0], styles: { halign: "left", fontStyle: "bold" } },
@@ -1352,89 +1421,169 @@ console.log('applicationInfo',applicationInfo)
                             bodyStyles: { textColor: [0, 0, 0] },
                             margin: { horizontal: 10 }
                         });
-                  
-                    
 
 
-                    // Function to format text (uppercase & bold)
-                    function formatContent(text) {
-                        return text
-                    }
 
-                    // console.log('text---',text)
-                    function getStyle(text, isColourCodeRow) {
-                        console.log(`isColourCodeRow (1):`, isColourCodeRow);  // Log the value of isColourCodeRow
 
-                        let styles = { halign: "left", fontStyle: "bold" };
-
-                        // If isColourCodeRow is false, return default styles
-                        if (!isColourCodeRow) {
-                            console.log('Returning default styles:', styles);
-                            return styles;
+                        // Function to format text (uppercase & bold)
+                        function formatContent(text) {
+                            return text
                         }
 
-                        if (!text) {
-                            console.log('No text provided, returning default styles:', styles);
-                            return styles;
-                        }
+                        // console.log('text---',text)
+                        function getStyle(text, isColourCodeRow) {
+                            console.log(`isColourCodeRow (1):`, isColourCodeRow);  // Log the value of isColourCodeRow
 
-                        console.log('text to check color map:', text);  // Log the text for debugging the color match
+                            let styles = { halign: "left", fontStyle: "bold" };
 
-                        // Iterate through the colorMap to find a matching color
-                        Object.keys(colorMap).forEach(color => {
-                            console.log(`Checking if text contains color: ${color}`);  // Log each color being checked
-
-                            if (text.toLowerCase().includes(color)) {
-                                console.log(`Color match found! Applying color: ${colorMap[color]}`);  // Log the color match
-
-                                styles.textColor = colorMap[color]; // Apply color from the colorMap
+                            // If isColourCodeRow is false, return default styles
+                            if (!isColourCodeRow) {
+                                console.log('Returning default styles:', styles);
+                                return styles;
                             }
-                        });
 
-                        console.log('Returning styles:', styles);  // Log the final styles
-                        return styles;
-                    }
+                            if (!text) {
+                                console.log('No text provided, returning default styles:', styles);
+                                return styles;
+                            }
 
+                            console.log('text to check color map:', text);  // Log the text for debugging the color match
 
+                            // Iterate through the colorMap to find a matching color
+                            Object.keys(colorMap).forEach(color => {
+                                console.log(`Checking if text contains color: ${color}`);  // Log each color being checked
 
+                                if (text.toLowerCase().includes(color)) {
+                                    console.log(`Color match found! Applying color: ${colorMap[color]}`);  // Log the color match
 
+                                    styles.textColor = colorMap[color]; // Apply color from the colorMap
+                                }
+                            });
 
-
-
-                    yPosition = doc.lastAutoTable.finalY + 10;
-
-                    const remarksData = serviceData.find((data) => data.label === "Remarks");
-                    if (remarksData && remarksData.values) {
-                        const remarks = remarksData.values.name || "No remarks available.";
-                        doc.setFont("TimesNewRomanBold");
-                        doc.setFontSize(10);
-                        doc.setTextColor(100, 100, 100);
-                        doc.text(`Remarks: ${remarks}`, 10, yPosition);
-                        yPosition += 5;
-                    } else {
-                        console.error("remarksData or remarksData.values is null/undefined");
-                    }
+                            console.log('Returning styles:', styles);  // Log the final styles
+                            return styles;
+                        }
 
 
-                    const annexureImagesKey = Object.keys(service?.annexureData || {}).find(
-                        key => key.toLowerCase().startsWith('annexure') && !key.includes('[') && !key.includes(']')
-                    );
-                    const checkboxKey = Object.keys(service?.annexureData || {}).find(
-                        key => key.toLowerCase().startsWith('checkbox_annexure') && !key.includes('[') && !key.includes(']')
-                    );
-                    const value = service?.annexureData?.[checkboxKey];
 
-                    if (checkboxKey) {
-                        const value = service?.annexureData[checkboxKey]; // Get the value of the checkbox key
-                        if (value === true || value === 'true' || value === 1 || value === '1') {
-                            // console.log("This is true or 1");
 
-                            // When checkbox is true or 1, adjust image handling logic
+
+
+
+                        yPosition = doc.lastAutoTable.finalY + 10;
+
+                        const remarksData = serviceData.find((data) => data.label === "Remarks");
+                        if (remarksData && remarksData.values) {
+                            const remarks = remarksData.values.name || "No remarks available.";
+                            doc.setFont("TimesNewRomanBold");
+                            doc.setFontSize(10);
+                            doc.setTextColor(100, 100, 100);
+                            doc.text(`Remarks: ${remarks}`, 10, yPosition);
+                            yPosition += 5;
+                        } else {
+                            console.error("remarksData or remarksData.values is null/undefined");
+                        }
+
+
+                        const annexureImagesKey = Object.keys(service?.annexureData || {}).find(
+                            key => key.toLowerCase().startsWith('annexure') && !key.includes('[') && !key.includes(']')
+                        );
+                        const checkboxKey = Object.keys(service?.annexureData || {}).find(
+                            key => key.toLowerCase().startsWith('checkbox_annexure') && !key.includes('[') && !key.includes(']')
+                        );
+                        const value = service?.annexureData?.[checkboxKey];
+
+                        if (checkboxKey) {
+                            const value = service?.annexureData[checkboxKey]; // Get the value of the checkbox key
+                            if (value === true || value === 'true' || value === 1 || value === '1') {
+                                // console.log("This is true or 1");
+
+                                // When checkbox is true or 1, adjust image handling logic
+                                if (annexureImagesKey) {
+                                    const annexureImagesStr = service?.annexureData[annexureImagesKey];
+                                    const annexureImagesSplitArr = annexureImagesStr ? annexureImagesStr.split(',') : [];
+
+                                    const pageWidth = doc.internal.pageSize.width; // Define page width before loop
+
+                                    if (annexureImagesSplitArr.length === 0) {
+                                        doc.setFont("TimesNewRomanbold");
+                                        doc.setFontSize(10);
+                                        doc.text("No annexure images available.", pageWidth / 2, yPosition, { align: "center" });
+                                        yPosition += 10;
+                                    } else {
+                                        const imageBases = await fetchImageToBase(annexureImagesStr.trim());
+                                        if (imageBases) {
+
+                                            for (const [index, image] of imageBases.entries()) {
+                                                if (!image.base64 || !image.base64.startsWith('data:image/')) {
+                                                    console.error(`Invalid base64 data for image ${index + 1}`);
+                                                    continue;
+                                                }
+
+                                                try {
+                                                    const maxBoxWidth = doc.internal.pageSize.width - 20;
+                                                    const maxBoxHeight = doc.internal.pageSize.height - 50; // Adjust height to full page
+
+                                                    // If a new page is required, add it
+                                                    if (yPosition + maxBoxHeight > doc.internal.pageSize.height - 15) {
+                                                        doc.addPage();
+                                                        yPosition = 10;
+                                                    }
+
+                                                    // Centered Annexure text
+                                                    const text = `ANNEXURE ${index + 1}`;
+                                                    doc.setFont('TimesNewRomanBold');
+                                                    doc.setFontSize(10);
+                                                    doc.text(text, pageWidth / 2, yPosition, { align: "center" }); // Ensure text is always centered
+                                                    yPosition += 5;
+
+                                                    // Draw image box
+                                                    const padding = 5;
+                                                    doc.setDrawColor(61, 117, 166);
+                                                    doc.setLineWidth(0.2);
+                                                    doc.rect(10, yPosition, maxBoxWidth, maxBoxHeight);
+
+                                                    // Calculate image dimensions while maintaining aspect ratio
+                                                    const width = maxBoxWidth - 2 * padding;
+                                                    let height = (width * image.height) / image.width;
+
+                                                    // Ensure image does not exceed box height
+                                                    if (height > maxBoxHeight - 2 * padding) {
+                                                        height = maxBoxHeight - 2 * padding;
+                                                    }
+
+                                                    const centerXImage = 10 + padding;
+                                                    const centerYImage = yPosition + padding + (maxBoxHeight - height - 2 * padding) / 2;
+
+                                                    // Add the image
+                                                    doc.addImage(image.base64, image.type, centerXImage, centerYImage, width, height);
+
+                                                    // Move yPosition for next content
+                                                    yPosition += maxBoxHeight + 10;
+                                                } catch (error) {
+                                                    console.error(`Error adding image ${index + 1}:`, error);
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                }
+                            } else {
+                                // console.log("Checkbox is not true or 1, no changes to layout");
+                            }
+                        } else {
+                            // console.log("No checkbox key found");
+                        }
+
+                        if (!checkboxKey || !value || (value !== true && value !== 'true' && value !== 1 && value !== '1')) {
+                            // Default handling when no checkbox is true (same as original logic for images)
                             if (annexureImagesKey) {
                                 const annexureImagesStr = service?.annexureData[annexureImagesKey];
                                 const annexureImagesSplitArr = annexureImagesStr ? annexureImagesStr.split(',') : [];
 
-                                const pageWidth = doc.internal.pageSize.width; // Define page width before loop
+                                const maxBoxWidth = doc.internal.pageSize.width - 20;
+                                const maxBoxHeight = 120;
+                                const padding = 5;
 
                                 if (annexureImagesSplitArr.length === 0) {
                                     doc.setFont("TimesNewRomanbold");
@@ -1444,7 +1593,6 @@ console.log('applicationInfo',applicationInfo)
                                 } else {
                                     const imageBases = await fetchImageToBase(annexureImagesStr.trim());
                                     if (imageBases) {
-                                        
                                         for (const [index, image] of imageBases.entries()) {
                                             if (!image.base64 || !image.base64.startsWith('data:image/')) {
                                                 console.error(`Invalid base64 data for image ${index + 1}`);
@@ -1452,150 +1600,71 @@ console.log('applicationInfo',applicationInfo)
                                             }
 
                                             try {
-                                                const maxBoxWidth = doc.internal.pageSize.width - 20;
-                                                const maxBoxHeight = doc.internal.pageSize.height - 50; // Adjust height to full page
+                                                const width = maxBoxWidth - 2 * padding;
+                                                const height = maxBoxHeight - 2 * padding;
 
-                                                // If a new page is required, add it
                                                 if (yPosition + maxBoxHeight > doc.internal.pageSize.height - 15) {
                                                     doc.addPage();
                                                     yPosition = 10;
                                                 }
 
-                                                // Centered Annexure text
                                                 const text = `ANNEXURE ${index + 1}`;
                                                 doc.setFont('TimesNewRomanBold');
                                                 doc.setFontSize(10);
-                                                doc.text(text, pageWidth / 2, yPosition, { align: "center" }); // Ensure text is always centered
+                                                doc.text(text, pageWidth / 2, yPosition, { align: "center" }); // Centered text
                                                 yPosition += 5;
 
-                                                // Draw image box
-                                                const padding = 5;
                                                 doc.setDrawColor(61, 117, 166);
                                                 doc.setLineWidth(0.2);
                                                 doc.rect(10, yPosition, maxBoxWidth, maxBoxHeight);
 
-                                                // Calculate image dimensions while maintaining aspect ratio
-                                                const width = maxBoxWidth - 2 * padding;
-                                                let height = (width * image.height) / image.width;
-
-                                                // Ensure image does not exceed box height
-                                                if (height > maxBoxHeight - 2 * padding) {
-                                                    height = maxBoxHeight - 2 * padding;
-                                                }
-
-                                                const centerXImage = 10 + padding;
+                                                const centerXImage = 10 + padding + (maxBoxWidth - width - 2 * padding) / 2;
                                                 const centerYImage = yPosition + padding + (maxBoxHeight - height - 2 * padding) / 2;
 
-                                                // Add the image
                                                 doc.addImage(image.base64, image.type, centerXImage, centerYImage, width, height);
 
-                                                // Move yPosition for next content
                                                 yPosition += maxBoxHeight + 10;
                                             } catch (error) {
                                                 console.error(`Error adding image ${index + 1}:`, error);
+                                                // You may choose to show a message or skip silently
+                                                continue;
                                             }
                                         }
                                     }
                                 }
 
                             }
-                        } else {
-                            // console.log("Checkbox is not true or 1, no changes to layout");
-                        }
-                    } else {
-                        // console.log("No checkbox key found");
-                    }
-
-                    if (!checkboxKey || !value || (value !== true && value !== 'true' && value !== 1 && value !== '1')) {
-                        // Default handling when no checkbox is true (same as original logic for images)
-                        if (annexureImagesKey) {
-                            const annexureImagesStr = service?.annexureData[annexureImagesKey];
-                            const annexureImagesSplitArr = annexureImagesStr ? annexureImagesStr.split(',') : [];
-
-                            const maxBoxWidth = doc.internal.pageSize.width - 20;
-                            const maxBoxHeight = 120;
-                            const padding = 5;
-
-                            if (annexureImagesSplitArr.length === 0) {
+                            else {
                                 doc.setFont("TimesNewRomanbold");
                                 doc.setFontSize(10);
                                 doc.text("No annexure images available.", pageWidth / 2, yPosition, { align: "center" });
                                 yPosition += 10;
-                            } else {
-                                const imageBases = await fetchImageToBase(annexureImagesStr.trim());
-                                if (imageBases) {
-                                    for (const [index, image] of imageBases.entries()) {
-                                        if (!image.base64 || !image.base64.startsWith('data:image/')) {
-                                            console.error(`Invalid base64 data for image ${index + 1}`);
-                                            continue;
-                                        }
-                            
-                                        try {
-                                            const width = maxBoxWidth - 2 * padding;
-                                            const height = maxBoxHeight - 2 * padding;
-                            
-                                            if (yPosition + maxBoxHeight > doc.internal.pageSize.height - 15) {
-                                                doc.addPage();
-                                                yPosition = 10;
-                                            }
-                            
-                                            const text = `ANNEXURE ${index + 1}`;
-                                            doc.setFont('TimesNewRomanBold');
-                                            doc.setFontSize(10);
-                                            doc.text(text, pageWidth / 2, yPosition, { align: "center" }); // Centered text
-                                            yPosition += 5;
-                            
-                                            doc.setDrawColor(61, 117, 166);
-                                            doc.setLineWidth(0.2);
-                                            doc.rect(10, yPosition, maxBoxWidth, maxBoxHeight);
-                            
-                                            const centerXImage = 10 + padding + (maxBoxWidth - width - 2 * padding) / 2;
-                                            const centerYImage = yPosition + padding + (maxBoxHeight - height - 2 * padding) / 2;
-                            
-                                            doc.addImage(image.base64, image.type, centerXImage, centerYImage, width, height);
-                            
-                                            yPosition += maxBoxHeight + 10;
-                                        } catch (error) {
-                                            console.error(`Error adding image ${index + 1}:`, error);
-                                            // You may choose to show a message or skip silently
-                                            continue;
-                                        }
-                                    }
-                                }
                             }
-                            
                         }
-                        else {
-                            doc.setFont("TimesNewRomanbold");
-                            doc.setFontSize(10);
-                            doc.text("No annexure images available.", pageWidth / 2, yPosition, { align: "center" });
-                            yPosition += 10;
-                        }
-                    }
-                    function scaleImageForPDF(imageWidth, imageHeight, maxWidth, maxHeight) {
-                        let width = imageWidth;
-                        let height = imageHeight;
+                        function scaleImageForPDF(imageWidth, imageHeight, maxWidth, maxHeight) {
+                            let width = imageWidth;
+                            let height = imageHeight;
 
-                        // Scale the width if it exceeds maxWidth
-                        if (imageWidth > maxWidth) {
-                            width = maxWidth;
-                            height = (imageHeight * maxWidth) / imageWidth;
-                        }
+                            // Scale the width if it exceeds maxWidth
+                            if (imageWidth > maxWidth) {
+                                width = maxWidth;
+                                height = (imageHeight * maxWidth) / imageWidth;
+                            }
 
-                        // Scale the height if it exceeds maxHeight
-                        if (height > maxHeight) {
-                            height = maxHeight;
-                            width = (imageWidth * maxHeight) / imageHeight;
+                            // Scale the height if it exceeds maxHeight
+                            if (height > maxHeight) {
+                                height = maxHeight;
+                                width = (imageWidth * maxHeight) / imageHeight;
+                            }
+
+                            return { width, height };
                         }
 
-                        return { width, height };
+                        addFooter(doc, index);
                     }
 
-                    addFooter(doc, index);
                 }
-                
             }
-        }
         }
 
         // doc.addPage();
@@ -1968,16 +2037,16 @@ console.log('applicationInfo',applicationInfo)
         setSearchTerm(e.target.value);
     };
 
-const filteredData = data.filter((data) => {
-    const search = searchTerm?.toLowerCase() || "";
+    const filteredData = data.filter((data) => {
+        const search = searchTerm?.toLowerCase() || "";
 
-    return (
-        data.name?.toLowerCase().includes(search) ||
-        data.application_id?.toLowerCase().includes(search) ||
-        data.status?.toLowerCase().includes(search) ||
-        data.employee_id?.toLowerCase().includes(search)
-    );
-});
+        return (
+            data.name?.toLowerCase().includes(search) ||
+            data.application_id?.toLowerCase().includes(search) ||
+            data.status?.toLowerCase().includes(search) ||
+            data.employee_id?.toLowerCase().includes(search)
+        );
+    });
 
 
     const handleGoBack = () => {
@@ -2142,12 +2211,35 @@ const filteredData = data.filter((data) => {
                                 <th className="uppercase border border-black px-4 py-2">Reference Id</th>
                                 <th className="uppercase border border-black px-4 py-2">Photo</th>
                                 <th className="uppercase border border-black px-4 py-2">Applicant Employe Id</th>
-                                <th className="uppercase border border-black px-4 py-2">Initiation Date</th>
+                                <th className="uppercase border border-black px-4 py-2">
+                                    <button
+                                        className="bg-orange-500 hover:scale-105  hover:bg-orange-600 text-white px-6 py-2 rounded"
+                                        onClick={() => setViewServices(prev => !prev)}
+
+                                    >
+                                        {viewServices ? "Hide Services" : "View Services"}
+                                    </button><br />
+                                    Initiation Date</th>
+                                {viewServices && servicesHeadings && servicesHeadings.length > 0 ? (
+                                    servicesHeadings.map((heading, index) => {
+                                        return (
+                                            <th key={index} className="uppercase border border-black px-4 py-2">
+                                                {heading.heading}
+                                            </th>
+                                        );
+                                    })
+                                ) : null}
                                 <th className="uppercase border border-black px-4 py-2">Deadline Date</th>
                                 <th className="uppercase border border-black px-4 py-2">Report Data</th>
                                 <th className="uppercase border border-black px-4 py-2">Download Status</th>
-                                <th className="uppercase border border-black px-4 py-2">INSUFF REMARKS </th>
-
+                                <th className="border border-black uppercase px-4 py-2">First Level Insuff</th>
+                                <th className="border border-black uppercase px-4 py-2">First Insuff Date</th>
+                                <th className="border border-black uppercase px-4 py-2">First Insuff Reopen</th>
+                                <th className="border border-black uppercase px-4 py-2">Second Level Insuff</th>
+                                <th className="border border-black uppercase px-4 py-2">Second Insuff Date</th>
+                                <th className="border border-black uppercase px-4 py-2">Third Level Insuff</th>
+                                <th className="border border-black uppercase px-4 py-2">Third Insuff Date</th>
+                                <th className="border border-black uppercase px-4 py-2">Reason for Delay</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -2191,6 +2283,15 @@ const filteredData = data.filter((data) => {
                                                     </td>
                                                     <td className="border border-black px-4 py-2">{data.employee_id || 'NIL'}</td>
                                                     <td className="border border-black px-4 py-2">{new Date(data.created_at).toLocaleDateString('en-GB').replace(/\//g, '-')}</td>
+                                                    {viewServices && servicesHeadings && servicesHeadings.length > 0 ? (
+                                                        servicesHeadings.map((heading, index) => {
+                                                            return (
+                                                                <th key={index} className="uppercase font-normal border border-black px-4 py-2">
+                                                                    {getStatusByServiceId(data.annexureResults, heading.id)}
+                                                                </th>
+                                                            );
+                                                        })
+                                                    ) : null}
                                                     <td className="border border-black px-4 py-2">{new Date(data.updated_at).toLocaleDateString('en-GB').replace(/\//g, '-')}</td>
                                                     <td className="border border-black px-4 py-2">
                                                         <button
@@ -2273,94 +2374,20 @@ const filteredData = data.filter((data) => {
                                                         })()}
                                                     </td>
 
+                                                    <td className="border border-black px-4 py-2">{formatedJson(data.first_insufficiency_marks) || "No Insuff"}</td>
+                                                    <td className="border border-black px-4 py-2">{formatDate(data.first_insuff_date) || "No Insuff"}</td>
+                                                    <td className="border border-black px-4 py-2">{formatDate(data.first_insuff_reopened_date) || "No Insuff"}</td>
+                                                    <td className="border border-black px-4 py-2">{formatedJson(data.second_insufficiency_marks) || "No Insuff"}</td>
+                                                    <td className="border border-black px-4 py-2">{formatDate(data.second_insuff_date) || "No Insuff"}</td>
+                                                    <td className="border border-black px-4 py-2">{formatedJson(data.third_insufficiency_marks) || "No Insuff"}</td>
+                                                    <td className="border border-black px-4 py-2">{formatDate(data.third_insuff_date) || "No Insuff"}</td>
+                                                    <td className="border border-black px-4 py-2">{formatedJson(data.delay_reason) || "No Insuff"}</td>
 
-                                                    <td className="border border-black px-4  py-2" >
-                                                        <button
-                                                            className={`bg-orange-500 uppercase border border-white hover:border-orange-500 text-white px-4 py-2 
-                                                            ${loadingIndex === index ? 'opacity-50 cursor-not-allowed' : ''} rounded hover:bg-white hover:text-orange-500`}
-                                                            onClick={() => handleViewMore(index)}
-                                                            disabled={loadingIndex === index}
-                                                        >
-                                                            {expandedRow && expandedRow.index === index ? ' Less' : 'View '}
-                                                        </button>
-                                                    </td>
+
 
                                                 </tr>
 
-                                                {expandedRow && expandedRow.index === index && (
-                                                    <>
-                                                        <tr>
-                                                            <td colSpan="100%" className="text-center p-4 w-1/4">
-                                                                {/* Table structure to display headings in the first column and statuses in the second column */}
-                                                                <table className="w-1/4">
-                                                                    <tbody>
 
-                                                                        {expandedRow.headingsAndStatuses &&
-                                                                            expandedRow.headingsAndStatuses.map((item, idx) => (
-                                                                                <>
-                                                                                    {item.heading && item.heading !== "null" ? ( // Exclude string "null"
-                                                                                        <tr key={`row-${idx}`}>
-                                                                                            <td className="text-left p-2 border border-black capitalize bg-gray-200">
-                                                                                                {sanitizeText(item.heading)}
-                                                                                            </td>
-                                                                                            <td
-                                                                                                className="text-left p-2 border font-bold border-black uppercase"
-                                                                                                style={getColorStyle(item.status)}
-                                                                                            >
-                                                                                                {isValidDate(item.status) ?
-                                                                                                    formatDate(item.status) :
-                                                                                                    sanitizeText(removeColorNames(item.status))
-                                                                                                }                                                                                            </td>
-                                                                                        </tr>
-                                                                                    ) : null // Skip rendering if heading is null, undefined, or the string "null"
-                                                                                    }
-
-                                                                                </>
-                                                                            ))
-                                                                        }
-                                                                        <tr>
-                                                                            <td className="text-left p-2 border border-black uppercase bg-gray-200  ref={clientSubmitRef}" id="clientSubmit">First Level Insuff</td>
-                                                                            <td className="text-left p-2 border border-black capitalize font-bold">{formatedJson(data.first_insufficiency_marks) || ''}</td>
-                                                                        </tr>
-                                                                        <tr>
-                                                                            <td className="text-left p-2 border border-black uppercase bg-gray-200">First Level Insuff Date</td>
-                                                                            <td className="text-left p-2 border border-black capitalize font-bold">{formatDate(data.first_insuff_date)}</td>
-                                                                        </tr>
-                                                                        <tr>
-                                                                            <td className="text-left p-2 border border-black uppercase bg-gray-200">First Level Insuff Reopen Date</td>
-                                                                            <td className="text-left p-2 border border-black capitalize font-bold">{formatDate(data.first_insuff_reopened_date)}</td>
-                                                                        </tr>
-                                                                        <tr>
-                                                                            <td className="text-left p-2 border border-black uppercase bg-gray-200">Second Level Insuff</td>
-                                                                            <td className="text-left p-2 border border-black capitalize font-bold">{formatedJson(data.second_insufficiency_marks) || ''}</td>
-                                                                        </tr>
-                                                                        <tr>
-                                                                            <td className="text-left p-2 border border-black uppercase bg-gray-200">Second Level Insuff Date</td>
-                                                                            <td className="text-left p-2 border border-black capitalize font-bold">{formatDate(data.second_insuff_date)}</td>
-                                                                        </tr>
-                                                                        <tr>
-                                                                            <td className="text-left p-2 border border-black uppercase bg-gray-200">Third Level Insuff Marks</td>
-                                                                            <td className="text-left p-2 border border-black capitalize font-bold">{formatedJson(data.third_insufficiency_marks) || ''}</td>
-                                                                        </tr>
-                                                                        <tr>
-                                                                            <td className="text-left p-2 border border-black uppercase bg-gray-200">Third Level Insuff Date</td>
-                                                                            <td className="text-left p-2 border border-black capitalize font-bold">{formatDate(data.third_insuff_date)}</td>
-                                                                        </tr>
-                                                                        <tr>
-                                                                            <td className="text-left p-2 border border-black uppercase bg-gray-200">Third Level Insuff Reopen Date</td>
-                                                                            <td className="text-left p-2 border border-black capitalize font-bold">{formatDate(data.third_insuff_reopened_date)}</td>
-                                                                        </tr>
-                                                                        <tr>
-                                                                            <td className="text-left p-2 border border-black uppercase bg-gray-200">Reason For Delay</td>
-                                                                            <td className="text-left p-2 border border-black capitalize font-bold">{formatedJson(data.delay_reason) || ''}</td>
-                                                                        </tr>
-
-                                                                    </tbody>
-                                                                </table>
-                                                            </td>
-                                                        </tr>
-                                                    </>
-                                                )}
                                             </React.Fragment>
                                         )
                                     })}

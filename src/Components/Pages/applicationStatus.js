@@ -28,7 +28,7 @@ const ApplicationStatus = () => {
 
     const [currentPage, setCurrentPage] = useState(1);
     const [entriesPerPage, setEntriesPerPage] = useState(10);
-    const optionsPerPage = [10, 50, 100, 200];
+    const optionsPerPage = [10, 50, 100, 200,500,1000];
     const fetchData = useCallback(() => {
         setLoading(true); // Set loading to true before starting the fetch
         setApiLoading(true);

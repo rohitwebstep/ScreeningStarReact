@@ -23,7 +23,7 @@ const ClientCredentials = () => {
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const optionsPerPage = [10, 50, 100, 200];
+  const optionsPerPage = [10, 50, 100, 200,500,1000];
   const fetchClientData = async () => {
     const admin_id = JSON.parse(localStorage.getItem("admin"))?.id;
     const storedToken = localStorage.getItem("_token");

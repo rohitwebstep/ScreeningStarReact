@@ -6,6 +6,7 @@ import pdfjsWorker from 'pdfjs-dist/legacy/build/pdf.worker.entry';
 // import "pdfjs-dist/build/pdf.worker.entry";
 import Signature from "../../imgs/servicesSeal.jpg";
 import signatureDemo from "../../imgs/signaturex-demo.png";
+import JSZip from "jszip";
 
 import {
     Packer,
@@ -60,6 +61,24 @@ const InactiveClients = () => {
         return `${day}/${month}/${year}`;
     };
 
+    const [selectedRows, setSelectedRows] = useState([]);
+
+    // Toggle single row
+    const handleCheckboxChange = (id) => {
+        setSelectedRows((prev) =>
+            prev.includes(id) ? prev.filter((rowId) => rowId !== id) : [...prev, id]
+        );
+    };
+
+    // Toggle all rows
+    const handleSelectAll = (e) => {
+        if (e.target.checked) {
+            const allIds = paginatedData.map((row) => row.id);
+            setSelectedRows(allIds);
+        } else {
+            setSelectedRows([]);
+        }
+    };
     console.log('policeData', policeData);
     console.log('courtData', courtData);
     const openModal = (jsonString) => {
@@ -78,7 +97,7 @@ const InactiveClients = () => {
     };
     const [currentPage, setCurrentPage] = useState(1);
     const [entriesPerPage, setEntriesPerPage] = useState(10);
-    const optionsPerPage = [10, 50, 100, 200];
+    const optionsPerPage = [10, 50, 100, 200, 500, 1000];
     const totalPages = Math.ceil(data.length / entriesPerPage);
 
     const [selectedService, setSelectedService] = useState("");
@@ -256,20 +275,46 @@ const InactiveClients = () => {
             .replace(/__+/g, '_');             // Replace double underscores with single
     };
 
-    const parseCSV = (csv) => {
-        const rows = csv.split('\n');
-        const headers = rows[0].split(','); // Get headers (first row)
-        const dataArray = rows.slice(1).map((row) => {
-            const values = row.split(',');
-            let rowObject = {};
-            headers.forEach((header, index) => {
-                const formattedHeader = formatKey(header);
-                rowObject[formattedHeader] = values[index] ? values[index].trim() : '';
+    const toSnakeCase = (str) =>
+        str
+            .trim()
+            .toLowerCase()
+            .replace(/\s+/g, '_'); // Replace spaces with underscores
+
+    const normalizeKey = (str) =>
+        str
+            .trim()
+            .toLowerCase()
+            .replace(/'/g, '')      // Remove apostrophes
+            .replace(/[^a-z0-9]+/g, '_') // Replace any non-alphanumeric char with _
+            .replace(/^_+|_+$/g, '')     // Remove leading/trailing underscores
+            .replace(/_+/g, '_');        // Merge multiple underscores
+
+    const parseCSV = (text) => {
+        const lines = text.split('\n').filter(line => line.trim() !== '');
+        if (lines.length === 0) return [];
+
+        const headers = lines[0].match(/(?:\"([^\"]*)\"|([^,]+))/g).map(h => h.replace(/^"|"$/g, '').trim());
+        const data = [];
+
+        for (let i = 1; i < lines.length; i++) {
+            const rowValues = lines[i].match(/(?:\"([^\"]*)\"|([^,]+))/g);
+            if (!rowValues) continue;
+
+            const rowObj = {};
+            headers.forEach((header, idx) => {
+                let value = rowValues[idx] || '';
+                value = value.replace(/^"|"$/g, '').trim(); // Remove quotes and trim
+                rowObj[normalizeKey(header)] = value;      // Normalize key
             });
-            return rowObject;
-        });
-        return dataArray;
+            data.push(rowObj);
+        }
+
+        return data;
     };
+
+
+
 
     const handleChange = (e) => {
         const { name, type, files, value } = e.target;
@@ -285,72 +330,110 @@ const InactiveClients = () => {
 
 
 
-
     const handleFileUpload = (e, type) => {
         const file = e.target.files[0];
         if (file && file.type === 'text/csv') {
-            console.log("File selected:", file.name); // Log file selection
+            console.log("File selected:", file.name);
 
             const reader = new FileReader();
             reader.onload = () => {
                 const fileContent = reader.result;
-                console.log("File content loaded:", fileContent); // Log CSV content
+                console.log("File content loaded:", fileContent);
                 setFileName(file.name);
                 setIsFileValid(true);
                 const parsedData = parseCSV(fileContent);
-                const csvHeaders = csvHeadings(fileContent); // Ass-uming csvHeadings correctly returns column headers.
-                console.log("Headers:", csvHeaders); // Log headers
+                const csvHeaders = csvHeadings(fileContent);
+                console.log("Headers:", csvHeaders);
 
                 const newData = [];
                 let hasError = false;
 
-                // Validate and process data
                 parsedData.forEach((row, index) => {
                     const values = Object.values(row).map((value) => value.trim());
                     const allEmpty = values.every((val) => val === '');
                     const someEmpty = values.some((val) => val === '') && !allEmpty;
 
                     if (allEmpty) {
-                        console.log(`Skipping row ${index + 1}: Empty row.`); // Skip empty rows
+                        console.log(`Skipping row ${index + 1}: Empty row.`);
                     } else if (someEmpty) {
                         setFileName('');
                         setIsFileValid(false);
-                        console.log(`Error in row ${index + 1}: Missing values.`); // Log error for incomplete rows
+                        console.log(`Error in row ${index + 1}: Missing values.`);
                         hasError = true;
 
-                        // Check which fields are missing
                         const missingFields = csvHeaders.filter((header, i) => !values[i] || values[i] === '');
                         const errorMessage = `Row ${index + 1} is incomplete. Missing fields: ${missingFields.join(', ')}`;
 
-                        // Display the error
                         Swal.fire({
                             icon: 'error',
                             title: 'Error',
                             text: errorMessage,
                         });
                     } else {
-                        newData.push(cleanFieldNames(row)); // Only add valid rows
+                        let cleaned = cleanFieldNames(row);
+
+                        if (type === "court") {
+                            // 🔹 Transform into desired format
+                            cleaned = {
+                                courtTable: [
+                                    {
+                                        courtCheckType: "Civil",
+                                        jurisdiction: cleaned.civil_jurisdiction || "City Civil Court",
+                                        location: cleaned.civil_location,
+                                        verificationResult: cleaned.civil_verification_result
+                                    },
+                                    {
+                                        courtCheckType: "Magistrate",
+                                        jurisdiction: cleaned.magistrate_jurisdiction || "Chief Judicial Magistrate",
+                                        location: cleaned.magistrate_location,
+                                        verificationResult: cleaned.magistrate_verification_result
+                                    },
+                                    {
+                                        courtCheckType: "Sessions",
+                                        jurisdiction: cleaned.sessions_jurisdiction || "District & Session Court",
+                                        location: cleaned.sessions_location,
+                                        verificationResult: cleaned.sessions_verification_result
+                                    },
+                                    {
+                                        courtCheckType: "High Court",
+                                        jurisdiction: cleaned.high_court_jurisdiction || "Karnataka High Court",
+                                        location: cleaned.high_court_location,
+                                        verificationResult: cleaned.high_court_verification_result
+                                    }
+                                ],
+                                reference_id: cleaned.reference_id,
+                                full_name: cleaned.full_name,
+                                fathers_name: cleaned.fathers_name,
+                                date_of_birth: cleaned.date_of_birth,
+                                permanent_address: cleaned.permanent_address,
+                                current_address: cleaned.current_address,
+                                number_of_years_search: cleaned.number_of_years_search,
+                                date_of_verification: cleaned.date_of_verification,
+                                verification_status: cleaned.verification_status
+                            };
+                        }
+
+                        newData.push(cleaned);
                     }
                 });
 
                 if (hasError) {
-                    console.log("Errors found. Not processing file further."); // Stop processing on error
+                    console.log("Errors found. Not processing file further.");
                     return;
                 }
 
-                // Set valid data if no errors
-                if (type == "court") {
-                    setCourtData(newData)
+                if (type === "court") {
+                    setCourtData(newData);
                 } else {
                     setPoliceData(newData);
-
                 }
-                console.log("Processed and set valid data:", newData); // Log valid data
+
+                console.log("Processed and set valid data:", newData);
             };
 
             reader.readAsText(file);
         } else {
-            console.log("Invalid file type selected."); // Log invalid file type
+            console.log("Invalid file type selected.");
             Swal.fire({
                 icon: 'error',
                 title: 'Invalid File',
@@ -1396,7 +1479,7 @@ const InactiveClients = () => {
         }
 
         if (shouldSave) {
-            doc.save(`${formData.court.reference_id} Court Report.pdf`);
+            doc.save(`${courtData.reference_id} Court Report.pdf`);
         } else {
             return doc;
         }
@@ -2128,11 +2211,11 @@ const InactiveClients = () => {
         }
         return bytes; // return Uint8Array (docx supports this)
     }
-
     const generatePolicePDFBlob = async (policeData) => {
         const doc = await generatePolicePDF(policeData, false);
-        return doc.output('blob');
+        return doc.output('blob');   // <-- returns Blob only
     };
+
     const generateAddressPDFBlob = async (addressData) => {
         const doc = await generateAddressPDF(addressData, false);
         return doc.output('blob');
@@ -2187,6 +2270,8 @@ const InactiveClients = () => {
 
     },
         []);
+
+
 
     const submitRecords = (type, isEdit) => {
         const myHeaders = new Headers();
@@ -2457,6 +2542,71 @@ const InactiveClients = () => {
         }
     };
 
+    const generateAddressPDFBlobSave = async (addressData) => {
+        const doc = await generateAddressPDF(addressData, false);
+        return doc.output("blob");
+    };
+    const generateCourtPDFBlobSave = async (courtData) => {
+        const doc = await generateCourtPDF(courtData, false);
+        return doc.output("blob");
+    };
+    const generatePolicePDFBlobSave = async (policeData) => {
+        const doc = await generatePolicePDF(policeData, false);
+        return doc.output("blob");
+    };
+
+    const handleSave = async (row) => {
+
+        try {
+            const parsedData = row?.data ? JSON.parse(row.data) : {};
+
+            let blob;
+
+            switch (row?.type) {
+                case "court":
+                    blob = await generateCourtPDFBlobSave(parsedData);
+                    break;
+                case "police":
+                    blob = await generatePolicePDFBlobSave(parsedData);
+                    break;
+                case "address":
+                    blob = await generateAddressPDFBlobSave(parsedData);
+                    break;
+                default:
+                    return;
+            }
+
+            // Load PDF.js
+            const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.js");
+            pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+
+            // Convert first page of PDF to JPG
+            const pdf = await pdfjsLib.getDocument({ data: await blob.arrayBuffer() }).promise;
+            const page = await pdf.getPage(1);
+
+            const viewport = page.getViewport({ scale: 2 });
+            const canvas = document.createElement("canvas");
+            const ctx = canvas.getContext("2d");
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+
+            await page.render({ canvasContext: ctx, viewport }).promise;
+
+            const imageDataURL = canvas.toDataURL("image/jpeg", 1.0);
+
+            // Trigger download
+            const a = document.createElement("a");
+            a.href = imageDataURL;
+            a.download = `${parsedData?.reference_id || "report"}-${row.type}.jpg`;
+            a.click();
+
+        } catch (error) {
+            console.error("❌ Error in handleSave:", error);
+        }
+    };
+
+
+
     useEffect(() => {
         fetchData();
     }, [])
@@ -2530,8 +2680,10 @@ const InactiveClients = () => {
         } else {
             setEditData(row);
             setIsEdit(true);
+            console.log('row', row)
 
             const parsedData = JSON.parse(row.data || "{}");
+            console.log('parsedData', parsedData)
             if (row.type === "police") {
                 setSelectedService("police");
                 setFormData((prev) => ({ ...prev, police: parsedData }));
@@ -2551,6 +2703,100 @@ const InactiveClients = () => {
             }
         }
     };
+
+
+    // Bulk download JPG for selected rows
+
+    const handleBulkSaveJPGZip = async () => {
+        if (selectedRows.length === 0) {
+            Swal.fire({
+                icon: "info",
+                title: "No rows selected",
+                text: "Please select at least one row to download.",
+            });
+            return;
+        }
+
+        Swal.fire({
+            title: "Please wait...",
+            text: "Generating files...",
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading(),
+        });
+
+        try {
+            const zip = new JSZip();
+
+            for (const rowId of selectedRows) {
+                const row = paginatedData.find((r) => r.id === rowId);
+                if (!row) continue;
+
+                console.log("🔵 Processing row:", row);
+
+                // --- Generate PDF blob first ---
+                let blob;
+                const parsedData = row?.data ? JSON.parse(row.data) : {};
+
+                switch (row?.type) {
+                    case "court":
+                        blob = await generateCourtPDFBlobSave(parsedData);
+                        break;
+                    case "police":
+                        blob = await generatePolicePDFBlobSave(parsedData);
+                        break;
+                    case "address":
+                        blob = await generateAddressPDFBlobSave(parsedData);
+                        break;
+                    default:
+                        continue;
+                }
+
+                // --- PDF → JPG ---
+                const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.js");
+                pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+
+                const pdf = await pdfjsLib.getDocument({ data: await blob.arrayBuffer() }).promise;
+                const page = await pdf.getPage(1); // first page only
+                const viewport = page.getViewport({ scale: 2 });
+
+                const canvas = document.createElement("canvas");
+                const ctx = canvas.getContext("2d");
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+
+                await page.render({ canvasContext: ctx, viewport }).promise;
+
+                // Convert canvas to Blob
+                const jpgBlob = await new Promise((resolve) => {
+                    canvas.toBlob(resolve, "image/jpeg", 1.0);
+                });
+
+                // Add JPG to ZIP
+                const fileName = `${parsedData?.reference_id || "report"}-${row.type}.jpg`;
+                zip.file(fileName, jpgBlob);
+            }
+
+            // Generate ZIP
+            const zipBlob = await zip.generateAsync({ type: "blob" });
+            saveAs(zipBlob, "reports.zip"); // triggers download
+
+            Swal.close();
+            Swal.fire({
+                icon: "success",
+                title: "Done!",
+                text: "All selected reports downloaded as ZIP.",
+            });
+        } catch (error) {
+            console.error("❌ Bulk ZIP download failed:", error);
+            Swal.fire({
+                icon: "error",
+                title: "Oops...",
+                text: "Something went wrong during ZIP download.",
+            });
+        }
+    };
+
+
     console.log('formDatafinal', formData)
     {
         loading && (
@@ -2897,20 +3143,53 @@ const InactiveClients = () => {
                                 >
                                     Download JPG
                                 </button>
+                                {selectedRows.length > 0 && (
+                                    <button
+                                        className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                                        onClick={handleBulkSaveJPGZip}
+                                    >
+                                        Download Selected as JPG
+                                    </button>
+                                )}
                             </div>
                         </div>
-                        <input
-                            type="text"
-                            placeholder="Search by Reference ID, Name,Type and Format"
-                            className="w-full rounded-md p-2.5 mb-3 border border-gray-300"
-                            value={searchTerm}
-                            onChange={handleSearch}
-                        />
+                        <div className="flex gap-3  mb-3 items-stretch">
+                            <select
+                                value={rowsPerPage}
+                                onChange={(e) => {
+                                    setRowsPerPage(Number(e.target.value));
+                                    setCurrentPage(1);
+                                }}
+                                className="border rounded-lg w-3/12  px-3 py-2 text-gray-700 bg-white mt-4 shadow-sm focus:ring-2 focus:ring-blue-400"
+                            >
+                                {optionsPerPage.map((option) => (
+                                    <option key={option} value={option}>
+                                        {option}
+                                    </option>
+                                ))}
+                            </select>
+                            <input
+                                type="text"
+                                placeholder="Search by Reference ID, Name,Type and Format"
+                                className="rounded-md p-2.5 w-9/12 border border-gray-300"
+                                value={searchTerm}
+                                onChange={handleSearch}
+                            />
+                        </div>
+
                         <div className="overflow-x-auto">
                             <table className="min-w-full border border-gray-300">
                                 <thead className="bg-gray-100">
                                     <tr>
-                                        <th className="px-4 py-2 border">SR.</th>
+
+                                        <th className="px-4 me-2 py-2 border"><input
+                                            type="checkbox"
+                                            checked={
+                                                paginatedData.length > 0 &&
+                                                selectedRows.length === paginatedData.length
+                                            }
+                                            onChange={handleSelectAll}
+                                        /> SR.</th>
                                         <th className="px-4 py-2 border">Full Name</th>
                                         <th className="px-4 py-2 border">Reference Id</th>
                                         <th className="px-4 py-2 border">EXPORT FORMAT</th>
@@ -2921,64 +3200,76 @@ const InactiveClients = () => {
                                 </thead>
                                 <tbody>
                                     {paginatedData.map((row, index) => {
-
+                                        const parsedData = JSON.parse(row.data);
                                         return (
-                                            <tr key={index} className="bg-white">
+                                            <tr key={row.id} className="bg-white">
 
                                                 <td className="border text-center px-2 py-2">
-                                                    {index + 1 + (currentPage - 1) * rowsPerPage}
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedRows.includes(row.id)}
+                                                        onChange={() => handleCheckboxChange(row.id)}
+                                                    />  {index + 1 + (currentPage - 1) * rowsPerPage}
                                                 </td>
                                                 <td className="border text-center px-2 py-2">
-                                                    {JSON.parse(row.data).full_name || JSON.parse(row.data).candidateName || 'N/A'}
+                                                    {parsedData.full_name || parsedData.candidateName || "N/A"}
                                                 </td>
                                                 <td className="border text-center px-2 py-2">
-                                                    {JSON.parse(row.data).reference_id || 'N/A'}
+                                                    {parsedData.reference_id || "N/A"}
                                                 </td>
                                                 <td className="border px-2 uppercase py-2 text-center">
-                                                    {row.export_format || 'N/A'}
+                                                    {row.export_format || "N/A"}
                                                 </td>
                                                 <td className="border px-2 py-2 text-center">
-                                                    {row.type || 'N/A'}
+                                                    {row.type || "N/A"}
                                                 </td>
                                                 <td className="border px-2 py-2 text-center">
-                                                    <button className={`p-6 py-3 font-bold whitespace-nowrap transition duration-200 text-white rounded-md bg-sky-500 hover:bg-sky-600 hover:scale-105
-                                    `} onClick={() => openModal(row.data)}>View Data</button>
+                                                    <button
+                                                        className="p-6 py-3 font-bold whitespace-nowrap transition duration-200 text-white rounded-md bg-sky-500 hover:bg-sky-600 hover:scale-105"
+                                                        onClick={() => handleSave(row)}
+                                                    >
+                                                        Save
+                                                    </button>
                                                 </td>
                                                 <td className="border px-2 py-2 text-center">
-                                                    <div className='flex gap-4 justify-center items-center'>
+                                                    <div className="flex gap-4 justify-center items-center">
                                                         <button
                                                             onClick={() => handleEdit(row)}
                                                             className={`p-6 py-3 font-bold whitespace-nowrap transition duration-200 text-white rounded-md
-              ${editData === row
+                        ${editData === row
                                                                     ? "bg-orange-500 hover:bg-orange-600 hover:scale-105"
-                                                                    : "bg-green-500 hover:bg-green-600 hover:scale-105"}`}
+                                                                    : "bg-green-500 hover:bg-green-600 hover:scale-105"
+                                                                }`}
                                                         >
-                                                            {editData === row ? 'Cancel' : 'Edit'}
+                                                            {editData === row ? "Cancel" : "Edit"}
                                                         </button>
 
                                                         <button
                                                             onClick={() => handleApplicationDelete(row.id)}
-                                                            className={`p-6 py-3 font-bold whitespace-nowrap transition duration-200 text-white rounded-md bg-red-500 hover:bg-red-600 hover:scale-105 ${deleteLoading === row.id ? 'opacity-50 cursor-not-allowed' : ''
-                                                                }
-                                    `} disabled={deleteLoading === row.id}
+                                                            className={`p-6 py-3 font-bold whitespace-nowrap transition duration-200 text-white rounded-md bg-red-500 hover:bg-red-600 hover:scale-105 ${deleteLoading === row.id
+                                                                ? "opacity-50 cursor-not-allowed"
+                                                                : ""
+                                                                }`}
+                                                            disabled={deleteLoading === row.id}
                                                         >
-
-                                                            {deleteLoading === row.id ? ' Deleting...' : ' Delete'}</button>
+                                                            {deleteLoading === row.id ? " Deleting..." : " Delete"}
+                                                        </button>
                                                     </div>
                                                 </td>
                                             </tr>
-                                        )
+                                        );
                                     })}
                                     {paginatedData.length === 0 && (
                                         <tr>
-                                            <td colSpan={5} className="text-center py-4 text-gray-500">
+                                            <td colSpan={8} className="text-center py-4 text-gray-500">
                                                 No rows added yet.
                                             </td>
                                         </tr>
                                     )}
                                 </tbody>
-
                             </table>
+
+                            {/* Pagination */}
                             <div className="flex justify-between items-center mt-4">
                                 <button
                                     onClick={() => handlePageChange(currentPage - 1)}

@@ -642,3 +642,29 @@ input.select-search-input {
 .imagesingle {
   max-width: 240px;
 }
+/* Container */
+/* Container */
+.table-container {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Top fake scrollbar */
+.top-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  height: 16px; /* scrollbar height */
+  margin-bottom: 4px; /* space between top scroll and table */
+}
+
+/* Inner div that defines width for top scroll */
+.top-scroll-inner {
+  height: 1px; /* just to make scrollbar appear */
+}
+
+/* Actual table scroll */
+.table-scroll {
+  overflow-x: auto;
+  overflow-y: auto; /* vertical scrolling for table body */
+}
+

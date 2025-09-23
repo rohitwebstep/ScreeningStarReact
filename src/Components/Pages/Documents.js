@@ -22,7 +22,7 @@ const Documents = () => {
 
     const [currentPage, setCurrentPage] = useState(1);
     const [rowsPerPage, setRowsPerPage] = useState(10);
-    const optionsPerPage = [10, 50, 100, 200]; const totalPages = Math.ceil(clientData.length / rowsPerPage);
+    const optionsPerPage = [10, 50, 100, 200,500,1000]; const totalPages = Math.ceil(clientData.length / rowsPerPage);
 
     const handlePageChange = (page) => {
         ;

@@ -16,7 +16,7 @@ const CaseAllocationList = () => {
   const navigate = useNavigate();
   const { validateAdminLogin, setApiLoading, apiLoading } = useApiLoading();
   const [entriesPerPage, setEntriesPerPage] = useState(10);
-  const optionsPerPage = [10, 50, 100, 200];
+  const optionsPerPage = [10, 50, 100, 200,500,1000];
   const [scopeFilter, setScopeFilter] = useState('');
   const [vendorFilter, setVendorFilter] = useState('');
   const [monthFilter, setMonthFilter] = useState('');

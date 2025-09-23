@@ -35,7 +35,7 @@ const HumanResourceMenu = () => {
     const emailFromQuery = query.get('email') || '';
     const [isEditing, setIsEditing] = useState(false);
     const [itemsPerPage, setItemsPerPage] = useState(10);
-    const optionsPerPage = [10, 50, 100, 200];
+    const optionsPerPage = [10, 50, 100, 200,500,1000];
 
     const [formData, setFormData] = useState({
         ticket_date: "",

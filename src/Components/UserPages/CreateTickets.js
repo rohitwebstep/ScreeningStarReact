@@ -13,7 +13,7 @@ const CreateTickets = () => {
   const [tickets, setTickets] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const optionsPerPage = [10, 50, 100, 200];
+  const optionsPerPage = [10, 50, 100, 200,500,1000];
   const [searchTerm, setSearchTerm] = useState('');
   const [totalResults, setTotalResults] = useState(0);
   const navigate = useNavigate();

@@ -8,7 +8,7 @@ const InvoiceMaster = () => {
     const [invoices, setInvoices] = useState([]);
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
-    const optionsPerPage = [10, 50, 100, 200];
+    const optionsPerPage = [10, 50, 100, 200,500,1000];
     const [responseError, setResponseError] = useState(null);
     const formatDate = (dateString) => {
         if (!dateString || isNaN(new Date(dateString).getTime())) {

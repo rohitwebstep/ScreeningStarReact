@@ -18,7 +18,7 @@ const ServiceManagementGroup = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [loading, setLoading] = useState(true);
     const [servicesPerPage, setServicesPerPage] = useState(10);
-    const optionsPerPage = [10, 50, 100, 200];
+    const optionsPerPage = [10, 50, 100, 200,500,1000];
     const [editingServiceId, setEditingServiceId] = useState(null);
     const storedToken = localStorage.getItem('token');
     const navigate = useNavigate();

@@ -14,7 +14,7 @@ const CandidateManager = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [tableCurrentPage, setTableCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  const optionsPerPage = [10, 50, 100, 200]; const [loadingStates, setLoadingStates] = useState({});
+  const optionsPerPage = [10, 50, 100, 200,500,1000]; const [loadingStates, setLoadingStates] = useState({});
   const clientEditRef = useRef(null);
   const [currentPage, setCurrentPage] = useState(1);
   const entriesPerPage = 10;

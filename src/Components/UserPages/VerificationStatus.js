@@ -73,7 +73,7 @@ const VerificationStatus = () => {
 
     const [currentPage, setCurrentPage] = useState(1);
     const [rowsPerPage, setRowsPerPage] = useState(10);
-    const optionsPerPage = [10, 50, 100, 200]; const totalPages = Math.ceil(data.length / rowsPerPage);
+    const optionsPerPage = [10, 50, 100, 200, 500, 1000]; const totalPages = Math.ceil(data.length / rowsPerPage);
     const paginatedData = Array.isArray(data)
         ? data.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage)
         : [];
@@ -354,10 +354,10 @@ const VerificationStatus = () => {
         // Prefer annexureData.status if it exists
         if (annexure.annexureData && 'status' in annexure.annexureData) {
             console.log('📤 Returning annexureData.status:', annexure.annexureData.status);
-            return annexure.annexureData.status || 'NIL';
+            return annexure.annexureData.status || 'INITIATED';
         }
 
-        return 'NIL';
+        return 'INITIATED';
     }
 
     async function checkImageExists(url) {
@@ -2147,9 +2147,9 @@ const VerificationStatus = () => {
 
     // Function to format the date to "Month Day, Year" format
     const formatDate = (date) => {
-        if (!date) return "NIL"; // Check for null, undefined, or empty
+        if (!date) return "No Insuff"; // Check for null, undefined, or empty
         const dateObj = new Date(date);
-        if (isNaN(dateObj.getTime())) return "Nill"; // Check for invalid date
+        if (isNaN(dateObj.getTime())) return "No Insuff"; // Check for invalid date
         const day = String(dateObj.getDate()).padStart(2, '0');
         const month = String(dateObj.getMonth() + 1).padStart(2, '0');
         const year = dateObj.getFullYear();
@@ -2628,7 +2628,7 @@ const VerificationStatus = () => {
                                                     {viewServices && servicesHeadings && servicesHeadings.length > 0 ? (
                                                         servicesHeadings.map((heading, index) => {
                                                             return (
-                                                                <th key={index} className="uppercase border border-black px-4 py-2">
+                                                                <th key={index} className="uppercase font-normal border border-black px-4 py-2">
                                                                     {getStatusByServiceId(data.annexureResults, heading.id)}
                                                                 </th>
                                                             );
@@ -2721,37 +2721,44 @@ const VerificationStatus = () => {
 
 
 
-                                                    <td className="text-left p-2 border border-black capitalize font-bold">
-                                                        {formatedJson(data.first_insufficiency_marks) || 'NIL'}
+                                                    <td className="text-left p-2 border border-black capitalize">
+                                                        {formatedJson(data.first_insufficiency_marks) || 'No Insuff'}
                                                     </td>
-                                                    <td className="text-left p-2 border border-black capitalize font-bold">
-                                                        {formatDate(data.first_insuff_date)}
+                                                    <td className="text-left p-2 border border-black capitalize">
+                                                        {formatDate(data.first_insuff_date) || 'No Insuff'}
                                                     </td>
-                                                    <td className="text-left p-2 border border-black capitalize font-bold">
-                                                        {formatDate(data.first_insuff_reopened_date)}
+                                                    <td className="text-left p-2 border border-black capitalize">
+                                                        {formatDate(data.first_insuff_reopened_date) || 'No Insuff'}
                                                     </td>
-                                                    <td className="text-left p-2 border border-black capitalize font-bold">
-                                                        {formatedJson(data.second_insufficiency_marks) || 'NIL'}
+                                                    <td className="text-left p-2 border border-black capitalize">
+                                                        {formatedJson(data.second_insufficiency_marks) || 'No Insuff'}
                                                     </td>
-                                                    <td className="text-left p-2 border border-black capitalize font-bold">
-                                                        {formatDate(data.second_insuff_date)}
+                                                    <td className="text-left p-2 border border-black capitalize">
+                                                        {formatDate(data.second_insuff_date) || 'No Insuff'}
                                                     </td>
-                                                    <td className="text-left p-2 border border-black capitalize font-bold">
-                                                        {formatedJson(data.third_insufficiency_marks) || 'NIL'}
+                                                    <td className="text-left p-2 border border-black capitalize">
+                                                        {formatedJson(data.third_insufficiency_marks) || 'No Insuff'}
                                                     </td>
-                                                    <td className="text-left p-2 border border-black capitalize font-bold">
-                                                        {formatDate(data.third_insuff_date)}
+                                                    <td className="text-left p-2 border border-black capitalize">
+                                                        {formatDate(data.third_insuff_date) || 'No Insuff'}
                                                     </td>
-                                                    <td className="text-left p-2 border border-black capitalize font-bold">
-                                                        {formatDate(data.third_insuff_reopened_date)}
+                                                    <td className="text-left p-2 border border-black capitalize">
+                                                        {formatDate(data.third_insuff_reopened_date) || 'No Insuff'}
                                                     </td>
-                                                    <td className="text-left p-2 border border-black capitalize font-bold">
-                                                        {formatedJson(data.delay_reason) || 'NIL'}
+                                                    <td className="text-left p-2 border border-black capitalize">
+                                                        {formatedJson(data.delay_reason) || 'No Insuff'}
                                                     </td>
                                                     <td className="border border-black px-4 uppercase py-2">{data.overall_status || 'WIP'}</td>
                                                     <td className="border border-black px-4 uppercase py-2">{data.report_type?.replace(/_/g, " ") || 'N/A'}</td>
                                                     <td className="border border-black px-4 py-2">
-                                                        {formatDate(data.report_date)}
+                                                       {
+                                                            data.report_type === 'final_report'
+                                                                ? data.report_date
+                                                                ? new Date(data.report_date).toLocaleDateString('en-GB').replace(/\//g, '-')
+                                                                : 'NIL'
+                                                                : 'NIL'
+                                                            }
+
                                                     </td>
 
                                                     <td className="border border-black px-4 py-2">

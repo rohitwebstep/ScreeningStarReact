@@ -26,7 +26,7 @@ const tableRef = React.useRef(null);
   const [tableData, setTableData] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const optionsPerPage = [10, 50, 100, 200];
+  const optionsPerPage = [10, 50, 100, 200,500,1000];
   const navigate = useNavigate();
 
   function groupByAdmin(data) {

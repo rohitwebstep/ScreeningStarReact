@@ -37,7 +37,7 @@ const BulkApplication = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const optionsPerPage = [10, 50, 100, 200]; const [filteredData, setFilteredData] = useState(tableData);
+  const optionsPerPage = [10, 50, 100, 200,500,1000]; const [filteredData, setFilteredData] = useState(tableData);
 
   useEffect(() => {
     if (searchTerm) {

@@ -36,7 +36,7 @@ import { FaChevronLeft } from 'react-icons/fa';
 const AdminChekin = () => {
 
     const [servicesHeadings, setServicesHeadings] = useState([]);
-  const [viewServices, setViewServices] = useState(false);
+    const [viewServices, setViewServices] = useState(false);
 
     const [activeId, setActiveId] = useState(null);
     const [selectedValue, setSelectedValue] = useState("");
@@ -66,7 +66,15 @@ const AdminChekin = () => {
     const [isBulkDownloading, setIsBulkDownloading] = useState(false);
 
     const [viewLoading, setViewLoading] = useState(false);
+    const tableScrollRef = useRef(null);
+    const topScrollRef = useRef(null);
 
+    const syncScroll = () => {
+        if (tableScrollRef.current && topScrollRef.current) {
+            topScrollRef.current.scrollLeft = tableScrollRef.current.scrollLeft;
+            tableScrollRef.current.scrollLeft = topScrollRef.current.scrollLeft;
+        }
+    };
 
     const [isHighlightLoading, setIsHighlightLoading] = useState(false);
     const [deleteLoading, setDeleteLoading] = useState(null);
@@ -78,7 +86,7 @@ const AdminChekin = () => {
 
     const [currentPage, setCurrentPage] = useState(1);
     const [rowsPerPage, setRowsPerPage] = useState(10);
-    const optionsPerPage = [10, 50, 100, 200];
+    const optionsPerPage = [10, 50, 100, 200, 500, 1000];
     const totalPages = Math.ceil(data.length / rowsPerPage);
     const colorNames = ['red', 'green', 'blue', 'yellow', 'orange', 'purple', 'pink'];
     const getColorStyle = (status) => {
@@ -122,10 +130,10 @@ const AdminChekin = () => {
         // Prefer annexureData.status if it exists
         if (annexure.annexureData && 'status' in annexure.annexureData) {
             console.log('📤 Returning annexureData.status:', annexure.annexureData.status);
-            return annexure.annexureData.status || 'NIL';
+            return annexure.annexureData.status || 'INITIATED';
         }
 
-        return 'NIL';
+        return 'INITIATED';
     }
 
     // Fetch data from the main API
@@ -2316,7 +2324,7 @@ const AdminChekin = () => {
 
     // Function to format the date to "Month Day, Year" format
     const formatDate = (date) => {
-        if (!date) return "NOT APPLICABLE"; // Check for null, undefined, or empty
+        if (!date) return "No Insuff"; // Check for null, undefined, or empty
         const dateObj = new Date(date);
         if (isNaN(dateObj.getTime())) return "Nill"; // Check for invalid date
         const day = String(dateObj.getDate()).padStart(2, '0');
@@ -2670,7 +2678,7 @@ const AdminChekin = () => {
         return acc;
     }, {});
     const formatedJson = (delayReason) => {
-        if (!delayReason) return "NOT APPLICABLE"; // Handle empty, null, or undefined inputs
+        if (!delayReason) return "No Insuff"; // Handle empty, null, or undefined inputs
         return delayReason
             // Remove backslashes
             .replace(/\\+/g, "")
@@ -2731,7 +2739,7 @@ const AdminChekin = () => {
                             >
                                 Export to Excel
                             </button>
-                          
+
                             {selectedRows.length > 0 &&
                                 filteredData.filter(
                                     (data) =>
@@ -2846,69 +2854,83 @@ const AdminChekin = () => {
 
                     </div>
                 </div>
+                <div className="table-container rounded-lg">
+                    {/* Top Scroll */}
+                    <div
+                        className="top-scroll"
+                        ref={topScrollRef}
+                        onScroll={syncScroll}
+                    >
+                        <div className="top-scroll-inner" style={{ width: tableScrollRef.current?.scrollWidth || "100%" }} />
+                    </div>
 
-                <div className="rounded-lg overflow-scroll " ref={scrollContainerRef}>
-                    <table className="min-w-full border-collapse border border-black overflow-scroll rounded-lg whitespace-nowrap">
-                        <thead className='rounded-lg'>
-                            <tr className="bg-[#c1dff2] text-[#4d606b]">
-                                <th className="border border-black px-4 py-2">
-                                    <input
-                                        type="checkbox"
-                                        className="w-5 h-5"
-                                        checked={
-                                            selectedRows.length > 0 &&
-                                            filteredData.find((data) => selectedRows.includes(data.id))
-                                        }
-                                        onChange={handleSelectAll}
-                                    />
+                    {/* Actual Table Scroll */}
+                    <div
+                        className="table-scroll rounded-lg"
+                        ref={tableScrollRef}
+                        onScroll={syncScroll}
+                    >
+                        <table className="min-w-full border-collapse border border-black overflow-scroll rounded-lg whitespace-nowrap">
+                            <thead className='rounded-lg'>
+                                <tr className="bg-[#c1dff2] text-[#4d606b]">
+                                    <th className="border border-black px-4 py-2">
+                                        <input
+                                            type="checkbox"
+                                            className="w-5 h-5"
+                                            checked={
+                                                selectedRows.length > 0 &&
+                                                filteredData.find((data) => selectedRows.includes(data.id))
+                                            }
+                                            onChange={handleSelectAll}
+                                        />
 
 
-                                </th>
+                                    </th>
 
-                                <th className="uppercase border border-black px-4 py-2">SL NO</th>
-                                <th className="uppercase border border-black px-4 py-2">TAT Days</th>
-                                <th className="uppercase border border-black px-4 py-2">Location</th>
-                                <th className="uppercase border border-black px-4 py-2">Name Of APPLICANT</th>
-                                <th className="uppercase border border-black px-4 py-2">Sub Client</th>
-                                <th className="uppercase border border-black px-4 py-2">Reference Id</th>
-                                <th className="uppercase border border-black px-4 py-2">Check Id</th>
-                                <th className="uppercase border border-black px-4 py-2">Ticket Id</th>
+                                    <th className="uppercase border border-black px-4 py-2">SL NO</th>
+                                    <th className="uppercase border border-black px-4 py-2">TAT Days</th>
+                                    <th className="uppercase border border-black px-4 py-2">Location</th>
+                                    <th className="uppercase border border-black px-4 py-2">Name Of APPLICANT</th>
+                                    <th className="uppercase border border-black px-4 py-2">Sub Client</th>
+                                    <th className="uppercase border border-black px-4 py-2">Reference Id</th>
+                                    <th className="uppercase border border-black px-4 py-2">Check Id</th>
+                                    <th className="uppercase border border-black px-4 py-2">Ticket Id</th>
 
-                                <th className="uppercase border border-black px-4 py-2">Photo</th>
-                                <th className="uppercase border border-black px-4 py-2">Employee Id</th>
-                                <th className="uppercase border border-black px-4 py-2">
-                                      <button
-                                className="bg-orange-500 hover:scale-105  hover:bg-orange-600 text-white px-6 py-2 rounded"
-                               onClick={() => setViewServices(prev => !prev)}
+                                    <th className="uppercase border border-black px-4 py-2">Photo</th>
+                                    <th className="uppercase border border-black px-4 py-2">Employee Id</th>
+                                    <th className="uppercase border border-black px-4 py-2">
+                                        <button
+                                            className="bg-orange-500 hover:scale-105  hover:bg-orange-600 text-white px-6 py-2 rounded"
+                                            onClick={() => setViewServices(prev => !prev)}
 
-                            >
-                               {viewServices ? "Hide Services" :"View Services"} 
-                            </button><br/>
-                                    Initiation Date</th>
-                                {viewServices && servicesHeadings && servicesHeadings.length > 0 ? (
-                                    servicesHeadings.map((heading, index) => {
-                                        return (
-                                            <th key={index} className="uppercase border border-black px-4 py-2">
-                                                {heading.heading}
-                                            </th>
-                                        );
-                                    })
-                                ) : null}
-                                <th className="uppercase border border-black px-4 py-2">Deadline Date</th>
-                                <th className="uppercase border border-black px-4 py-2">Report Data</th>
-                                <th className="uppercase border border-black px-4 py-2">Download Status</th>
+                                        >
+                                            {viewServices ? "Hide Services" : "View Services"}
+                                        </button><br />
+                                        Initiation Date</th>
+                                    {viewServices && servicesHeadings && servicesHeadings.length > 0 ? (
+                                        servicesHeadings.map((heading, index) => {
+                                            return (
+                                                <th key={index} className="uppercase border border-black px-4 py-2">
+                                                    {heading.heading}
+                                                </th>
+                                            );
+                                        })
+                                    ) : null}
+                                    <th className="uppercase border border-black px-4 py-2">Deadline Date</th>
+                                    <th className="uppercase border border-black px-4 py-2">Report Data</th>
+                                    <th className="uppercase border border-black px-4 py-2">Download Status</th>
 
-                                <th className="uppercase border border-black px-4 py-2">Overall Status</th>
-                                <th className="uppercase border border-black px-4 py-2">Report Type</th>
-                                <th className="uppercase border border-black px-4 py-2">Report Date</th>
-                                <th className="uppercase border border-black px-4 py-2">Report Generated By</th>
-                                <th className="uppercase border border-black px-4 py-2">QC Done By</th>
-                                <th className="uppercase border border-black px-4 py-2 " colSpan={1}>Action</th>
-                                <th className="uppercase border border-black px-4 py-2">Completed IN</th>
-                                <th className="uppercase border border-black px-4 py-2">Days Delayed</th>
-                                <th className="uppercase border border-black px-4 py-2 ">HIGHLIGHT</th>
+                                    <th className="uppercase border border-black px-4 py-2">Overall Status</th>
+                                    <th className="uppercase border border-black px-4 py-2">Report Type</th>
+                                    <th className="uppercase border border-black px-4 py-2">Report Date</th>
+                                    <th className="uppercase border border-black px-4 py-2">Report Generated By</th>
+                                    <th className="uppercase border border-black px-4 py-2">QC Done By</th>
+                                    <th className="uppercase border border-black px-4 py-2 " colSpan={1}>Action</th>
+                                    <th className="uppercase border border-black px-4 py-2">Completed IN</th>
+                                    <th className="uppercase border border-black px-4 py-2">Days Delayed</th>
+                                    <th className="uppercase border border-black px-4 py-2 ">HIGHLIGHT</th>
 
-                                {/* {headingsAndStatuses.map((item, idx) => {
+                                    {/* {headingsAndStatuses.map((item, idx) => {
                                     const rawHeading = item?.heading;
 
                                     const isEmpty =
@@ -2926,272 +2948,278 @@ const AdminChekin = () => {
                                     );
                                 })} */}
 
-                                <th className="border border-black uppercase px-4 py-2">First Level Insuff</th>
-                                <th className="border border-black uppercase px-4 py-2">First Insuff Date</th>
-                                <th className="border border-black uppercase px-4 py-2">First Insuff Reopen</th>
-                                <th className="border border-black uppercase px-4 py-2">Second Level Insuff</th>
-                                <th className="border border-black uppercase px-4 py-2">Second Insuff Date</th>
-                                <th className="border border-black uppercase px-4 py-2">Third Level Insuff</th>
-                                <th className="border border-black uppercase px-4 py-2">Third Insuff Date</th>
-                                <th className="border border-black uppercase px-4 py-2">Reason for Delay</th>
+                                    <th className="border border-black uppercase px-4 py-2">First Level Insuff</th>
+                                    <th className="border border-black uppercase px-4 py-2">First Insuff Date</th>
+                                    <th className="border border-black uppercase px-4 py-2">First Insuff Reopen</th>
+                                    <th className="border border-black uppercase px-4 py-2">Second Level Insuff</th>
+                                    <th className="border border-black uppercase px-4 py-2">Second Insuff Date</th>
+                                    <th className="border border-black uppercase px-4 py-2">Third Level Insuff</th>
+                                    <th className="border border-black uppercase px-4 py-2">Third Insuff Date</th>
+                                    <th className="border border-black uppercase px-4 py-2">Reason for Delay</th>
 
 
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {loading ? (
-
-                                <tr>
-                                    <td colSpan={17} className="py-4 text-center text-gray-500">
-                                        <Loader className="text-center" />
-                                    </td>
                                 </tr>
-                            ) : paginatedData.length === 0 ? (
-                                <tr>
-                                    <td colSpan={17} className="py-4 text-center text-gray-500">
-                                        No data available in table
-                                    </td>
-                                </tr>
-                            ) : (
-                                <>
-                                    {paginatedData.map((data, index) => {
-                                        const actualIndex = (currentPage - 1) * rowsPerPage + index;
-                                        const isDownloadable = data.id;
-                                        const isExpanded = expandedRow && expandedRow.index === index;
-                                        return (
+                            </thead>
+                            <tbody>
+                                {loading ? (
+
+                                    <tr>
+                                        <td colSpan={17} className="py-4 text-center text-gray-500">
+                                            <Loader className="text-center" />
+                                        </td>
+                                    </tr>
+                                ) : paginatedData.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={17} className="py-4 text-center text-gray-500">
+                                            No data available in table
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    <>
+                                        {paginatedData.map((data, index) => {
+                                            const actualIndex = (currentPage - 1) * rowsPerPage + index;
+                                            const isDownloadable = data.id;
+                                            const isExpanded = expandedRow && expandedRow.index === index;
+                                            return (
 
 
-                                            <React.Fragment key={data.id}>
-                                                <tr
-                                                    className={`text-center  ${isExpanded ? "bg-gray-100" : "" // selected row bg gray
-                                                        }  ${data.is_highlight === 1 ? 'highlight' : ''}`}
-                                                    style={{
-                                                        borderColor: data.is_highlight === 1 ? 'yellow' : 'transparent',
-                                                    }}
-                                                >
-                                                    <td className="border border-black px-4 py-2">
-                                                        <input
-                                                            type="checkbox"
-                                                            className='w-5 h-5'
-                                                            checked={selectedRows.includes(data.id)}
-                                                            onChange={() => handleCheckboxChange(data.id, isDownloadable)}
-                                                            disabled={!isDownloadable}
-                                                        />
-                                                    </td>
-                                                    <td className="border border-black px-4 py-2">                        {index + 1 + (currentPage - 1) * rowsPerPage}</td>
-                                                    <td className="border border-black px-4 py-2">{adminTAT || 'NIL'}</td>
-                                                    <td className="border border-black px-4 py-2">{data.location || 'NIL'}</td>
-                                                    <td className="border border-black px-4 py-2">
-                                                        {data.name || companyName || 'NIL'}
-                                                    </td>
-                                                    <td className="border border-black px-4 py-2">{data.sub_client || 'NIL'}</td>
-                                                    <td className="border border-black px-4 py-2">{data.application_id || 'NIL'}</td>
-                                                    <td className="border border-black px-4 py-2">{data.check_id || 'NIL'}</td>  <td className="border border-black px-4 py-2">{data.ticket_id || 'NIL'}</td>
-                                                    <td className="border border-black px-4 py-2">
-                                                        <div className='flex justify-center items-center'>
-                                                            <img src={data.photo ? data.photo : `${Default}`}
-                                                                alt={data.name} className="w-10 h-10 rounded-full" />
-                                                        </div>
-                                                    </td>
-                                                    <td className="border border-black px-4 py-2">{data.employee_id || 'NIL'}</td>
-                                                    <td className="border border-black px-4 py-2">
-                                                        {data.initiation_date
-                                                            ? new Date(data.initiation_date).toLocaleDateString('en-GB').replace(/\//g, '-')
-                                                            : 'NIL'}
-                                                    </td>
-                                                    {viewServices && servicesHeadings && servicesHeadings.length > 0 ? (
-                                                        servicesHeadings.map((heading, index) => {
-                                                            return (
-                                                                <th key={index} className="uppercase border border-black px-4 py-2">
-                                                                    {getStatusByServiceId(data.annexureResults, heading.id)}
-                                                                </th>
-                                                            );
-                                                        })
-                                                    ) : null}
-                                                    <td className="border border-black px-4 py-2">
-                                                        {data.deadline_date
-                                                            ? new Date(data.deadline_date).toLocaleDateString('en-GB').replace(/\//g, '-')
-                                                            : 'NIL'}
-                                                    </td>
-                                                    <td className="border border-black px-4 py-2">
-                                                        <button
-                                                            className="  border border-[#073d88] text-[#073d88] px-4 py-2 rounded hover:bg-[#073d88] hover:text-white"
-                                                            onClick={() => handleUpload(data.id, data.branch_id)}
-                                                        >
-                                                            Generate Report
-                                                        </button>
-                                                    </td>
+                                                <React.Fragment key={data.id}>
+                                                    <tr
+                                                        className={`text-center  ${isExpanded ? "bg-gray-100" : "" // selected row bg gray
+                                                            }  ${data.is_highlight === 1 ? 'highlight' : ''}`}
+                                                        style={{
+                                                            borderColor: data.is_highlight === 1 ? 'yellow' : 'transparent',
+                                                        }}
+                                                    >
+                                                        <td className="border border-black px-4 py-2">
+                                                            <input
+                                                                type="checkbox"
+                                                                className='w-5 h-5'
+                                                                checked={selectedRows.includes(data.id)}
+                                                                onChange={() => handleCheckboxChange(data.id, isDownloadable)}
+                                                                disabled={!isDownloadable}
+                                                            />
+                                                        </td>
+                                                        <td className="border border-black px-4 py-2">                        {index + 1 + (currentPage - 1) * rowsPerPage}</td>
+                                                        <td className="border border-black px-4 py-2">{adminTAT || 'NIL'}</td>
+                                                        <td className="border border-black px-4 py-2">{data.location || 'NIL'}</td>
+                                                        <td className="border border-black px-4 py-2">
+                                                            {data.name || companyName || 'NIL'}
+                                                        </td>
+                                                        <td className="border border-black px-4 py-2">{data.sub_client || 'NIL'}</td>
+                                                        <td className="border border-black px-4 py-2">{data.application_id || 'NIL'}</td>
+                                                        <td className="border border-black px-4 py-2">{data.check_id || 'NIL'}</td>  <td className="border border-black px-4 py-2">{data.ticket_id || 'NIL'}</td>
+                                                        <td className="border border-black px-4 py-2">
+                                                            <div className='flex justify-center items-center'>
+                                                                <img src={data.photo ? data.photo : `${Default}`}
+                                                                    alt={data.name} className="w-10 h-10 rounded-full" />
+                                                            </div>
+                                                        </td>
+                                                        <td className="border border-black px-4 py-2">{data.employee_id || 'NIL'}</td>
+                                                        <td className="border border-black px-4 py-2">
+                                                            {data.initiation_date
+                                                                ? new Date(data.initiation_date).toLocaleDateString('en-GB').replace(/\//g, '-')
+                                                                : 'NIL'}
+                                                        </td>
+                                                        {viewServices && servicesHeadings && servicesHeadings.length > 0 ? (
+                                                            servicesHeadings.map((heading, index) => {
+                                                                return (
+                                                                    <th key={index} className="uppercase font-normal border border-black px-4 py-2">
+                                                                        {getStatusByServiceId(data.annexureResults, heading.id)}
+                                                                    </th>
+                                                                );
+                                                            })
+                                                        ) : null}
+                                                        <td className="border border-black px-4 py-2">
+                                                            {data.deadline_date
+                                                                ? new Date(data.deadline_date).toLocaleDateString('en-GB').replace(/\//g, '-')
+                                                                : 'NIL'}
+                                                        </td>
+                                                        <td className="border border-black px-4 py-2">
+                                                            <button
+                                                                className="  border border-[#073d88] text-[#073d88] px-4 py-2 rounded hover:bg-[#073d88] hover:text-white"
+                                                                onClick={() => handleUpload(data.id, data.branch_id)}
+                                                            >
+                                                                Generate Report
+                                                            </button>
+                                                        </td>
 
-                                                    <td className="border border-black px-4 py-2">
-                                                        {(() => {
-                                                            let buttonText = "";
-                                                            let buttonDisabled = false;
+                                                        <td className="border border-black px-4 py-2">
+                                                            {(() => {
+                                                                let buttonText = "";
+                                                                let buttonDisabled = false;
 
-                                                            if (data.overall_status === "completed") {
-                                                                if (data.is_verify === "yes") {
-                                                                    buttonText = "DOWNLOAD";
+                                                                if (data.overall_status === "completed") {
+                                                                    if (data.is_verify === "yes") {
+                                                                        buttonText = "DOWNLOAD";
+                                                                    } else {
+                                                                        buttonText = "QC Pending";
+                                                                    }
+                                                                } else if (data.overall_status === "wip") {
+                                                                    buttonText = "WIP";
+                                                                    buttonDisabled = true;
+
                                                                 } else {
-                                                                    buttonText = "QC Pending";
+                                                                    buttonText = "NOT READY";
+                                                                    buttonDisabled = true;
                                                                 }
-                                                            } else if (data.overall_status === "wip") {
-                                                                buttonText = "WIP";
-                                                                buttonDisabled = true;
 
-                                                            } else {
-                                                                buttonText = "NOT READY";
-                                                                buttonDisabled = true;
+                                                                return buttonDisabled ? (
+                                                                    <button
+                                                                        className="text-white px-4 py-2 rounded cursor-not-allowed bg-gray-500"
+                                                                        disabled
+                                                                    >
+                                                                        {buttonText}
+                                                                    </button>
+                                                                ) : (
+                                                                    <button
+                                                                        onClick={() => handleDownload(actualIndex, data)}
+                                                                        disabled={downloadingIndex === actualIndex}
+                                                                        className={`${buttonText === "DOWNLOAD"
+                                                                            ? ""
+                                                                            : buttonText === "QC Pending"
+                                                                                ? "text-[#00aeee]"
+                                                                                : "bg-green-500 hover:bg-green-300 text-white"
+                                                                            } ${buttonText !== "DOWNLOAD" ? "px-4 py-2" : ""
+                                                                            } hover:scale-105 uppercase border border-white rounded ${downloadingIndex === actualIndex ? "opacity-50 cursor-not-allowed" : ""
+                                                                            }`}
+                                                                        style={{
+                                                                            backgroundColor: buttonText === "QC Pending" ? "transparent" : undefined,
+                                                                        }}
+                                                                    >
+                                                                        {downloadingIndex === actualIndex ? (
+                                                                            <span className="flex items-center gap-2">
+                                                                                <svg
+                                                                                    className="animate-spin h-5 w-5 text-white hover:text-green-500"
+                                                                                    viewBox="0 0 24 24"
+                                                                                    fill="none"
+                                                                                    xmlns="http://www.w3.org/2000/svg"
+                                                                                >
+                                                                                    <circle
+                                                                                        className="opacity-25"
+                                                                                        cx="12"
+                                                                                        cy="12"
+                                                                                        r="10"
+                                                                                        stroke="currentColor"
+                                                                                        strokeWidth="4"
+                                                                                    ></circle>
+                                                                                    <path
+                                                                                        className="opacity-75"
+                                                                                        fill="currentColor"
+                                                                                        d="M4 12a8 8 0 018-8v8H4z"
+                                                                                    ></path>
+                                                                                </svg>
+                                                                                Downloading...
+                                                                            </span>
+                                                                        ) : buttonText === "DOWNLOAD" ? (
+                                                                            <img
+                                                                                src={pdfIcon}
+                                                                                alt="Download PDF"
+                                                                                className="w-12 h-12 object-contain"
+                                                                            />
+                                                                        ) : (
+                                                                            buttonText
+                                                                        )}
+                                                                    </button>
+                                                                );
+                                                            })()}
+                                                        </td>
+
+                                                        <td className="border border-black px-4 uppercase py-2">{(data.overall_status || 'WIP').replace(/_/g, ' ')}
+                                                        </td>
+                                                        <td className="border border-black px-4 uppercase py-2">{data.report_type?.replace(/_/g, " ") || 'N/A'}</td>
+                                                        <td className="border border-black px-4 py-2">
+                                                            {
+                                                                data.report_type === 'final_report'
+                                                                    ? data.report_date
+                                                                        ? new Date(data.report_date).toLocaleDateString('en-GB').replace(/\//g, '-')
+                                                                        : 'NIL'
+                                                                    : 'NIL'
                                                             }
 
-                                                            return buttonDisabled ? (
-                                                                <button
-                                                                    className="text-white px-4 py-2 rounded cursor-not-allowed bg-gray-500"
-                                                                    disabled
-                                                                >
-                                                                    {buttonText}
-                                                                </button>
-                                                            ) : (
-                                                                <button
-                                                                    onClick={() => handleDownload(actualIndex, data)}
-                                                                    disabled={downloadingIndex === actualIndex}
-                                                                    className={`${buttonText === "DOWNLOAD"
-                                                                        ? ""
-                                                                        : buttonText === "QC Pending"
-                                                                            ? "text-[#00aeee]"
-                                                                            : "bg-green-500 hover:bg-green-300 text-white"
-                                                                        } ${buttonText !== "DOWNLOAD" ? "px-4 py-2" : ""
-                                                                        } hover:scale-105 uppercase border border-white rounded ${downloadingIndex === actualIndex ? "opacity-50 cursor-not-allowed" : ""
-                                                                        }`}
+                                                        </td>
+
+                                                        <td className="border border-black px-4 py-2">{data.report_generated_by_name || 'N/A'}</td>
+                                                        <td className="border border-black px-4 py-2">{data.qc_done_by_name || 'N/A'}</td>
+                                                        <td className="border border-black px-4 py-2">
+                                                            <button
+                                                                className={`text-white rounded px-4 py-2 bg-red-500 hover:bg-red-600 ${deleteLoading === data.main_id ? 'opacity-50 cursor-not-allowed' : ''
+                                                                    }`}
+                                                                onClick={() => handleApplicationDelete(data.main_id)}
+                                                                disabled={deleteLoading === data.main_id}
+                                                            >
+
+                                                                {deleteLoading === data.main_id ? ' Deleting...' : ' Delete'}
+                                                            </button>
+
+                                                        </td>
+                                                        <td className="border border-black px-4 py-2">
+                                                            {(data.report_completed_status?.status === 'early' || data.report_completed_status?.status === 'on_time')
+                                                                ? data.report_completed_status?.used ?? 'NIL'
+                                                                : 'NIL'}
+                                                        </td>
+                                                        <td className="border border-black px-4 py-2">
+                                                            {data.report_completed_status?.status === 'exceed'
+                                                                ? data.report_completed_status?.exceededBy ?? 'NIL'
+                                                                : 'NIL'}
+                                                        </td>
+
+                                                        <td className="border border-black text-center px-4 py-2">
+                                                            <div className="flex items-center justify-center">
+                                                                <FaFlag
                                                                     style={{
-                                                                        backgroundColor: buttonText === "QC Pending" ? "transparent" : undefined,
+                                                                        color: data.is_highlight === 1 ? 'orange' : 'gray', // Change color based on highlight state
+                                                                        textAlign: 'center',
+                                                                        fontSize: '30px',
+                                                                        cursor: 'pointer',
+                                                                        boxShadow: '2px 2px 5px rgba(0, 0, 0, 0.5)', // Shadow effect
+                                                                        padding: '4px', // Adds spacing inside the border
+                                                                        borderRadius: '4px', // Rounds the border corners
+                                                                        transition: 'transform 0.2s, color 0.2s', // Smooth animation
                                                                     }}
-                                                                >
-                                                                    {downloadingIndex === actualIndex ? (
-                                                                        <span className="flex items-center gap-2">
-                                                                            <svg
-                                                                                className="animate-spin h-5 w-5 text-white hover:text-green-500"
-                                                                                viewBox="0 0 24 24"
-                                                                                fill="none"
-                                                                                xmlns="http://www.w3.org/2000/svg"
-                                                                            >
-                                                                                <circle
-                                                                                    className="opacity-25"
-                                                                                    cx="12"
-                                                                                    cy="12"
-                                                                                    r="10"
-                                                                                    stroke="currentColor"
-                                                                                    strokeWidth="4"
-                                                                                ></circle>
-                                                                                <path
-                                                                                    className="opacity-75"
-                                                                                    fill="currentColor"
-                                                                                    d="M4 12a8 8 0 018-8v8H4z"
-                                                                                ></path>
-                                                                            </svg>
-                                                                            Downloading...
-                                                                        </span>
-                                                                    ) : buttonText === "DOWNLOAD" ? (
-                                                                        <img
-                                                                            src={pdfIcon}
-                                                                            alt="Download PDF"
-                                                                            className="w-12 h-12 object-contain"
-                                                                        />
-                                                                    ) : (
-                                                                        buttonText
-                                                                    )}
-                                                                </button>
-                                                            );
-                                                        })()}
-                                                    </td>
-
-                                                    <td className="border border-black px-4 uppercase py-2">{(data.overall_status || 'WIP').replace(/_/g, ' ')}
-                                                    </td>
-                                                    <td className="border border-black px-4 uppercase py-2">{data.report_type?.replace(/_/g, " ") || 'N/A'}</td>
-                                                    <td className="border border-black px-4 py-2">
-
-                                                        {data.report_date
-                                                            ? new Date(data.report_date).toLocaleDateString('en-GB').replace(/\//g, '-')
-                                                            : 'NIL'}
-                                                    </td>
-
-                                                    <td className="border border-black px-4 py-2">{data.report_generated_by_name || 'N/A'}</td>
-                                                    <td className="border border-black px-4 py-2">{data.qc_done_by_name || 'N/A'}</td>
-                                                    <td className="border border-black px-4 py-2">
-                                                        <button
-                                                            className={`text-white rounded px-4 py-2 bg-red-500 hover:bg-red-600 ${deleteLoading === data.main_id ? 'opacity-50 cursor-not-allowed' : ''
-                                                                }`}
-                                                            onClick={() => handleApplicationDelete(data.main_id)}
-                                                            disabled={deleteLoading === data.main_id}
-                                                        >
-
-                                                            {deleteLoading === data.main_id ? ' Deleting...' : ' Delete'}
-                                                        </button>
-
-                                                    </td>
-                                                    <td className="border border-black px-4 py-2">
-                                                        {(data.report_completed_status?.status === 'early' || data.report_completed_status?.status === 'on_time')
-                                                            ? data.report_completed_status?.used ?? 'NIL'
-                                                            : 'NIL'}
-                                                    </td>
-                                                    <td className="border border-black px-4 py-2">
-                                                        {data.report_completed_status?.status === 'exceed'
-                                                            ? data.report_completed_status?.exceededBy ?? 'NIL'
-                                                            : 'NIL'}
-                                                    </td>
-
-                                                    <td className="border border-black text-center px-4 py-2">
-                                                        <div className="flex items-center justify-center">
-                                                            <FaFlag
-                                                                style={{
-                                                                    color: data.is_highlight === 1 ? 'orange' : 'gray', // Change color based on highlight state
-                                                                    textAlign: 'center',
-                                                                    fontSize: '30px',
-                                                                    cursor: 'pointer',
-                                                                    boxShadow: '2px 2px 5px rgba(0, 0, 0, 0.5)', // Shadow effect
-                                                                    padding: '4px', // Adds spacing inside the border
-                                                                    borderRadius: '4px', // Rounds the border corners
-                                                                    transition: 'transform 0.2s, color 0.2s', // Smooth animation
-                                                                }}
-                                                                onClick={() =>
-                                                                    !isHighlightLoading &&
-                                                                    handleHighlightClick(data.main_id, data.is_highlight === 1 ? 0 : 1)
-                                                                }
-                                                                onMouseEnter={(e) => {
-                                                                    e.target.style.color = 'gold'; // Highlight on hover
-                                                                    e.target.style.transform = 'scale(1.1)'; // Slightly enlarge on hover
-                                                                }}
-                                                                onMouseLeave={(e) => {
-                                                                    e.target.style.color = data.is_highlight === 1 ? 'orange' : 'gray'; // Revert color
-                                                                    e.target.style.transform = 'scale(1)'; // Reset size
-                                                                }}
-                                                            />
-                                                            {isHighlightLoading && data.main_id === activeId && (
-                                                                <span className="ml-2 text-gray-500">Loading...</span> // Show loading indicator
-                                                            )}
-                                                        </div>
-                                                    </td>
+                                                                    onClick={() =>
+                                                                        !isHighlightLoading &&
+                                                                        handleHighlightClick(data.main_id, data.is_highlight === 1 ? 0 : 1)
+                                                                    }
+                                                                    onMouseEnter={(e) => {
+                                                                        e.target.style.color = 'gold'; // Highlight on hover
+                                                                        e.target.style.transform = 'scale(1.1)'; // Slightly enlarge on hover
+                                                                    }}
+                                                                    onMouseLeave={(e) => {
+                                                                        e.target.style.color = data.is_highlight === 1 ? 'orange' : 'gray'; // Revert color
+                                                                        e.target.style.transform = 'scale(1)'; // Reset size
+                                                                    }}
+                                                                />
+                                                                {isHighlightLoading && data.main_id === activeId && (
+                                                                    <span className="ml-2 text-gray-500">Loading...</span> // Show loading indicator
+                                                                )}
+                                                            </div>
+                                                        </td>
 
 
-                                                    <td className="border border-black px-4 py-2 font-bold">{formatedJson(data.first_insufficiency_marks) || "NOT APPLICABLE"}</td>
-                                                    <td className="border border-black px-4 py-2 font-bold">{formatDate(data.first_insuff_date) || "NOT APPLICABLE"}</td>
-                                                    <td className="border border-black px-4 py-2 font-bold">{formatDate(data.first_insuff_reopened_date) || "NOT APPLICABLE"}</td>
-                                                    <td className="border border-black px-4 py-2 font-bold">{formatedJson(data.second_insufficiency_marks) || "NOT APPLICABLE"}</td>
-                                                    <td className="border border-black px-4 py-2 font-bold">{formatDate(data.second_insuff_date) || "NOT APPLICABLE"}</td>
-                                                    <td className="border border-black px-4 py-2 font-bold">{formatedJson(data.third_insufficiency_marks) || "NOT APPLICABLE"}</td>
-                                                    <td className="border border-black px-4 py-2 font-bold">{formatDate(data.third_insuff_date) || "NOT APPLICABLE"}</td>
-                                                    <td className="border border-black px-4 py-2 font-bold">{formatedJson(data.delay_reason) || "NOT APPLICABLE"}</td>
+                                                        <td className="border border-black px-4 py-2">{formatedJson(data.first_insufficiency_marks) || "No Insuff"}</td>
+                                                        <td className="border border-black px-4 py-2">{formatDate(data.first_insuff_date) || "No Insuff"}</td>
+                                                        <td className="border border-black px-4 py-2">{formatDate(data.first_insuff_reopened_date) || "No Insuff"}</td>
+                                                        <td className="border border-black px-4 py-2">{formatedJson(data.second_insufficiency_marks) || "No Insuff"}</td>
+                                                        <td className="border border-black px-4 py-2">{formatDate(data.second_insuff_date) || "No Insuff"}</td>
+                                                        <td className="border border-black px-4 py-2">{formatedJson(data.third_insufficiency_marks) || "No Insuff"}</td>
+                                                        <td className="border border-black px-4 py-2">{formatDate(data.third_insuff_date) || "No Insuff"}</td>
+                                                        <td className="border border-black px-4 py-2">{formatedJson(data.delay_reason) || "No Insuff"}</td>
 
 
-                                                </tr>
+                                                    </tr>
 
 
-                                            </React.Fragment>
-                                        )
-                                    })}
-                                </>
-                            )}
-                        </tbody>
-                    </table>
+                                                </React.Fragment>
+                                            )
+                                        })}
+                                    </>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
+
                 <div className="flex justify-between items-center mt-4">
                     <button
                         onClick={() => handlePageChange(currentPage - 1)}

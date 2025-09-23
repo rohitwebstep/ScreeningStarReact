@@ -15,7 +15,7 @@ const CreateAdminTicket = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const optionsPerPage = [10, 50, 100, 200]; const [totalResults, setTotalResults] = useState(0);
+  const optionsPerPage = [10, 50, 100, 200,500,1000]; const [totalResults, setTotalResults] = useState(0);
   const navigate = useNavigate();
   useEffect(() => {
     const adminInfo = JSON.parse(localStorage.getItem('admin'));

@@ -18,7 +18,7 @@ const UserListing = () => {
   const [selectedFields, setSelectedFields] = useState({}); // Store selected fields to edit
 
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  const optionsPerPage = [10, 50, 100, 200];
+  const optionsPerPage = [10, 50, 100, 200,500,1000];
 
   useEffect(() => {
     const branchInfo = JSON.parse(localStorage.getItem('branch'));

@@ -179,7 +179,7 @@ const handleDelete = (app_id) => {
 
 
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  const optionsPerPage = [10, 50, 100, 200];
+  const optionsPerPage = [10, 50, 100, 200,500,1000];
   const totalPages = Math.ceil(filteredData.length / rowsPerPage);
 
   const paginatedData = filteredData.slice(

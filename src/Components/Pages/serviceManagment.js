@@ -26,7 +26,7 @@ const ServiceManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [servicesPerPage, setServicesPerPage] = useState(10);
-  const optionsPerPage = [10, 50, 100, 200];
+  const optionsPerPage = [10, 50, 100, 200,500,1000];
   const [editingServiceId, setEditingServiceId] = useState(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();

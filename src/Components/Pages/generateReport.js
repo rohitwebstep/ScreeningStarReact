@@ -3557,6 +3557,7 @@ const GenerateReport = () => {
                                             value={formData.updated_json.insuffDetails.report_type}
                                             onChange={handleChange}
                                             className="border rounded-md p-2 mt-2 uppercase w-full">
+                                            <option value=" ">Select Report Type</option>
                                             <option value="interim_report">Interim Report</option>
                                             <option value="final_report">Final Report</option>
                                         </select>

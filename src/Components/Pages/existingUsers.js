@@ -18,7 +18,7 @@ const ExistingUsers = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [searchQuery, setSearchQuery] = useState("");
     const [itemsPerPage, setItemsPerPage] = useState(10);
-    const optionsPerPage = [10, 50, 100, 200]; const navigate = useNavigate();
+    const optionsPerPage = [10, 50, 100, 200,500,1000]; const navigate = useNavigate();
     const [users, setUsers] = useState([]);
     const [editingUserId, setEditingUserId] = useState(null);
     const [loading, setLoading] = useState(true);

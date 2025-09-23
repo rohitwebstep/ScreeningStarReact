@@ -39,7 +39,7 @@ const ActiveAccounts = () => {
   const [isBlockLoading, setIsBlockLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  const optionsPerPage = [10, 50, 100, 200];
+  const optionsPerPage = [10, 50, 100, 200,500,1000];
   const totalPages = Math.ceil(activeList.length / rowsPerPage);
 
   console.log('thisscedclien', selectedClient);
