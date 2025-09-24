@@ -60,6 +60,19 @@ const InactiveClients = () => {
         const year = date.getFullYear();
         return `${day}/${month}/${year}`;
     };
+    const tableScrollRef = useRef(null);
+    const topScrollRef = useRef(null);
+    const [scrollWidth, setScrollWidth] = useState("100%");
+
+    // 🔹 Sync scroll positions
+    const syncScroll = (e) => {
+        if (e.target === topScrollRef.current) {
+            tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+        } else {
+            topScrollRef.current.scrollLeft = e.target.scrollLeft;
+        }
+    };
+
 
     const [selectedRows, setSelectedRows] = useState([]);
 
@@ -239,14 +252,7 @@ const InactiveClients = () => {
             setCurrentPage(page);
         }
     }
-    const cleanFieldNames = (row) => {
-        const cleanedRow = {};
-        Object.keys(row).forEach((key) => {
-            const cleanKey = key.replace(/^_+|_+$/g, ''); // Remove leading and trailing underscores
-            cleanedRow[cleanKey] = row[key];
-        });
-        return cleanedRow;
-    };
+
     const handleServiceChange = (e) => {
         const service = e.target.value;
 
@@ -261,11 +267,6 @@ const InactiveClients = () => {
         });
     };
 
-    const csvHeadings = (csv) => {
-        const rows = csv.split('\n');
-        const headers = rows[0].split(','); // Get headers (first row)
-        return headers.map((header) => header);
-    };
     const formatKey = (key) => {
         // Convert to lowercase, remove special characters, replace spaces with underscores, and double underscores with a single one
         return key
@@ -281,45 +282,138 @@ const InactiveClients = () => {
             .toLowerCase()
             .replace(/\s+/g, '_'); // Replace spaces with underscores
 
-    const normalizeKey = (str) =>
+    /* -----------------------
+       Utilities / CSV Parser
+       ----------------------- */
+
+    const normalizeKey = (str = '') =>
         str
             .trim()
             .toLowerCase()
-            .replace(/'/g, '')      // Remove apostrophes
-            .replace(/[^a-z0-9]+/g, '_') // Replace any non-alphanumeric char with _
-            .replace(/^_+|_+$/g, '')     // Remove leading/trailing underscores
-            .replace(/_+/g, '_');        // Merge multiple underscores
+            .replace(/^\uFEFF/, '')               // drop BOM if present
+            .replace(/'/g, '')                    // remove apostrophes
+            .replace(/[^a-z0-9]+/g, '_')         // non-alphanumeric -> underscore
+            .replace(/^_+|_+$/g, '')             // trim leading/trailing underscores
+            .replace(/_+/g, '_');                // collapse multiple underscores
 
-  const parseCSV = (text) => {
-    const lines = text.split('\n').filter(line => line.trim() !== '');
-    if (lines.length === 0) return [];
+    // Low-level CSV-to-rows parser: RFC-like handling for quotes, escaped quotes, commas and newlines.
+    const parseCSVToRows = (text = '') => {
+        if (typeof text !== 'string') return [];
+        // Normalize line endings and strip BOM
+        text = text.replace(/\uFEFF/g, '');
+        const rows = [];
+        let cur = '';
+        let row = [];
+        let inQuotes = false;
 
-    // Extract headers
-    const headers = lines[0]
-        .split(',')
-        .map(h => h.replace(/^"|"$/g, '').trim());
+        for (let i = 0; i < text.length; i++) {
+            const ch = text[i];
+            const next = text[i + 1];
 
-    const data = [];
+            if (ch === '"') {
+                // Escaped quote -> add one quote and skip next char
+                if (inQuotes && next === '"') {
+                    cur += '"';
+                    i++; // skip the escaped quote
+                } else {
+                    inQuotes = !inQuotes; // toggle quoting state
+                }
+                continue;
+            }
 
-    for (let i = 1; i < lines.length; i++) {
-        // ✅ split with respect to commas but keep empty values
-        const rowValues = lines[i]
-            .split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/) // handles commas inside quotes
-            .map(val => val.replace(/^"|"$/g, '').trim());
+            if (ch === ',' && !inQuotes) {
+                row.push(cur);
+                cur = '';
+                continue;
+            }
 
-        if (rowValues.length === 0) continue;
+            // handle CR LF or lone CR or LF when not inside quotes
+            if ((ch === '\n' || ch === '\r') && !inQuotes) {
+                row.push(cur);
+                rows.push(row);
+                row = [];
+                cur = '';
+                // skip LF after CR (CRLF)
+                if (ch === '\r' && next === '\n') i++;
+                continue;
+            }
 
-        const rowObj = {};
-        headers.forEach((header, idx) => {
-            // 🔹 Always assign something (empty if missing)
-            rowObj[normalizeKey(header)] = rowValues[idx] !== undefined ? rowValues[idx] : '';
+            // ordinary character
+            cur += ch;
+        }
+
+        // push final token/row
+        // if the source ended with a newline, last row will be [''] — we'll filter later
+        row.push(cur);
+        rows.push(row);
+
+        // Remove rows that are completely empty (every cell empty / whitespace)
+        return rows.filter(r => !(r.length === 1 && r[0].trim() === '')).map(r => r.map(c => c === undefined ? '' : String(c)));
+    };
+
+    // High-level CSV parser -> returns array of objects keyed by normalized headers
+    const parseCSV = (text = '') => {
+        const rows = parseCSVToRows(text);
+        if (!rows || rows.length === 0) return [];
+
+        // Header row (raw header strings trimmed)
+        const rawHeaders = rows.shift().map(h => (h === undefined ? '' : String(h).trim().replace(/^"|"$/g, '')));
+        const normalizedHeaders = rawHeaders.map(h => normalizeKey(h) || '__blank_column__');
+
+        // Build objects, ensuring missing columns become ''
+        const data = rows.map(row => {
+            const obj = {};
+            for (let i = 0; i < normalizedHeaders.length; i++) {
+                const key = normalizedHeaders[i];
+                const rawVal = row[i] !== undefined ? row[i] : '';
+                // remove surrounding quotes (in case), then trim
+                obj[key] = String(rawVal).replace(/^"|"$/g, '').trim();
+            }
+            return obj;
         });
 
-        data.push(rowObj);
-    }
+        return data;
+    };
 
-    return data;
-};
+    // Return the original headings (human readable)
+    const csvHeadings = (text = '') => {
+        const rows = parseCSVToRows(text);
+        if (!rows || rows.length === 0) return [];
+        return rows[0].map(h => (h === undefined ? '' : String(h).trim().replace(/^"|"$/g, '')));
+    };
+
+    /* -----------------------
+       Field cleaning helper
+       ----------------------- */
+
+    const cleanFieldNames = (row = {}) => {
+        const cleaned = {};
+        Object.entries(row).forEach(([k, v]) => {
+            let val = v == null ? '' : String(v).trim();
+            // collapse multiple spaces
+            val = val.replace(/\s+/g, ' ');
+            // treat explicit "null"/"undefined" strings as empty
+            if (/^(null|undefined)$/i.test(val)) val = '';
+            cleaned[k] = val;
+        });
+        return cleaned;
+    };
+
+    /* -----------------------
+       File Upload Handler
+       ----------------------- */
+
+    const isCSVFile = (file = {}) => {
+        if (!file || !file.name) return false;
+        const name = (file.name || '').toLowerCase();
+        const type = (file.type || '').toLowerCase();
+        return (
+            type === 'text/csv' ||
+            type === 'application/vnd.ms-excel' || // some browsers/Excel
+            type.includes('csv') ||
+            name.endsWith('.csv')
+        );
+    };
 
 
 
@@ -337,114 +431,151 @@ const InactiveClients = () => {
 
 
 
-   const handleFileUpload = (e, type) => {
-    const file = e.target.files[0];
-    if (file && file.type === 'text/csv') {
+    const handleFileUpload = (e, type) => {
+        const file = e?.target?.files?.[0];
+        if (!file) return;
+
+        if (!isCSVFile(file)) {
+            console.log("Invalid file type selected:", file.type, file.name);
+            setIsFileValid(false);
+            Swal.fire({ icon: 'error', title: 'Invalid File', text: 'Please upload a valid CSV file.' });
+            return;
+        }
+
         console.log("File selected:", file.name);
-
         const reader = new FileReader();
+
         reader.onload = () => {
-            const fileContent = reader.result;
-            console.log("File content loaded:", fileContent);
-            setFileName(file.name);
-            setIsFileValid(true);
-            const parsedData = parseCSV(fileContent);
-            const csvHeaders = csvHeadings(fileContent);
-            console.log("Headers:", csvHeaders);
+            try {
+                const fileContent = reader.result;
+                if (typeof fileContent !== 'string') throw new Error('Unable to read file content as text.');
 
-            const newData = [];
-            let hasError = false;
+                setFileName(file.name);
+                setIsFileValid(true);
 
-            parsedData.forEach((row, index) => {
-                const values = Object.values(row).map((value) => value.trim());
-                const allEmpty = values.every((val) => val === '');
-                const someEmpty = values.some((val) => val === '') && !allEmpty;
+                const parsedData = parseCSV(fileContent);
+                const csvHeadersArr = csvHeadings(fileContent);
+                console.log("Headers:", csvHeadersArr);
+                console.log("parsedData (first few):", parsedData.slice(0, 5));
 
-                if (allEmpty) {
-                    console.log(`Skipping row ${index + 1}: Empty row.`);
-                } else if (!row.reference_id || row.reference_id.trim() === "") {
-                    setFileName('');
+                if (parsedData.length === 0) {
+                    Swal.fire({ icon: 'error', title: 'Empty CSV', text: 'CSV contains no data rows.' });
                     setIsFileValid(false);
-                    hasError = true;
+                    return;
+                }
 
+                // Ensure at least the required header (reference_id) exists
+                const normalizedHeaders = csvHeadersArr.map(h => normalizeKey(h));
+                if (!normalizedHeaders.includes('reference_id')) {
                     Swal.fire({
                         icon: 'error',
-                        title: 'Error',
-                        text: `Row ${index + 1} is incomplete. "Reference ID" is required.`,
+                        title: 'Missing Header',
+                        text: 'CSV must include a "Reference ID" column (header).',
                     });
+                    setIsFileValid(false);
                     return;
-                } else {
+                }
+
+                const newData = [];
+                let hasError = false;
+
+                parsedData.forEach((row, idx) => {
+                    // idx = 0 -> first data row; CSV line number = idx + 2 (header is line 1)
+                    const csvLineNumber = idx + 2;
+                    const values = Object.values(row).map(v => (v == null ? '' : String(v).trim()));
+                    const allEmpty = values.every(v => v === '');
+                    if (allEmpty) {
+                        console.log(`Skipping CSV line ${csvLineNumber}: empty row.`);
+                        return; // skip entirely empty rows
+                    }
+
+                    if (!row.reference_id || String(row.reference_id).trim() === '') {
+                        // invalid row
+                        console.log('Invalid row (missing reference_id):', row);
+                        setIsFileValid(false);
+                        hasError = true;
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            // report the CSV line number for clarity
+                            text: `CSV line ${csvLineNumber} is incomplete. "Reference ID" is required.`,
+                        });
+                        return;
+                    }
+
+                    // Clean keys/values
                     let cleaned = cleanFieldNames(row);
 
-                    if (type === "court") {
-                        // 🔹 Transform into desired format
+                    if (type === 'court') {
                         cleaned = {
                             courtTable: [
                                 {
                                     courtCheckType: "Civil",
                                     jurisdiction: cleaned.civil_jurisdiction || "City Civil Court",
-                                    location: cleaned.civil_location,
-                                    verificationResult: cleaned.civil_verification_result
+                                    location: cleaned.civil_location || '',
+                                    verificationResult: cleaned.civil_verification_result || ''
                                 },
                                 {
                                     courtCheckType: "Magistrate",
                                     jurisdiction: cleaned.magistrate_jurisdiction || "Chief Judicial Magistrate",
-                                    location: cleaned.magistrate_location,
-                                    verificationResult: cleaned.magistrate_verification_result
+                                    location: cleaned.magistrate_location || '',
+                                    verificationResult: cleaned.magistrate_verification_result || ''
                                 },
                                 {
                                     courtCheckType: "Sessions",
                                     jurisdiction: cleaned.sessions_jurisdiction || "District & Session Court",
-                                    location: cleaned.sessions_location,
-                                    verificationResult: cleaned.sessions_verification_result
+                                    location: cleaned.sessions_location || '',
+                                    verificationResult: cleaned.sessions_verification_result || ''
                                 },
                                 {
                                     courtCheckType: "High Court",
                                     jurisdiction: cleaned.high_court_jurisdiction || "Karnataka High Court",
-                                    location: cleaned.high_court_location,
-                                    verificationResult: cleaned.high_court_verification_result
+                                    location: cleaned.high_court_location || '',
+                                    verificationResult: cleaned.high_court_verification_result || ''
                                 }
                             ],
                             reference_id: cleaned.reference_id,
-                            full_name: cleaned.full_name,
-                            fathers_name: cleaned.fathers_name,
-                            date_of_birth: cleaned.date_of_birth,
-                            permanent_address: cleaned.permanent_address,
-                            current_address: cleaned.current_address,
-                            number_of_years_search: cleaned.number_of_years_search,
-                            date_of_verification: cleaned.date_of_verification,
-                            verification_status: cleaned.verification_status
+                            full_name: cleaned.full_name || '',
+                            fathers_name: cleaned.fathers_name || '',
+                            date_of_birth: cleaned.date_of_birth || '',
+                            permanent_address: cleaned.permanent_address || '',
+                            current_address: cleaned.current_address || '',
+                            number_of_years_search: cleaned.number_of_years_search || '',
+                            date_of_verification: cleaned.date_of_verification || '',
+                            verification_status: cleaned.verification_status || ''
                         };
                     }
 
                     newData.push(cleaned);
+                });
+
+                if (hasError) {
+                    console.log("Errors found. Not processing file further.");
+                    return;
                 }
-            });
 
-            if (hasError) {
-                console.log("Errors found. Not processing file further.");
-                return;
+                if (type === "court") {
+                    setCourtData(newData);
+                } else {
+                    setPoliceData(newData);
+                }
+
+                console.log("Processed and set valid data:", newData);
+            } catch (err) {
+                console.error("Failed to read/parse CSV:", err);
+                setIsFileValid(false);
+                Swal.fire({ icon: 'error', title: 'Parsing Error', text: 'There was a problem parsing the CSV file. Please ensure it is well-formed.' });
             }
-
-            if (type === "court") {
-                setCourtData(newData);
-            } else {
-                setPoliceData(newData);
-            }
-
-            console.log("Processed and set valid data:", newData);
         };
 
-        reader.readAsText(file);
-    } else {
-        console.log("Invalid file type selected.");
-        Swal.fire({
-            icon: 'error',
-            title: 'Invalid File',
-            text: 'Please upload a valid CSV file.',
-        });
-    }
-};
+        reader.onerror = (err) => {
+            console.error('FileReader error:', err);
+            setIsFileValid(false);
+            Swal.fire({ icon: 'error', title: 'Read Error', text: 'Unable to read file. Try again.' });
+        };
+
+        reader.readAsText(file, 'UTF-8');
+    };
     const downloadSampleFile = () => {
         const sampleFile = "/police-record.csv"; // make sure this file exists in public/
 
@@ -3181,117 +3312,126 @@ const InactiveClients = () => {
                             />
                         </div>
 
-                        <div className="overflow-x-auto">
-                            <table className="min-w-full border border-gray-300">
-                                <thead className="bg-gray-100">
-                                    <tr>
+                        <div className="table-container rounded-lg">
+                            {/* Top Scroll */}
+                            <div className="top-scroll" ref={topScrollRef} onScroll={syncScroll}>
+                                <div className="top-scroll-inner" style={{ width: scrollWidth }} />
+                            </div>
 
-                                        <th className="px-4 me-2 py-2 border"><input
-                                            type="checkbox"
-                                            checked={
-                                                paginatedData.length > 0 &&
-                                                selectedRows.length === paginatedData.length
-                                            }
-                                            onChange={handleSelectAll}
-                                        /> SR.</th>
-                                        <th className="px-4 py-2 border">Full Name</th>
-                                        <th className="px-4 py-2 border">Reference Id</th>
-                                        <th className="px-4 py-2 border">EXPORT FORMAT</th>
-                                        <th className="px-4 py-2 border">TYPE</th>
-                                        <th className="px-4 py-2 border">DATA</th>
-                                        <th className="px-4 py-2 border">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {paginatedData.map((row, index) => {
-                                        const parsedData = JSON.parse(row.data);
-                                        return (
-                                            <tr key={row.id} className="bg-white">
+                            {/* Actual Table Scroll */}
+                            <div className="table-scroll rounded-lg" ref={tableScrollRef} onScroll={syncScroll}>
 
-                                                <td className="border text-center px-2 py-2">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={selectedRows.includes(row.id)}
-                                                        onChange={() => handleCheckboxChange(row.id)}
-                                                    />  {index + 1 + (currentPage - 1) * rowsPerPage}
-                                                </td>
-                                                <td className="border text-center px-2 py-2">
-                                                    {parsedData.full_name || parsedData.candidateName || "N/A"}
-                                                </td>
-                                                <td className="border text-center px-2 py-2">
-                                                    {parsedData.reference_id || "N/A"}
-                                                </td>
-                                                <td className="border px-2 uppercase py-2 text-center">
-                                                    {row.export_format || "N/A"}
-                                                </td>
-                                                <td className="border px-2 py-2 text-center">
-                                                    {row.type || "N/A"}
-                                                </td>
-                                                <td className="border px-2 py-2 text-center">
-                                                    <button
-                                                        className="p-6 py-3 font-bold whitespace-nowrap transition duration-200 text-white rounded-md bg-sky-500 hover:bg-sky-600 hover:scale-105"
-                                                        onClick={() => handleSave(row)}
-                                                    >
-                                                        Save
-                                                    </button>
-                                                </td>
-                                                <td className="border px-2 py-2 text-center">
-                                                    <div className="flex gap-4 justify-center items-center">
+                                <table className="min-w-full border border-gray-300">
+                                    <thead className="bg-gray-100">
+                                        <tr>
+
+                                            <th className="px-4 me-2 py-2 border"><input
+                                                type="checkbox"
+                                                checked={
+                                                    paginatedData.length > 0 &&
+                                                    selectedRows.length === paginatedData.length
+                                                }
+                                                onChange={handleSelectAll}
+                                            /> SR.</th>
+                                            <th className="px-4 py-2 border">Full Name</th>
+                                            <th className="px-4 py-2 border">Reference Id</th>
+                                            <th className="px-4 py-2 border">EXPORT FORMAT</th>
+                                            <th className="px-4 py-2 border">TYPE</th>
+                                            <th className="px-4 py-2 border">DATA</th>
+                                            <th className="px-4 py-2 border">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {paginatedData.map((row, index) => {
+                                            const parsedData = JSON.parse(row.data);
+                                            return (
+                                                <tr key={row.id} className="bg-white">
+
+                                                    <td className="border text-center px-2 py-2">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedRows.includes(row.id)}
+                                                            onChange={() => handleCheckboxChange(row.id)}
+                                                        />  {index + 1 + (currentPage - 1) * rowsPerPage}
+                                                    </td>
+                                                    <td className="border text-center px-2 py-2">
+                                                        {parsedData.full_name || parsedData.candidateName || "N/A"}
+                                                    </td>
+                                                    <td className="border text-center px-2 py-2">
+                                                        {parsedData.reference_id || "N/A"}
+                                                    </td>
+                                                    <td className="border px-2 uppercase py-2 text-center">
+                                                        {row.export_format || "N/A"}
+                                                    </td>
+                                                    <td className="border px-2 py-2 text-center">
+                                                        {row.type || "N/A"}
+                                                    </td>
+                                                    <td className="border px-2 py-2 text-center">
                                                         <button
-                                                            onClick={() => handleEdit(row)}
-                                                            className={`p-6 py-3 font-bold whitespace-nowrap transition duration-200 text-white rounded-md
+                                                            className="p-6 py-3 font-bold whitespace-nowrap transition duration-200 text-white rounded-md bg-sky-500 hover:bg-sky-600 hover:scale-105"
+                                                            onClick={() => handleSave(row)}
+                                                        >
+                                                            Save
+                                                        </button>
+                                                    </td>
+                                                    <td className="border px-2 py-2 text-center">
+                                                        <div className="flex gap-4 justify-center items-center">
+                                                            <button
+                                                                onClick={() => handleEdit(row)}
+                                                                className={`p-6 py-3 font-bold whitespace-nowrap transition duration-200 text-white rounded-md
                         ${editData === row
-                                                                    ? "bg-orange-500 hover:bg-orange-600 hover:scale-105"
-                                                                    : "bg-green-500 hover:bg-green-600 hover:scale-105"
-                                                                }`}
-                                                        >
-                                                            {editData === row ? "Cancel" : "Edit"}
-                                                        </button>
+                                                                        ? "bg-orange-500 hover:bg-orange-600 hover:scale-105"
+                                                                        : "bg-green-500 hover:bg-green-600 hover:scale-105"
+                                                                    }`}
+                                                            >
+                                                                {editData === row ? "Cancel" : "Edit"}
+                                                            </button>
 
-                                                        <button
-                                                            onClick={() => handleApplicationDelete(row.id)}
-                                                            className={`p-6 py-3 font-bold whitespace-nowrap transition duration-200 text-white rounded-md bg-red-500 hover:bg-red-600 hover:scale-105 ${deleteLoading === row.id
-                                                                ? "opacity-50 cursor-not-allowed"
-                                                                : ""
-                                                                }`}
-                                                            disabled={deleteLoading === row.id}
-                                                        >
-                                                            {deleteLoading === row.id ? " Deleting..." : " Delete"}
-                                                        </button>
-                                                    </div>
+                                                            <button
+                                                                onClick={() => handleApplicationDelete(row.id)}
+                                                                className={`p-6 py-3 font-bold whitespace-nowrap transition duration-200 text-white rounded-md bg-red-500 hover:bg-red-600 hover:scale-105 ${deleteLoading === row.id
+                                                                    ? "opacity-50 cursor-not-allowed"
+                                                                    : ""
+                                                                    }`}
+                                                                disabled={deleteLoading === row.id}
+                                                            >
+                                                                {deleteLoading === row.id ? " Deleting..." : " Delete"}
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                        {paginatedData.length === 0 && (
+                                            <tr>
+                                                <td colSpan={8} className="text-center py-4 text-gray-500">
+                                                    No rows added yet.
                                                 </td>
                                             </tr>
-                                        );
-                                    })}
-                                    {paginatedData.length === 0 && (
-                                        <tr>
-                                            <td colSpan={8} className="text-center py-4 text-gray-500">
-                                                No rows added yet.
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
+                                        )}
+                                    </tbody>
+                                </table>
 
-                            {/* Pagination */}
-                            <div className="flex justify-between items-center mt-4">
-                                <button
-                                    onClick={() => handlePageChange(currentPage - 1)}
-                                    disabled={currentPage === 1}
-                                    className="px-4 py-2 bg-gray-300 text-gray-600 rounded hover:bg-gray-400"
-                                >
-                                    Previous
-                                </button>
-                                <span className="text-gray-700">
-                                    Page {currentPage} of {totalPages}
-                                </span>
-                                <button
-                                    onClick={() => handlePageChange(currentPage + 1)}
-                                    disabled={currentPage === totalPages}
-                                    className="px-4 py-2 bg-gray-300 text-gray-600 rounded hover:bg-gray-400"
-                                >
-                                    Next
-                                </button>
+                                {/* Pagination */}
+                                <div className="flex justify-between items-center mt-4">
+                                    <button
+                                        onClick={() => handlePageChange(currentPage - 1)}
+                                        disabled={currentPage === 1}
+                                        className="px-4 py-2 bg-gray-300 text-gray-600 rounded hover:bg-gray-400"
+                                    >
+                                        Previous
+                                    </button>
+                                    <span className="text-gray-700">
+                                        Page {currentPage} of {totalPages}
+                                    </span>
+                                    <button
+                                        onClick={() => handlePageChange(currentPage + 1)}
+                                        disabled={currentPage === totalPages}
+                                        className="px-4 py-2 bg-gray-300 text-gray-600 rounded hover:bg-gray-400"
+                                    >
+                                        Next
+                                    </button>
+                                </div>
                             </div>
                         </div>
                         {isModalOpen && (
