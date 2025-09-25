@@ -3758,6 +3758,8 @@ const GenerateReport = () => {
                                         type="text"
                                         id="delay_reason"
                                         name="delay_reason"
+                                        className="uppercase border w-full rounded-md p-2 mt-2"
+
                                         value={formData.updated_json?.insuffDetails?.delay_reason || ""}
                                         onChange={(e) =>
                                             setFormData((prev) => ({
