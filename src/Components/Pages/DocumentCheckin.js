@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState,useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { jsPDF } from "jspdf";
 import "jspdf-autotable";
@@ -25,6 +25,18 @@ const DocumentCheckin = () => {
     const [loading, setLoading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedServiceData, setSelectedServiceData] = useState(null);
+   const tableScrollRef = useRef(null);
+    const topScrollRef = useRef(null);
+    const [scrollWidth, setScrollWidth] = useState("100%");
+
+    // 🔹 Sync scroll positions
+    const syncScroll = (e) => {
+        if (e.target === topScrollRef.current) {
+            tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+        } else {
+            topScrollRef.current.scrollLeft = e.target.scrollLeft;
+        }
+    };
 
     const [serviceresults, setServiceresults] = useState([]);
 
@@ -37,7 +49,7 @@ const DocumentCheckin = () => {
 
     const [currentPage, setCurrentPage] = useState(1);
     const [rowsPerPage, setRowsPerPage] = useState(10);
-    const optionsPerPage = [10, 50, 100, 200,500,1000]; const totalPages = Math.ceil(data.length / rowsPerPage);
+    const optionsPerPage = [10, 50, 100, 200, 500, 1000]; const totalPages = Math.ceil(data.length / rowsPerPage);
     const paginatedData = data.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
     const colorNames = ['red', 'green', 'blue', 'yellow', 'orange', 'purple', 'pink'];
     const getColorStyle = (status) => {
@@ -326,14 +338,14 @@ const DocumentCheckin = () => {
     };
 
 
- const handleViewDocuments = (serviceData) => {
+    const handleViewDocuments = (serviceData) => {
         const commaSeparatedData = Object.values(serviceData).join(', ');
         console.log('Comma Separated serviceData:', commaSeparatedData);
 
         setSelectedServiceData(serviceData);
         setIsModalOpen(true);
     };
-   const fetchImageToBase = async (imageUrls) => {
+    const fetchImageToBase = async (imageUrls) => {
         setApiLoading(true);
         try {
             const response = await axios.post(
@@ -367,115 +379,115 @@ const DocumentCheckin = () => {
         }
     };
     const handleDownloadAllFiles = async (attachments) => {
-           const zip = new JSZip();
-           console.log("📁 Initialized new JSZip instance.");
-   
-           try {
-               // Step 1: Convert comma-separated string to array
-               const fileUrls = attachments
-                   .split(",")
-                   .map(url => url.trim())
-                   .filter(Boolean);
-               console.log("🔗 Extracted file URLs:", fileUrls);
-   
-               if (fileUrls.length === 0) {
-                   console.warn("⚠️ No valid image URLs found.");
-                   return;
-               }
-   
-               // Step 2: Fetch Base64 for all image URLs
-               console.log("📡 Fetching Base64 representations of images...");
-               const base64Response = await fetchImageToBase(fileUrls);
-               const base64Images = base64Response || [];
-               console.log("🖼️ Received Base64 images:", base64Images);
-   
-               if (base64Images.length === 0) {
-                   console.error("❌ No images received from API.");
-                   return;
-               }
-   
-               // Step 3: Add each image to ZIP
-               for (let i = 0; i < fileUrls.length; i++) {
-                   const url = fileUrls[i];
-                   const imageData = base64Images.find(img => img.url === url);
-                   console.log('base64Images', base64Images)
-   
-                   console.log('url', url)
-                   console.log(`🔍 Processing image ${i + 1}/${fileUrls.length} - URL: ${url}`);
-                   console.log("📦 Matched image data:", imageData);
-   
-                   if (imageData && imageData.base64) {
-                       const base64Data = imageData.base64.split(",")[1];
-                       const blob = base64ToBlob(base64Data, imageData.type);
-   
-                       if (blob) {
-                           const fileName = `${imageData.fileName}`;
-                           zip.file(fileName, blob);
-                           console.log(`✅ Added to ZIP: ${fileName}`);
-                       } else {
-                           console.warn(`⚠️ Failed to create blob for: ${url}`);
-                       }
-                   } else {
-                       console.warn(`⚠️ Skipping invalid or missing Base64 data for URL: ${url}`);
-                   }
-               }
-   
-               // Step 4: Generate and trigger ZIP download
-               console.log("🛠️ Generating ZIP file...");
-               const zipContent = await zip.generateAsync({ type: "blob" });
-               saveAs(zipContent, "attachments.zip");
-               console.log("✅ ZIP file downloaded successfully!");
-   
-           } catch (error) {
-               console.error("❌ Error generating ZIP:", error);
-           }
-       };
-   
-   
-   
-       const handleDownloadFile = async (url) => {
-           try {
-               console.log("🔄 Starting download process...");
-               console.log("📥 Downloading file from:", url);
-   
-               const base64Response = await fetchImageToBase([url]);
-               console.log("✅ Received base64 response:", base64Response);
-   
-               if (!base64Response || base64Response.length === 0) {
-                   throw new Error("No image data received.");
-               }
-   
-               const imageData = base64Response.find(img => img.url === url);
-               console.log("🔍 Found image data:", imageData);
-   
-               if (!imageData || !imageData.base64) {
-                   throw new Error("Invalid Base64 data.");
-               }
-   
-               const base64Data = imageData.base64.split(",")[1];
-               console.log("📦 Extracted base64 content.");
-   
-               const byteCharacters = atob(base64Data);
-               const byteNumbers = new Uint8Array(byteCharacters.length);
-   
-               for (let i = 0; i < byteCharacters.length; i++) {
-                   byteNumbers[i] = byteCharacters.charCodeAt(i);
-               }
-   
-               console.log("🧱 Converted base64 to byte array.");
-   
-               const blob = new Blob([byteNumbers], { type: `image/${imageData.type}` });
-               console.log("🗂️ Created Blob object.");
-   
-               const fileName = imageData.fileName;
-               console.log("📄 Extracted file name:", fileName);
-   
-               saveAs(blob, fileName);
-               console.log("✅ File download triggered successfully!");
-           } catch (error) {
-               console.error("❌ Error during download process:", error);
-           }
-       };
+        const zip = new JSZip();
+        console.log("📁 Initialized new JSZip instance.");
+
+        try {
+            // Step 1: Convert comma-separated string to array
+            const fileUrls = attachments
+                .split(",")
+                .map(url => url.trim())
+                .filter(Boolean);
+            console.log("🔗 Extracted file URLs:", fileUrls);
+
+            if (fileUrls.length === 0) {
+                console.warn("⚠️ No valid image URLs found.");
+                return;
+            }
+
+            // Step 2: Fetch Base64 for all image URLs
+            console.log("📡 Fetching Base64 representations of images...");
+            const base64Response = await fetchImageToBase(fileUrls);
+            const base64Images = base64Response || [];
+            console.log("🖼️ Received Base64 images:", base64Images);
+
+            if (base64Images.length === 0) {
+                console.error("❌ No images received from API.");
+                return;
+            }
+
+            // Step 3: Add each image to ZIP
+            for (let i = 0; i < fileUrls.length; i++) {
+                const url = fileUrls[i];
+                const imageData = base64Images.find(img => img.url === url);
+                console.log('base64Images', base64Images)
+
+                console.log('url', url)
+                console.log(`🔍 Processing image ${i + 1}/${fileUrls.length} - URL: ${url}`);
+                console.log("📦 Matched image data:", imageData);
+
+                if (imageData && imageData.base64) {
+                    const base64Data = imageData.base64.split(",")[1];
+                    const blob = base64ToBlob(base64Data, imageData.type);
+
+                    if (blob) {
+                        const fileName = `${imageData.fileName}`;
+                        zip.file(fileName, blob);
+                        console.log(`✅ Added to ZIP: ${fileName}`);
+                    } else {
+                        console.warn(`⚠️ Failed to create blob for: ${url}`);
+                    }
+                } else {
+                    console.warn(`⚠️ Skipping invalid or missing Base64 data for URL: ${url}`);
+                }
+            }
+
+            // Step 4: Generate and trigger ZIP download
+            console.log("🛠️ Generating ZIP file...");
+            const zipContent = await zip.generateAsync({ type: "blob" });
+            saveAs(zipContent, "attachments.zip");
+            console.log("✅ ZIP file downloaded successfully!");
+
+        } catch (error) {
+            console.error("❌ Error generating ZIP:", error);
+        }
+    };
+
+
+
+    const handleDownloadFile = async (url) => {
+        try {
+            console.log("🔄 Starting download process...");
+            console.log("📥 Downloading file from:", url);
+
+            const base64Response = await fetchImageToBase([url]);
+            console.log("✅ Received base64 response:", base64Response);
+
+            if (!base64Response || base64Response.length === 0) {
+                throw new Error("No image data received.");
+            }
+
+            const imageData = base64Response.find(img => img.url === url);
+            console.log("🔍 Found image data:", imageData);
+
+            if (!imageData || !imageData.base64) {
+                throw new Error("Invalid Base64 data.");
+            }
+
+            const base64Data = imageData.base64.split(",")[1];
+            console.log("📦 Extracted base64 content.");
+
+            const byteCharacters = atob(base64Data);
+            const byteNumbers = new Uint8Array(byteCharacters.length);
+
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+
+            console.log("🧱 Converted base64 to byte array.");
+
+            const blob = new Blob([byteNumbers], { type: `image/${imageData.type}` });
+            console.log("🗂️ Created Blob object.");
+
+            const fileName = imageData.fileName;
+            console.log("📄 Extracted file name:", fileName);
+
+            saveAs(blob, fileName);
+            console.log("✅ File download triggered successfully!");
+        } catch (error) {
+            console.error("❌ Error during download process:", error);
+        }
+    };
 
 
     const handleCloseModal = () => {
@@ -553,12 +565,16 @@ const DocumentCheckin = () => {
         data.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
     console.log('filteredData', filteredData)
-
+        useEffect(() => {
+    if (tableScrollRef.current) {
+      setScrollWidth(tableScrollRef.current.scrollWidth + "px");
+    }
+  }, [filteredData, loading]); 
 
     const handleGoBack = () => {
         navigate('/admin-documents');
     };
-console.log('selectedServiceData-- ',selectedServiceData)
+    console.log('selectedServiceData-- ', selectedServiceData)
     return (
         <div className="bg-[#c1dff2]">
             <h2 className="md:text-2xl text-xl font-bold py-3 text-left text-[#4d606b] px-3 border">APPLICATION DOCUMENT CHECKIN - {parentName}</h2>
@@ -608,105 +624,113 @@ console.log('selectedServiceData-- ',selectedServiceData)
                     </div>
                 </div>
 
-                <div className="rounded-lg overflow-scroll">
-                    <table className="min-w-full border-collapse border border-black overflow-scroll rounded-lg whitespace-nowrap">
-                        <thead className='rounded-lg'>
-                            <tr className="bg-[#c1dff2] text-[#4d606b]">
-                                <th className="uppercase border border-black px-4 py-2">SL NO</th>
-                                <th className="uppercase border border-black px-4 py-2">Date of Initiation</th>
-                                <th className="uppercase border border-black px-4 py-2">Employe Id</th>
-                                <th className="uppercase border border-black px-4 py-2">Reference Id</th>
-                                <th className="uppercase border border-black px-4 py-2">Photo</th>
-                                <th className="uppercase border border-black px-4 py-2">Name Of Applicant</th>
-                                <th className="uppercase border border-black px-4 py-2">View Docs</th>
-                                <th className="uppercase border border-black px-4 py-2">SCOPE OF SERVICES</th>
-                                {expandedRow && expandedRow.headingsAndStatuses && expandedRow.headingsAndStatuses.length > 0 && expandedRow.headingsAndStatuses.map((item, idx) => (
-                                    <th key={idx} className="border border-black px-4 py-2 uppercase" style={getColorStyle(item.heading)}>
-                                        {isValidDate(item.heading) ? formatDate(item.heading) : sanitizeText(item.heading)}
-                                    </th>
-                                ))}
+              <div className="table-container rounded-lg">
+                    {/* Top Scroll */}
+                    <div className="top-scroll" ref={topScrollRef} onScroll={syncScroll}>
+                        <div className="top-scroll-inner" style={{ width: scrollWidth }} />
+                    </div>
 
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {loading ? (
-
-                                <tr>
-                                    <td colSpan={17} className="py-4 text-center text-gray-500">
-                                        <Loader className="text-center" />
-                                    </td>
-                                </tr>
-                            ) : filteredData.length === 0 ? (
-                                <tr>
-                                    <td colSpan={17} className="py-4 text-center text-gray-500">
-                                        No data available in table
-                                    </td>
-                                </tr>
-                            ) : (
-                                <>
-                                    {filteredData.map((data, index) => (
-                                        <React.Fragment key={data.id}>
-                                            <tr className="text-center">
-                                                <td className="border border-black px-4 py-2">{index + 1}</td>
-                                                <td className="border border-black px-4 py-2">{new Date(data.created_at).toLocaleDateString('en-GB').replace(/\//g, '-')}</td>
-                                                <td className="border border-black px-4 py-2">{data.employee_id || 'NIL'}</td>
-                                                <td className="border border-black px-4 py-2">{data.application_id || 'NIL'}</td>
-                                                <td className="border border-black px-4 py-2">
-                                                    <div className='flex justify-center'>
-                                                        <img src={data.photo ? data.photo : `${Default}`}
-                                                            alt={data.name || 'No name available'}
-                                                            className="w-10 h-10 rounded-full" />
-                                                    </div>
-                                                </td>
-                                                <td className="border border-black px-4 py-2">{data.name || 'NIL'}</td>
-                                                <td className="border border-black px-4 text-center py-2">
-
-                                                   <button
-                                                        className={`px-4 py-2 rounded ${hasAnnexureDocuments(data.attach_documents)
-                                                            ? 'bg-[#073d88] text-white hover:bg-[#05275c]'
-                                                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                                            }`}
-                                                        onClick={() =>
-                                                            hasAnnexureDocuments(data.attach_documents) &&
-                                                            handleViewDocuments(data.attach_documents)
-                                                        }
-                                                        disabled={!hasAnnexureDocuments(data.attach_documents)}
-                                                    >
-                                                        View Docs
-                                                    </button>
-
-                                                </td>
-                                                <td className="border border-black px-4 text-center py-2">
-                                                    <button
-                                                        className={`bg-[#2c81ba]     ${expandedRow.index === data.main_id ? ' bg-red-600 hover:bg-red-800 ' : 'bg-[#2c81ba] hover:bg-[#073d88] '} text-white transition-all duration-300 ease-in-out transform hover:scale-105 rounded px-4 py-2 ${servicesLoading == data.main_id ? 'opacity-50 cursor-not-allowed' : ''} `}
-                                                        onClick={() => !servicesLoading && handleViewMore(data.main_id)} // Prevent clicks during loading
-                                                        disabled={servicesLoading == data.main_id} // Disable button when loading
-                                                    >
-                                                        {expandedRow.index === data.main_id
-                                                            ? 'Hide Scope Of Services'
-                                                            : 'Show Scope Of Services'}
-                                                    </button>
-                                                </td>
-
-
-                                                {expandedRow.index === data.main_id && expandedRow.headingsAndStatuses.length > 0 && expandedRow.headingsAndStatuses.map((item, idx) => (
-                                                    <th
-                                                        key={idx} // Ensure unique key for each element
-                                                        className="border border-black px-4 py-2 uppercase"
-                                                        style={getColorStyle(item.status)} // Apply dynamic styles based on status
-                                                    >
-                                                        {isValidDate(item.status)
-                                                            ? formatDate(item.status)
-                                                            : sanitizeText(item.status)}
-                                                    </th>
-                                                ))}
-                                            </tr>
-                                        </React.Fragment>
+                    {/* Actual Table Scroll */}
+                    <div className="table-scroll rounded-lg" ref={tableScrollRef} onScroll={syncScroll}>
+                        <table className="min-w-full border-collapse border border-black overflow-scroll rounded-lg whitespace-nowrap">
+                            <thead className='rounded-lg'>
+                                <tr className="bg-[#c1dff2] text-[#4d606b]">
+                                    <th className="uppercase border border-black px-4 py-2">SL NO</th>
+                                    <th className="uppercase border border-black px-4 py-2">Date of Initiation</th>
+                                    <th className="uppercase border border-black px-4 py-2">Employe Id</th>
+                                    <th className="uppercase border border-black px-4 py-2">Reference Id</th>
+                                    <th className="uppercase border border-black px-4 py-2">Photo</th>
+                                    <th className="uppercase border border-black px-4 py-2">Name Of Applicant</th>
+                                    <th className="uppercase border border-black px-4 py-2">View Docs</th>
+                                    <th className="uppercase border border-black px-4 py-2">SCOPE OF SERVICES</th>
+                                    {expandedRow && expandedRow.headingsAndStatuses && expandedRow.headingsAndStatuses.length > 0 && expandedRow.headingsAndStatuses.map((item, idx) => (
+                                        <th key={idx} className="border border-black px-4 py-2 uppercase" style={getColorStyle(item.heading)}>
+                                            {isValidDate(item.heading) ? formatDate(item.heading) : sanitizeText(item.heading)}
+                                        </th>
                                     ))}
-                                </>
-                            )}
-                        </tbody>
-                    </table>
+
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {loading ? (
+
+                                    <tr>
+                                        <td colSpan={17} className="py-4 text-center text-gray-500">
+                                            <Loader className="text-center" />
+                                        </td>
+                                    </tr>
+                                ) : filteredData.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={17} className="py-4 text-center text-gray-500">
+                                            No data available in table
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    <>
+                                        {filteredData.map((data, index) => (
+                                            <React.Fragment key={data.id}>
+                                                <tr className="text-center">
+                                                    <td className="border border-black px-4 py-2">{index + 1}</td>
+                                                    <td className="border border-black px-4 py-2">{new Date(data.created_at).toLocaleDateString('en-GB').replace(/\//g, '-')}</td>
+                                                    <td className="border border-black px-4 py-2">{data.employee_id || 'NIL'}</td>
+                                                    <td className="border border-black px-4 py-2">{data.application_id || 'NIL'}</td>
+                                                    <td className="border border-black px-4 py-2">
+                                                        <div className='flex justify-center'>
+                                                            <img src={data.photo ? data.photo : `${Default}`}
+                                                                alt={data.name || 'No name available'}
+                                                                className="w-10 h-10 rounded-full" />
+                                                        </div>
+                                                    </td>
+                                                    <td className="border border-black px-4 py-2">{data.name || 'NIL'}</td>
+                                                    <td className="border border-black px-4 text-center py-2">
+
+                                                        <button
+                                                            className={`px-4 py-2 rounded ${hasAnnexureDocuments(data.attach_documents)
+                                                                ? 'bg-[#073d88] text-white hover:bg-[#05275c]'
+                                                                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                                                }`}
+                                                            onClick={() =>
+                                                                hasAnnexureDocuments(data.attach_documents) &&
+                                                                handleViewDocuments(data.attach_documents)
+                                                            }
+                                                            disabled={!hasAnnexureDocuments(data.attach_documents)}
+                                                        >
+                                                            View Docs
+                                                        </button>
+
+                                                    </td>
+                                                    <td className="border border-black px-4 text-center py-2">
+                                                        <button
+                                                            className={`bg-[#2c81ba]     ${expandedRow.index === data.main_id ? ' bg-red-600 hover:bg-red-800 ' : 'bg-[#2c81ba] hover:bg-[#073d88] '} text-white transition-all duration-300 ease-in-out transform hover:scale-105 rounded px-4 py-2 ${servicesLoading == data.main_id ? 'opacity-50 cursor-not-allowed' : ''} `}
+                                                            onClick={() => !servicesLoading && handleViewMore(data.main_id)} // Prevent clicks during loading
+                                                            disabled={servicesLoading == data.main_id} // Disable button when loading
+                                                        >
+                                                            {expandedRow.index === data.main_id
+                                                                ? 'Hide Scope Of Services'
+                                                                : 'Show Scope Of Services'}
+                                                        </button>
+                                                    </td>
+
+
+                                                    {expandedRow.index === data.main_id && expandedRow.headingsAndStatuses.length > 0 && expandedRow.headingsAndStatuses.map((item, idx) => (
+                                                        <th
+                                                            key={idx} // Ensure unique key for each element
+                                                            className="border border-black px-4 py-2 uppercase"
+                                                            style={getColorStyle(item.status)} // Apply dynamic styles based on status
+                                                        >
+                                                            {isValidDate(item.status)
+                                                                ? formatDate(item.status)
+                                                                : sanitizeText(item.status)}
+                                                        </th>
+                                                    ))}
+                                                </tr>
+                                            </React.Fragment>
+                                        ))}
+                                    </>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
                 <div className="flex justify-between items-center mt-4">
                     <button
@@ -729,56 +753,56 @@ console.log('selectedServiceData-- ',selectedServiceData)
                 </div>
             </div>
             {isModalOpen && selectedServiceData && (
-                
-                  <Modal
-                                     isOpen={true}
-                                     className="custom-modal-content md:max-h-fit max-h-96"
-                                     overlayClassName="custom-modal-overlay"
-                                     onRequestClose={handleCloseModal}
-                                 >
-                                     <div className="modal-container md:overscroll-none md:overflow-y-auto  overflow-y-scroll ">
-                                         <h2 className="modal-title text-center my-4 text-2xl font-bold">Attachments</h2>
-                                         <div className='flex justify-end'>
-                                             <button
-                                                 className="modal-download-all bg-blue-500 text-white p-2  text-end w-fit rounded-md mb-4"
-                                                 onClick={() => handleDownloadAllFiles(selectedServiceData)}
-                                             >
-                                                 Download All
-                                             </button>
-                                         </div>
-                                         <ul className="modal-list h-[400px] overflow-scroll">
-                                             {selectedServiceData.split(',').map((url, idx) => (
-                                                 <li key={idx} className="grid  items-center border-b py-2">
-                                                     <div className="flex justify-between gap-2">
-                                                         <a
-                                                             href={url.trim()}
-                                                             target="_blank"
-                                                             rel="noopener noreferrer"
-                                                             className="modal-view-button w-auto m-0 bg-[#2c81ba] text-white p-2 rounded-md px-4 block text-center"
-                                                         >
-                                                             View {idx + 1}
-                                                         </a>
-                                                         <button
-                                                             onClick={() => handleDownloadFile(url.trim())}
-                                                             className="modal-download-button w-auto m-0 bg-[#4caf50] text-white p-2 rounded-md px-4 block text-center"
-                                                         >
-                                                             Download {idx + 1}
-                                                         </button>
-                                                     </div>
-                                                 </li>
-                                             ))}
-             
-                                         </ul>
-                                         <div className="modal-footer">
-                                             <button
-                                                 className="modal-close-button bg-red-500 text-white p-2 rounded-md mt-4"
-                                                 onClick={handleCloseModal}
-                                             >
-                                                 Close
-                                             </button>
-                                         </div>
-                                     </div>
-                                 </Modal>
+
+                <Modal
+                    isOpen={true}
+                    className="custom-modal-content md:max-h-fit max-h-96"
+                    overlayClassName="custom-modal-overlay"
+                    onRequestClose={handleCloseModal}
+                >
+                    <div className="modal-container md:overscroll-none md:overflow-y-auto  overflow-y-scroll ">
+                        <h2 className="modal-title text-center my-4 text-2xl font-bold">Attachments</h2>
+                        <div className='flex justify-end'>
+                            <button
+                                className="modal-download-all bg-blue-500 text-white p-2  text-end w-fit rounded-md mb-4"
+                                onClick={() => handleDownloadAllFiles(selectedServiceData)}
+                            >
+                                Download All
+                            </button>
+                        </div>
+                        <ul className="modal-list h-[400px] overflow-scroll">
+                            {selectedServiceData.split(',').map((url, idx) => (
+                                <li key={idx} className="grid  items-center border-b py-2">
+                                    <div className="flex justify-between gap-2">
+                                        <a
+                                            href={url.trim()}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="modal-view-button w-auto m-0 bg-[#2c81ba] text-white p-2 rounded-md px-4 block text-center"
+                                        >
+                                            View {idx + 1}
+                                        </a>
+                                        <button
+                                            onClick={() => handleDownloadFile(url.trim())}
+                                            className="modal-download-button w-auto m-0 bg-[#4caf50] text-white p-2 rounded-md px-4 block text-center"
+                                        >
+                                            Download {idx + 1}
+                                        </button>
+                                    </div>
+                                </li>
+                            ))}
+
+                        </ul>
+                        <div className="modal-footer">
+                            <button
+                                className="modal-close-button bg-red-500 text-white p-2 rounded-md mt-4"
+                                onClick={handleCloseModal}
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </Modal>
             )}
         </div >
 

@@ -14,6 +14,18 @@ const ClientSpoc = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true); // Loader statesetLoadingBtn
   const [loadingBtn, setLoadingBtn] = useState(false); // 
+     const tableScrollRef = useRef(null);
+    const topScrollRef = useRef(null);
+    const [scrollWidth, setScrollWidth] = useState("100%");
+
+    // 🔹 Sync scroll positions
+    const syncScroll = (e) => {
+        if (e.target === topScrollRef.current) {
+            tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+        } else {
+            topScrollRef.current.scrollLeft = e.target.scrollLeft;
+        }
+    };
 
   const [formData, setFormData] = useState({
     name: "",
@@ -197,8 +209,8 @@ const ClientSpoc = () => {
     const storedToken = localStorage.getItem("_token");
 
     if (!admin_id || !storedToken) {
-            setApiLoading(false);
-            setLoading(false);
+      setApiLoading(false);
+      setLoading(false);
       swal("Failed!", "Missing admin ID or authentication token. Please log in again.", "error");
       return;
     }
@@ -250,8 +262,8 @@ const ClientSpoc = () => {
         );
       } else {
         // Handle error from the backend
-            setApiLoading(false);
-            setLoading(false);
+        setApiLoading(false);
+        setLoading(false);
         const errorMessage = data.message || "An unexpected error occurred";
         swal("Failed!", errorMessage, "error");
         console.error("Failed to submit form:", errorMessage);
@@ -342,12 +354,12 @@ const ClientSpoc = () => {
     </div>
   );
   const handleCancel = () => {
-      fetchData();
-      setFormData({ name: "", designation: "", phone: "", email: "", email1: "", email2: "", email3: "", email4: "" });
-      setIsEditing(false);
-      setCurrentSpocId(null);
+    fetchData();
+    setFormData({ name: "", designation: "", phone: "", email: "", email1: "", email2: "", email3: "", email4: "" });
+    setIsEditing(false);
+    setCurrentSpocId(null);
   };
-  
+
   return (
 
     <div className="">
@@ -495,80 +507,96 @@ const ClientSpoc = () => {
                 onChange={handleSearch}
               />
             </div>
-            <div className="overflow-auto">
-              <table className="min-w-full border-collapse border border-black  rounded-lg">
-                <thead className="rounded-lg">
-                  <tr className="bg-[#c1dff2] text-[#4d606b] rounded-lg whitespace-nowrap">
-                    <th className="py-2 px-4 border border-black  uppercase">No.</th>
-                    <th className="py-2 px-4 border border-black uppercase">SPOC Name</th>
-                    <th className="py-2 px-4 border border-black uppercase">Designation</th>
-                    <th className="py-2 px-4 border border-black uppercase">Contact Number</th>
-                    <th className="py-2 px-4 border border-black uppercase">Email ID</th>
-                    <th className="py-2 px-4 border border-black border-b-0 uppercase">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
+            <div className="table-container rounded-lg">
+              {/* Top Scroll */}
+              <div
+                className="top-scroll"
+                ref={topScrollRef}
+                onScroll={syncScroll}
+              >
+                <div className="top-scroll-inner" style={{ width: tableScrollRef.current?.scrollWidth || "100%" }} />
+              </div>
 
-                  {loading ? (
-
-                    <tr>
-                      <td colSpan={6} className="py-4 text-center text-gray-500">
-                        <Loader className="text-center" />
-                      </td>
+              {/* Actual Table Scroll */}
+              <div
+                className="table-scroll rounded-lg"
+                ref={tableScrollRef}
+                onScroll={syncScroll}
+              >
+                <table className="min-w-full border-collapse border border-black  rounded-lg">
+                  <thead className="rounded-lg">
+                    <tr className="bg-[#c1dff2] text-[#4d606b] rounded-lg whitespace-nowrap">
+                      <th className="py-2 px-4 border border-black  uppercase">No.</th>
+                      <th className="py-2 px-4 border border-black uppercase">SPOC Name</th>
+                      <th className="py-2 px-4 border border-black uppercase">Designation</th>
+                      <th className="py-2 px-4 border border-black uppercase">Contact Number</th>
+                      <th className="py-2 px-4 border border-black uppercase">Email ID</th>
+                      <th className="py-2 px-4 border border-black border-b-0 uppercase">Actions</th>
                     </tr>
-                  ) : (
-                    <>
+                  </thead>
+                  <tbody>
 
-                      {currentSpocs.length === 0 ? (
-                        <tr>
-                          <td colSpan={6} className="py-4 text-center text-gray-500">
-                            Your Table Is Empty.
-                          </td>
-                        </tr>
-                      ) : (
-                        currentSpocs.map((spoc, index) => {
-                          const emails = [spoc.email, spoc.email1, spoc.email2, spoc.email3, spoc.email4].filter(email => email);
-                          const isExpanded = expandedSpoc === spoc.id;
-                          return (
-                            <tr key={spoc.id} className="hover:bg-gray-200">
-                              <td className="py-2 px-4 border border-black">{(currentPage - 1) * itemsPerPage + index + 1}</td>
-                              <td className="py-2 px-4 border border-black">{spoc.name}</td>
-                              <td className="py-2 px-4 border border-black">{spoc.designation}</td>
-                              <td className="py-2 px-4 border border-black">{spoc.phone}</td>
-                              <td className="py-2 px-4 border border-black">
-                                <span>
-                                  {isExpanded ? emails.join(', ') : emails[0]}
-                                </span>
-                                {emails.length > 1 && (
-                                  <button
-                                    className="text-blue-500 underline ml-2"
-                                    onClick={() => toggleExpand(spoc.id)}
-                                  >
-                                    {isExpanded ? 'View Less' : 'View More'}
+                    {loading ? (
+
+                      <tr>
+                        <td colSpan={6} className="py-4 text-center text-gray-500">
+                          <Loader className="text-center" />
+                        </td>
+                      </tr>
+                    ) : (
+                      <>
+
+                        {currentSpocs.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="py-4 text-center text-gray-500">
+                              Your Table Is Empty.
+                            </td>
+                          </tr>
+                        ) : (
+                          currentSpocs.map((spoc, index) => {
+                            const emails = [spoc.email, spoc.email1, spoc.email2, spoc.email3, spoc.email4].filter(email => email);
+                            const isExpanded = expandedSpoc === spoc.id;
+                            return (
+                              <tr key={spoc.id} className="hover:bg-gray-200">
+                                <td className="py-2 px-4 border border-black">{(currentPage - 1) * itemsPerPage + index + 1}</td>
+                                <td className="py-2 px-4 border border-black">{spoc.name}</td>
+                                <td className="py-2 px-4 border border-black">{spoc.designation}</td>
+                                <td className="py-2 px-4 border border-black">{spoc.phone}</td>
+                                <td className="py-2 px-4 border border-black">
+                                  <span>
+                                    {isExpanded ? emails.join(', ') : emails[0]}
+                                  </span>
+                                  {emails.length > 1 && (
+                                    <button
+                                      className="text-blue-500 underline ml-2"
+                                      onClick={() => toggleExpand(spoc.id)}
+                                    >
+                                      {isExpanded ? 'View Less' : 'View More'}
+                                    </button>
+                                  )}
+                                </td>
+                                <td className="py-3 px-4 border border-black border-x-0 border-b-0 flex gap-1">
+                                  <button className="bg-green-500 hover:scale-105 hover:bg-green-600  text-white px-4 py-2 rounded mr-2" onClick={() => handleEdit(spoc)}>
+                                    Edit
                                   </button>
-                                )}
-                              </td>
-                              <td className="py-3 px-4 border border-black border-x-0 border-b-0 flex gap-1">
-                                <button className="bg-green-500 hover:scale-105 hover:bg-green-600  text-white px-4 py-2 rounded mr-2" onClick={() => handleEdit(spoc)}>
-                                  Edit
-                                </button>
-                                <button
-                                  disabled={deletingId === spoc.id}
-                                  className={`bg-red-500 hover:scale-105 hover:bg-red-600  text-white px-4 py-2 rounded ${deletingId === spoc.id ? "opacity-50 cursor-not-allowed" : ""} `}
-                                  onClick={() => handleDelete(spoc.id)}>
-                                  {deletingId === spoc.id ? "Deleting..." : "Delete"}
-                                </button>
+                                  <button
+                                    disabled={deletingId === spoc.id}
+                                    className={`bg-red-500 hover:scale-105 hover:bg-red-600  text-white px-4 py-2 rounded ${deletingId === spoc.id ? "opacity-50 cursor-not-allowed" : ""} `}
+                                    onClick={() => handleDelete(spoc.id)}>
+                                    {deletingId === spoc.id ? "Deleting..." : "Delete"}
+                                  </button>
 
-                              </td>
-                            </tr>
-                          );
-                        })
-                      )}
-                    </>
-                  )}
-                </tbody>
-              </table>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </>
+                    )}
+                  </tbody>
+                </table>
 
+              </div>
             </div>
             <div className="flex justify-center mt-4">
               {Array.from({ length: totalPages }, (_, index) => (

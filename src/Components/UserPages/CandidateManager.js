@@ -14,7 +14,7 @@ const CandidateManager = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [tableCurrentPage, setTableCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  const optionsPerPage = [10, 50, 100, 200,500,1000]; const [loadingStates, setLoadingStates] = useState({});
+  const optionsPerPage = [10, 50, 100, 200, 500, 1000]; const [loadingStates, setLoadingStates] = useState({});
   const clientEditRef = useRef(null);
   const [currentPage, setCurrentPage] = useState(1);
   const entriesPerPage = 10;
@@ -35,7 +35,18 @@ const CandidateManager = () => {
   const [formData, setFormData] = useState({
 
   })
-  console.log('tableData is -', tableData)
+  const tableScrollRef = useRef(null);
+  const topScrollRef = useRef(null);
+  const [scrollWidth, setScrollWidth] = useState("100%");
+
+  // 🔹 Sync scroll positions
+  const syncScroll = (e) => {
+    if (e.target === topScrollRef.current) {
+      tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+    } else {
+      topScrollRef.current.scrollLeft = e.target.scrollLeft;
+    }
+  };
 
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [modalServices, setModalServices] = React.useState([]);
@@ -505,6 +516,12 @@ const CandidateManager = () => {
       setTableCurrentPage(page);
     }
   };
+
+  useEffect(() => {
+    if (tableScrollRef.current) {
+      setScrollWidth(tableScrollRef.current.scrollWidth + "px");
+    }
+  }, [paginatedData, loading]);
   return (
 
     <div className="bg-[#c1dff2] border-black border" ref={clientEditRef} id="clientedit" >
@@ -583,7 +600,7 @@ const CandidateManager = () => {
                       disabled={loading}
                       className={`p-6 py-3 bg-[#2c81ba] text-white hover:scale-105  transition duration-200  font-bold rounded-md hover:bg-[#0f5381] ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
-                     Submit
+                      Submit
                     </button>
                   </div>
                   {handleEditClick && (
@@ -799,115 +816,123 @@ const CandidateManager = () => {
             ))}
           </select>
         </div>
-        <div className='overflow-scroll mt-4 '>
-          <table className="m-auto w-full border-collapse border border-black rounded-lg">
-            <thead>
-              <tr className="bg-[#c1dff2] text-[#4d606b] whitespace-nowrap">
-                <th className=" uppercase border border-black px-4 py-2">Sl No.</th>
-                <th className=" uppercase border border-black px-4 py-2 text-left">Name Of The Applicant</th>
-                <th className=" uppercase border border-black px-4 py-2 text-left">Email</th>
-                <th className=" uppercase border border-black px-4 py-2 text-left">Mobile Number</th>
-                <th className=" uppercase border border-black px-4 py-2 text-left">Employe Id</th>
-                <th className=" uppercase border border-black px-4 py-2 text-left">Service</th>
-                <th className=" uppercase border border-black px-4 py-2">Edit</th>
-                <th className=" uppercase border border-black px-4 py-2">Delete</th>
+        <div className="table-container rounded-lg">
+          {/* Top Scroll */}
+          <div className="top-scroll" ref={topScrollRef} onScroll={syncScroll}>
+            <div className="top-scroll-inner" style={{ width: scrollWidth }} />
+          </div>
 
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
+          {/* Actual Table Scroll */}
+          <div className="table-scroll rounded-lg" ref={tableScrollRef} onScroll={syncScroll}>
+            <table className="m-auto w-full border-collapse border border-black rounded-lg">
+              <thead>
+                <tr className="bg-[#c1dff2] text-[#4d606b] whitespace-nowrap">
+                  <th className=" uppercase border border-black px-4 py-2">Sl No.</th>
+                  <th className=" uppercase border border-black px-4 py-2 text-left">Name Of The Applicant</th>
+                  <th className=" uppercase border border-black px-4 py-2 text-left">Email</th>
+                  <th className=" uppercase border border-black px-4 py-2 text-left">Mobile Number</th>
+                  <th className=" uppercase border border-black px-4 py-2 text-left">Employe Id</th>
+                  <th className=" uppercase border border-black px-4 py-2 text-left">Service</th>
+                  <th className=" uppercase border border-black px-4 py-2">Edit</th>
+                  <th className=" uppercase border border-black px-4 py-2">Delete</th>
 
-                <tr>
-                  <td colSpan={100} className="py-4 text-center text-gray-500">
-                    <Loader className="text-center" />
-                  </td>
                 </tr>
-              ) : paginatedData.length == 0 ? (
+              </thead>
+              <tbody>
+                {loading ? (
 
-                <tr>
-                  <td colSpan={100} className="py-4 text-center text-gray-500">
-                    No data available
-                  </td>
-                </tr>
-              ) : (
-                <>
-                  {paginatedData.map((item, index) => (
-                    <tr key={item.id} className="text-center">
-                      <td className="border border-black px-4 py-2">  {index + 1 + (tableCurrentPage - 1) * rowsPerPage}</td>
-                      <td className="border border-black px-4 py-2 text-left">{item.name}</td>
-                      <td className="border border-black px-4 py-2 text-left">{item.email}</td>
-                      <td className="border border-black px-4 py-2 text-left">{item.mobile_number}</td>
-                      <td className="border border-black px-4 py-2 text-left whitespace-nowrap">{item.employee_id
-                        || 'null'}</td>
-                      <td className="border border-black px-4 py-2  text-left">
-                        <div className='flex whitespace-nowrap'>
-                          {Array.isArray(item.serviceNames) && item.serviceNames.length > 0 ? (
-                            item.serviceNames.length === 1 ? (
-                              // Single service
-                              <span className="px-4 py-2 bg-blue-100 border border-blue-500 rounded-lg text-sm">
-                                {typeof item.serviceNames[0] === "string"
-                                  ? item.serviceNames[0]
-                                  : item.serviceNames[0].join(", ")}
-                              </span>
+                  <tr>
+                    <td colSpan={100} className="py-4 text-center text-gray-500">
+                      <Loader className="text-center" />
+                    </td>
+                  </tr>
+                ) : paginatedData.length == 0 ? (
+
+                  <tr>
+                    <td colSpan={100} className="py-4 text-center text-gray-500">
+                      No data available
+                    </td>
+                  </tr>
+                ) : (
+                  <>
+                    {paginatedData.map((item, index) => (
+                      <tr key={item.id} className="text-center">
+                        <td className="border border-black px-4 py-2">  {index + 1 + (tableCurrentPage - 1) * rowsPerPage}</td>
+                        <td className="border border-black px-4 py-2 text-left">{item.name}</td>
+                        <td className="border border-black px-4 py-2 text-left">{item.email}</td>
+                        <td className="border border-black px-4 py-2 text-left">{item.mobile_number}</td>
+                        <td className="border border-black px-4 py-2 text-left whitespace-nowrap">{item.employee_id
+                          || 'null'}</td>
+                        <td className="border border-black px-4 py-2  text-left">
+                          <div className='flex whitespace-nowrap'>
+                            {Array.isArray(item.serviceNames) && item.serviceNames.length > 0 ? (
+                              item.serviceNames.length === 1 ? (
+                                // Single service
+                                <span className="px-4 py-2 bg-blue-100 border border-blue-500 rounded-lg text-sm">
+                                  {typeof item.serviceNames[0] === "string"
+                                    ? item.serviceNames[0]
+                                    : item.serviceNames[0].join(", ")}
+                                </span>
+                              ) : (
+                                // Multiple services
+                                <>
+                                  {typeof item.serviceNames[0] === "string" ? (
+                                    <span className="px-4 py-2 bg-blue-100 border border-blue-500 rounded-lg text-sm">
+                                      {item.serviceNames[0]}
+                                    </span>
+                                  ) : (
+                                    <span className="px-4 py-2 bg-blue-100 border border-blue-500 rounded-lg text-sm">
+                                      {item.serviceNames[0].join(", ")}
+                                    </span>
+                                  )}
+                                  <button
+                                    className="text-blue-500 ml-2"
+                                    onClick={() => handleViewMore(item.serviceNames)}
+                                  >
+                                    View More
+                                  </button>
+                                </>
+                              )
                             ) : (
-                              // Multiple services
-                              <>
-                                {typeof item.serviceNames[0] === "string" ? (
-                                  <span className="px-4 py-2 bg-blue-100 border border-blue-500 rounded-lg text-sm">
-                                    {item.serviceNames[0]}
-                                  </span>
-                                ) : (
-                                  <span className="px-4 py-2 bg-blue-100 border border-blue-500 rounded-lg text-sm">
-                                    {item.serviceNames[0].join(", ")}
-                                  </span>
-                                )}
-                                <button
-                                  className="text-blue-500 ml-2"
-                                  onClick={() => handleViewMore(item.serviceNames)}
-                                >
-                                  View More
-                                </button>
-                              </>
-                            )
-                          ) : (
-                            // No services or serviceNames is not an array
-                            <span className="px-4 py-2 bg-red-100 border border-red-500 rounded-lg">
-                              You have no services
-                            </span>
-                          )}
-                        </div>
-                      </td>
+                              // No services or serviceNames is not an array
+                              <span className="px-4 py-2 bg-red-100 border border-red-500 rounded-lg">
+                                You have no services
+                              </span>
+                            )}
+                          </div>
+                        </td>
 
 
 
-                      <td className="border border-black px-4 py-2">
+                        <td className="border border-black px-4 py-2">
 
-                        <button
-                          className="bg-green-500 text-white hover:scale-105  transition duration-200  px-4 py-2 rounded-md"
-                          onClick={() => handleEdit(item)}
-                        >
-                          Edit
-                        </button>
+                          <button
+                            className="bg-green-500 text-white hover:scale-105  transition duration-200  px-4 py-2 rounded-md"
+                            onClick={() => handleEdit(item)}
+                          >
+                            Edit
+                          </button>
 
-                      </td>
-                      <td className="border border-black px-4 py-2">
-                        <button
-                          className={`bg-red-500 hover:scale-105 transition duration-200 text-white px-4 py-2 rounded-md 
+                        </td>
+                        <td className="border border-black px-4 py-2">
+                          <button
+                            className={`bg-red-500 hover:scale-105 transition duration-200 text-white px-4 py-2 rounded-md 
         ${loadingStates[item.id] ? 'opacity-50 cursor-not-allowed' : 'opacity-100'}`}
-                          onClick={() => handleDelete(item.id)}
-                          disabled={loadingStates[item.id]} // Disable button when loading
-                        >
-                          {loadingStates[item.id] ? 'Deleting...' : 'Delete'}
-                        </button>
-                      </td>
+                            onClick={() => handleDelete(item.id)}
+                            disabled={loadingStates[item.id]} // Disable button when loading
+                          >
+                            {loadingStates[item.id] ? 'Deleting...' : 'Delete'}
+                          </button>
+                        </td>
 
-                    </tr>
-                  ))}
-                </>
-              )}
-            </tbody>
-          </table>
+                      </tr>
+                    ))}
+                  </>
+                )}
+              </tbody>
+            </table>
 
+          </div>
         </div>
         <div className="flex justify-between items-center mt-4">
           <button

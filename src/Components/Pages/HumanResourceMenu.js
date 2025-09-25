@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import SidebarContext from '../SidebarContext'
 import axios from 'axios';
@@ -12,6 +12,20 @@ import "react-datepicker/dist/react-datepicker.css";
 const HumanResourceMenu = () => {
     const { validateAdminLogin, setApiLoading, apiLoading } = useApiLoading();
 
+    const tableScrollRef = useRef(null);
+    const topScrollRef = useRef(null);
+    const [scrollWidth, setScrollWidth] = useState("100%");
+
+    // 🔹 Sync scroll positions
+    const syncScroll = (e) => {
+        if (e.target === topScrollRef.current) {
+            tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+        } else {
+            topScrollRef.current.scrollLeft = e.target.scrollLeft;
+        }
+    };
+
+    // 🔹 Measure table width after render
 
     const [loadingSpoc, setLoadingSpoc] = useState({});
     const [searchTerm, setSearchTerm] = useState("");
@@ -35,7 +49,7 @@ const HumanResourceMenu = () => {
     const emailFromQuery = query.get('email') || '';
     const [isEditing, setIsEditing] = useState(false);
     const [itemsPerPage, setItemsPerPage] = useState(10);
-    const optionsPerPage = [10, 50, 100, 200,500,1000];
+    const optionsPerPage = [10, 50, 100, 200, 500, 1000];
 
     const [formData, setFormData] = useState({
         ticket_date: "",
@@ -105,6 +119,8 @@ const HumanResourceMenu = () => {
         };
         initialize();
     }, [navigate]);
+
+
 
     const handleEdit = (spoc) => {
         setFormData(spoc);
@@ -429,35 +445,40 @@ const HumanResourceMenu = () => {
         if (!date) return null; // Return null if date is undefined, null, or empty
         const dateObj = new Date(date);
         if (isNaN(dateObj)) return null; // Return null if date is invalid
-    
+
         const day = String(dateObj.getDate()).padStart(2, '0');
         const month = String(dateObj.getMonth() + 1).padStart(2, '0');
         const year = dateObj.getFullYear();
-    
+
         return `${day}-${month}-${year}`;
     };
+    useEffect(() => {
+        if (tableScrollRef.current) {
+            setScrollWidth(tableScrollRef.current.scrollWidth + "px");
+        }
+    }, [currentSpocs, loading]); // recalc whenever data changes
     return (
         <div className="w-full bg-[#c1dff2] border border-black overflow-hidden">
             <div className="space-y-4 py-[30px] px-[51px] bg-white">
 
-                {isEditing ? (
+                {isEditing && (
                     <>
                         <div className="w-full p-10">
                             <form className="space-y-4 ps-0 pb-[30px] px-[51px] bg-white rounded-md" id="client-spoc" onSubmit={handleSubmit}>
                                 <div>
                                     <label htmlFor="ticket_date" className="block mb-2">Ticket Date<span className="text-red-500 text-xl">*</span></label>
                                     <DatePicker
-  id="ticket_date"
-  name="ticket_date"
-  selected={formData.ticket_date ? parseISO(formData.ticket_date) : null}
-  onChange={(date) => {
-    const value = date ? format(date, "yyyy-MM-dd") : "";
-    setFormData((prevData) => ({ ...prevData, ticket_date: value }));
-  }}
-  dateFormat="dd-MM-yyyy"
-  placeholderText="DD-MM-YYYY"
-  className="w-full border rounded p-2"
-/>
+                                        id="ticket_date"
+                                        name="ticket_date"
+                                        selected={formData.ticket_date ? parseISO(formData.ticket_date) : null}
+                                        onChange={(date) => {
+                                            const value = date ? format(date, "yyyy-MM-dd") : "";
+                                            setFormData((prevData) => ({ ...prevData, ticket_date: value }));
+                                        }}
+                                        dateFormat="dd-MM-yyyy"
+                                        placeholderText="DD-MM-YYYY"
+                                        className="w-full border rounded p-2"
+                                    />
                                 </div>
 
                                 <div>
@@ -501,17 +522,17 @@ const HumanResourceMenu = () => {
                                 <div>
                                     <label htmlFor="leave_date" className="block mb-2">Leave Date<span className="text-red-500 text-xl">*</span></label>
                                     <DatePicker
-  id="leave_date"
-  name="leave_date"
-  selected={formData.leave_date ? parseISO(formData.leave_date) : null}
-  onChange={(date) => {
-    const value = date ? format(date, "yyyy-MM-dd") : "";
-    setFormData((prevData) => ({ ...prevData, leave_date: value }));
-  }}
-  dateFormat="dd-MM-yyyy"
-  placeholderText="DD-MM-YYYY"
-  className="w-full border rounded p-2"
-/>
+                                        id="leave_date"
+                                        name="leave_date"
+                                        selected={formData.leave_date ? parseISO(formData.leave_date) : null}
+                                        onChange={(date) => {
+                                            const value = date ? format(date, "yyyy-MM-dd") : "";
+                                            setFormData((prevData) => ({ ...prevData, leave_date: value }));
+                                        }}
+                                        dateFormat="dd-MM-yyyy"
+                                        placeholderText="DD-MM-YYYY"
+                                        className="w-full border rounded p-2"
+                                    />
                                 </div>
 
                                 <div>
@@ -558,169 +579,171 @@ const HumanResourceMenu = () => {
                             </form>
 
                         </div></>
-                )
-                    : <div>
+                )}
+                <div className="mb-4">
+                    <div>
+                        <input
+                            type="text"
+                            placeholder="Search by Name"
+                            className="w-1/3 rounded-md p-2.5 border border-gray-300"
+                            value={searchTerm}
+                            onChange={handleSearch}
+                        />
+                    </div>
+                    <select
+                        value={itemsPerPage}
+                        onChange={(e) => {
+                            setItemsPerPage(Number(e.target.value));
+                            setCurrentPage(1);
+                        }}
+                        className="border rounded-lg px-3 py-1 text-gray-700 bg-white mt-4 shadow-sm focus:ring-2 focus:ring-blue-400"
+                    >
+                        {optionsPerPage.map((option) => (
+                            <option key={option} value={option}>
+                                {option}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+                <div className="table-container rounded-lg">
+                    {/* Top Scroll */}
+                    <div className="top-scroll" ref={topScrollRef} onScroll={syncScroll}>
+                        <div className="top-scroll-inner" style={{ width: scrollWidth }} />
+                    </div>
 
-
-                        <div className="mb-4">
-                            <div>
-                                <input
-                                    type="text"
-                                    placeholder="Search by Name"
-                                    className="w-1/3 rounded-md p-2.5 border border-gray-300"
-                                    value={searchTerm}
-                                    onChange={handleSearch}
-                                />
-                            </div>
-                            <select
-                                value={itemsPerPage}
-                                onChange={(e) => {
-                                    setItemsPerPage(Number(e.target.value));
-                                    setCurrentPage(1);
-                                }}
-                                className="border rounded-lg px-3 py-1 text-gray-700 bg-white mt-4 shadow-sm focus:ring-2 focus:ring-blue-400"
-                            >
-                                {optionsPerPage.map((option) => (
-                                    <option key={option} value={option}>
-                                        {option}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className=" overflow-scroll">
-                            <table className="min-w-full border-collapse border border-black rounded-lg">
-                                <thead className="rounded-lg border border-black">
-                                    <tr className="bg-[#c1dff2] text-[#4d606b] text-left rounded-lg whitespace-nowrap">
-                                        <th className="py-2 px-4 border border-black uppercase">No.</th>
-                                        <th className="py-2 px-4 border border-black uppercase">Ticket Date</th>
-                                        <th className="py-2 px-4 border border-black uppercase">Photo</th>
-                                        <th className="py-2 px-4 border border-black uppercase">Name of the Employee</th>
-                                        <th className="py-2 px-4 border border-black uppercase">Employee ID</th>
-                                        <th className="py-2 px-4 border border-black uppercase">Leave Date</th>
-                                        <th className="py-2 px-4 border border-black uppercase">Purpose of Leave</th>
-                                        <th className="py-2 px-4 border border-black uppercase  w-96">Remarks</th>
-                                        <th className="py-2 px-4 border border-black text-center uppercase">Actions</th>
+                    {/* Actual Table Scroll */}
+                    <div className="table-scroll rounded-lg" ref={tableScrollRef} onScroll={syncScroll}>
+                        <table className="min-w-full border-collapse border border-black rounded-lg">
+                            <thead className="rounded-lg border border-black">
+                                <tr className="bg-[#c1dff2] text-[#4d606b] text-left rounded-lg whitespace-nowrap">
+                                    <th className="py-2 px-4 border border-black uppercase">No.</th>
+                                    <th className="py-2 px-4 border border-black uppercase">Ticket Date</th>
+                                    <th className="py-2 px-4 border border-black uppercase">Photo</th>
+                                    <th className="py-2 px-4 border border-black uppercase">Name of the Employee</th>
+                                    <th className="py-2 px-4 border border-black uppercase">Employee ID</th>
+                                    <th className="py-2 px-4 border border-black uppercase">Leave Date</th>
+                                    <th className="py-2 px-4 border border-black uppercase">Purpose of Leave</th>
+                                    <th className="py-2 px-4 border border-black uppercase  w-96">Remarks</th>
+                                    <th className="py-2 px-4 border border-black text-center uppercase">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {loading ? (
+                                    <tr>
+                                        <td colSpan={9} className="py-4 text-center text-gray-500">
+                                            <Loader className="text-center" />
+                                        </td>
                                     </tr>
-                                </thead>
-                                <tbody>
-                                    {loading ? (
-                                        <tr>
-                                            <td colSpan={9} className="py-4 text-center text-gray-500">
-                                                <Loader className="text-center" />
-                                            </td>
-                                        </tr>
-                                    ) : (
-                                        <>
-                                            {currentSpocs.length === 0 ? (
-                                                <tr>
-                                                    <td colSpan={9} className="py-4 text-center text-gray-500">
-                                                        Your Table Is Empty.
+                                ) : (
+                                    <>
+                                        {currentSpocs.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={9} className="py-4 text-center text-gray-500">
+                                                    Your Table Is Empty.
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            currentSpocs.map((spoc, index) => (
+                                                <tr key={spoc.id} className="hover:bg-gray-200">
+                                                    <td className="py-2 px-4 border border-black">{index + indexOfFirstItem + 1}</td>
+                                                    <td className="py-2 px-4 border border-black">{formatDate(spoc.ticket_date)}</td>
+                                                    <td className="py-2 px-4 border border-black">
+                                                        <img
+
+                                                            src={spoc.photo ? spoc.photo : `${Default}`}
+                                                            alt="Employee" className="w-12 h-12 object-cover rounded-full" />
                                                     </td>
-                                                </tr>
-                                            ) : (
-                                                currentSpocs.map((spoc, index) => (
-                                                    <tr key={spoc.id} className="hover:bg-gray-200">
-                                                        <td className="py-2 px-4 border border-black">{index + indexOfFirstItem + 1}</td>
-                                                        <td className="py-2 px-4 border border-black">{formatDate(spoc.ticket_date)}</td>
-                                                        <td className="py-2 px-4 border border-black">
-                                                            <img
-                                                           
-                                                                src={spoc.photo ? spoc.photo : `${Default}`}
-                                                                alt="Employee" className="w-12 h-12 object-cover rounded-full" />
-                                                        </td>
-                                                        <td className="py-2 px-4 border border-black">{spoc.employee_name}</td>
-                                                        <td className="py-2 px-4 border border-black">{spoc.employee_id}</td>
-                                                        <td className="py-2 px-4 border border-black whitespace-nowrap">
+                                                    <td className="py-2 px-4 border border-black">{spoc.employee_name}</td>
+                                                    <td className="py-2 px-4 border border-black">{spoc.employee_id}</td>
+                                                    <td className="py-2 px-4 border border-black whitespace-nowrap">
                                                         {`${formatDate(spoc.from_date)} To ${formatDate(spoc.to_date)}`}
-                                                        </td>
-                                                        <td className="py-2 px-4 border border-black">{spoc.purpose_of_leave}</td>
-                                                        <td className="py-2 px-4 border border-black ">{spoc.remarks}</td>
-                                                        <td className="py-2 px-4 border border-black  whitespace-nowrap">
-                                                            <div className='flex gap-2'>
+                                                    </td>
+                                                    <td className="py-2 px-4 border border-black">{spoc.purpose_of_leave}</td>
+                                                    <td className="py-2 px-4 border border-black ">{spoc.remarks}</td>
+                                                    <td className="py-2 px-4 border border-black  whitespace-nowrap">
+                                                        <div className='flex gap-2'>
 
-                                                                <button
-                                                                    className="bg-green-500 hover:scale-105 hover:bg-green-600 text-white px-4 py-2 rounded mr-2"
-                                                                    onClick={() => handleEdit(spoc)}>
-                                                                    Edit
-                                                                </button>
+                                                            <button
+                                                                className="bg-green-500 hover:scale-105 hover:bg-green-600 text-white px-4 py-2 rounded mr-2"
+                                                                onClick={() => handleEdit(spoc)}>
+                                                                Edit
+                                                            </button>
 
-                                                                <button
-                                                                    disabled={deletingId === spoc.id}
-                                                                    className={`bg-red-500 hover:scale-105 hover:bg-red-600 text-white px-4 py-2 rounded mr-2 ${deletingId === spoc.id ? "opacity-50 cursor-not-allowed" : ""}`}
-                                                                    onClick={() => handleDelete(spoc.id)}>
-                                                                    {deletingId === spoc.id ? "Deleting..." : "Delete"}
-                                                                </button>
-                                                                <button
-                                                                    className={`${spoc.status === 1
-                                                                        ? 'bg-blue-600 hover:bg-blue-700' // Dark blue for status 1
-                                                                        : spoc.status === 2
-                                                                            ? 'bg-blue-200 hover:bg-blue-300' // Lightest blue for status 2
-                                                                            : 'bg-gray-500 hover:bg-gray-600' // Normal blue for other cases
-                                                                        } transition-colors duration-300 ease-in-out text-white rounded-full w-12 h-12 flex items-center justify-center shadow-md hover:scale-105 focus:outline-none`}
-                                                                    disabled={loadingSpoc[spoc.id] === 1}
-                                                                    onClick={() => handleAction(spoc.id, 1)}
-                                                                >
-                                                                    {loadingSpoc[spoc.id] === 1 ? (
-                                                                        <div className="spinner-border text-white spinner-border-sm" role="status">
-                                                                            <div className="loader border-t-4 border-white rounded-full w-5 h-5 animate-spin"></div>
-                                                                        </div> // Spinner for loading state
-                                                                    ) : (
-                                                                        '✔'
-                                                                    )}
-                                                                </button>
+                                                            <button
+                                                                disabled={deletingId === spoc.id}
+                                                                className={`bg-red-500 hover:scale-105 hover:bg-red-600 text-white px-4 py-2 rounded mr-2 ${deletingId === spoc.id ? "opacity-50 cursor-not-allowed" : ""}`}
+                                                                onClick={() => handleDelete(spoc.id)}>
+                                                                {deletingId === spoc.id ? "Deleting..." : "Delete"}
+                                                            </button>
+                                                            <button
+                                                                className={`${spoc.status === 1
+                                                                    ? 'bg-blue-600 hover:bg-blue-700' // Dark blue for status 1
+                                                                    : spoc.status === 2
+                                                                        ? 'bg-blue-200 hover:bg-blue-300' // Lightest blue for status 2
+                                                                        : 'bg-gray-500 hover:bg-gray-600' // Normal blue for other cases
+                                                                    } transition-colors duration-300 ease-in-out text-white rounded-full w-12 h-12 flex items-center justify-center shadow-md hover:scale-105 focus:outline-none`}
+                                                                disabled={loadingSpoc[spoc.id] === 1}
+                                                                onClick={() => handleAction(spoc.id, 1)}
+                                                            >
+                                                                {loadingSpoc[spoc.id] === 1 ? (
+                                                                    <div className="spinner-border text-white spinner-border-sm" role="status">
+                                                                        <div className="loader border-t-4 border-white rounded-full w-5 h-5 animate-spin"></div>
+                                                                    </div> // Spinner for loading state
+                                                                ) : (
+                                                                    '✔'
+                                                                )}
+                                                            </button>
 
-                                                                <button
-                                                                    className={`${spoc.status === 2
-                                                                        ? 'bg-red-500 hover:bg-red-600' // Dark color for status 2
-                                                                        : spoc.status === 1
-                                                                            ? 'bg-red-200 hover:bg-red-300' // Lightest color for status 1
-                                                                            : 'bg-gray-500 hover:bg-gray-600' // Normal color for no status or other values
-                                                                        } transition-colors duration-300 ease-in-out text-white rounded-full w-12 h-12 flex items-center justify-center shadow-md hover:scale-105 focus:outline-none`}
-                                                                    disabled={loadingSpoc[spoc.id] === 2}
-                                                                    onClick={() => handleAction(spoc.id, 2)}
-                                                                >
-                                                                    {loadingSpoc[spoc.id] === 2 ? (
-                                                                        <div className="spinner-border text-white spinner-border-sm" role="status">
-                                                                            <div className="loader border-t-4 border-black rounded-full w-5 h-5 animate-spin"></div>
-                                                                        </div> // Spinner for loading state
-                                                                    ) : (
-                                                                        '✖'
-                                                                    )}
-                                                                </button>
+                                                            <button
+                                                                className={`${spoc.status === 2
+                                                                    ? 'bg-red-500 hover:bg-red-600' // Dark color for status 2
+                                                                    : spoc.status === 1
+                                                                        ? 'bg-red-200 hover:bg-red-300' // Lightest color for status 1
+                                                                        : 'bg-gray-500 hover:bg-gray-600' // Normal color for no status or other values
+                                                                    } transition-colors duration-300 ease-in-out text-white rounded-full w-12 h-12 flex items-center justify-center shadow-md hover:scale-105 focus:outline-none`}
+                                                                disabled={loadingSpoc[spoc.id] === 2}
+                                                                onClick={() => handleAction(spoc.id, 2)}
+                                                            >
+                                                                {loadingSpoc[spoc.id] === 2 ? (
+                                                                    <div className="spinner-border text-white spinner-border-sm" role="status">
+                                                                        <div className="loader border-t-4 border-black rounded-full w-5 h-5 animate-spin"></div>
+                                                                    </div> // Spinner for loading state
+                                                                ) : (
+                                                                    '✖'
+                                                                )}
+                                                            </button>
 
-                                                            </div>
-                                                        </td>
+                                                        </div>
+                                                    </td>
 
-                                                    </tr>
-                                                ))
-                                            )}
-                                        </>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                        <div className="flex justify-between items-center mt-4">
-                            <button
-                                onClick={() => handlePageChange(currentPage - 1)}
-                                disabled={currentPage === 1}
-                                className="px-4 py-2 bg-gray-300 text-gray-600 rounded hover:bg-gray-400"
-                            >
-                                Previous
-                            </button>
-                            <span className="text-gray-700">
-                                Page {currentPage} of {totalPages}
-                            </span>
-                            <button
-                                onClick={() => handlePageChange(currentPage + 1)}
-                                disabled={currentPage === totalPages}
-                                className="px-4 py-2 bg-gray-300 text-gray-600 rounded hover:bg-gray-400"
-                            >
-                                Next
-                            </button>
-                        </div>
-
-
-                    </div>}
+                                                </tr>
+                                            ))
+                                        )}
+                                    </>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div className="flex justify-between items-center mt-4">
+                    <button
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        disabled={currentPage === 1}
+                        className="px-4 py-2 bg-gray-300 text-gray-600 rounded hover:bg-gray-400"
+                    >
+                        Previous
+                    </button>
+                    <span className="text-gray-700">
+                        Page {currentPage} of {totalPages}
+                    </span>
+                    <button
+                        onClick={() => handlePageChange(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                        className="px-4 py-2 bg-gray-300 text-gray-600 rounded hover:bg-gray-400"
+                    >
+                        Next
+                    </button>
+                </div>
             </div>
         </div>
     );

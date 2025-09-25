@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Swal from 'sweetalert2';
 import { useNavigate } from 'react-router-dom';
 import { useApiLoading } from '../ApiLoadingContext';
@@ -8,6 +8,18 @@ const CreateAdminTicket = () => {
   const [deletingId, setDeletingId] = useState(null);
   const { validateAdminLogin, setApiLoading, apiLoading } = useApiLoading();
   const [responseError, setResponseError] = useState(null);
+  const tableScrollRef = useRef(null);
+  const topScrollRef = useRef(null);
+  const [scrollWidth, setScrollWidth] = useState("100%");
+
+  // 🔹 Sync scroll positions
+  const syncScroll = (e) => {
+    if (e.target === topScrollRef.current) {
+      tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+    } else {
+      topScrollRef.current.scrollLeft = e.target.scrollLeft;
+    }
+  };
 
 
   const [loading, setLoading] = useState(true);
@@ -15,7 +27,7 @@ const CreateAdminTicket = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const optionsPerPage = [10, 50, 100, 200,500,1000]; const [totalResults, setTotalResults] = useState(0);
+  const optionsPerPage = [10, 50, 100, 200, 500, 1000]; const [totalResults, setTotalResults] = useState(0);
   const navigate = useNavigate();
   useEffect(() => {
     const adminInfo = JSON.parse(localStorage.getItem('admin'));
@@ -104,14 +116,14 @@ const CreateAdminTicket = () => {
   };
 
 
- const filteredTickets = tickets.filter((ticket) =>
-  (ticket.customer_name?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-  (ticket.client_unique_id?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-  (ticket.ticket_number?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-  (ticket.status?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-  (ticket.remarks?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-  (ticket.title?.toLowerCase() || "").includes(searchTerm.toLowerCase())
-);
+  const filteredTickets = tickets.filter((ticket) =>
+    (ticket.customer_name?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+    (ticket.client_unique_id?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+    (ticket.ticket_number?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+    (ticket.status?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+    (ticket.remarks?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+    (ticket.title?.toLowerCase() || "").includes(searchTerm.toLowerCase())
+  );
 
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
@@ -160,6 +172,11 @@ const CreateAdminTicket = () => {
       }
     });
   };
+  useEffect(() => {
+    if (tableScrollRef.current) {
+      setScrollWidth(tableScrollRef.current.scrollWidth + "px");
+    }
+  }, [currentItems, loading]);
 
   return (
     <div className="bg-white border-black border md:p-12 p-6 w-full mx-auto">
@@ -193,82 +210,90 @@ const CreateAdminTicket = () => {
             </select>
           </div>
 
-          <div className="overflow-auto">
-            <table className="min-w-full border-collapse border border-black rounded-lg overflow-scroll whitespace-nowrap">
-              <thead className="rounded-lg">
-                <tr className="bg-[#c1dff2] text-[#4d606b]">
-                  <th className="uppercase border border-black px-4 py-2">SL</th>
-                  <th className="uppercase border border-black px-4 py-2 text-center">Customer Name</th>
-                  <th className="uppercase border border-black px-4 py-2 text-center">Client Unique ID</th>
-                  <th className="uppercase border border-black px-4 py-2 text-center">TICKET DATE</th>
+          <div className="table-container rounded-lg">
+            {/* Top Scroll */}
+            <div className="top-scroll" ref={topScrollRef} onScroll={syncScroll}>
+              <div className="top-scroll-inner" style={{ width: scrollWidth }} />
+            </div>
 
-                  <th className="uppercase border border-black px-4 py-2 text-center">Ticket Number</th>
-                  <th className="uppercase border border-black px-4 py-2 text-center">Title</th>
-                  <th className="uppercase border border-black px-4 py-2 text-center">TICKET REMARKS</th>
-                  <th className="uppercase border border-black px-4 py-2 text-center">TICKET STATUS</th>
-                  <th className="uppercase border border-black px-4 py-2 text-center">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr>
-                    <td colSpan="10" className="text-center py-4">
-                      <div className="flex w-full justify-center items-center h-20">
-                        <div className="loader border-t-4 border-[#2c81ba] rounded-full w-10 h-10 animate-spin"></div>
-                      </div>
-                    </td>
-                  </tr>
-                ) : currentItems.length === 0 ? (
-                  <tr>
-                    <td colSpan="10" className="text-center text-red-500 p-4">
-                      {responseError && responseError !== "" ? responseError : "No data available in table"}
-                    </td>
-                  </tr>
-                ) : (
-                  currentItems.map((ticket, index) => (
-                    <tr key={ticket.ticket_number} className="text-center">
-                      <td className="border border-black px-4 py-2">
-                        {(currentPage - 1) * itemsPerPage + index + 1}
-                      </td>
-                      <td className="border border-black px-4 py-2">
-                        {ticket.customer_name}
-                      </td>
-                      <td className="border border-black px-4 py-2">
-                        {ticket.client_unique_id}
-                      </td>
-                      <td className="border border-black px-4 py-2">
-                        {ticket.created_at
-                          ? new Date(ticket.created_at).toLocaleDateString('en-GB').replace(/\//g, '-')
-                          : 'NIL'}
-                      </td>
-                      <td className="border border-black px-4 py-2">{ticket.ticket_number}</td>
-                      <td className="border border-black px-4 py-2">{ticket.title}</td>
-                      <td className="border border-black px-4 py-2">{ticket.remarks}</td>
-                      <td className="border border-black px-4 py-2">{ticket.status}</td>
+            {/* Actual Table Scroll */}
+            <div className="table-scroll rounded-lg" ref={tableScrollRef} onScroll={syncScroll}>
+              <table className="min-w-full border-collapse border border-black rounded-lg overflow-scroll whitespace-nowrap">
+                <thead className="rounded-lg">
+                  <tr className="bg-[#c1dff2] text-[#4d606b]">
+                    <th className="uppercase border border-black px-4 py-2">SL</th>
+                    <th className="uppercase border border-black px-4 py-2 text-center">Customer Name</th>
+                    <th className="uppercase border border-black px-4 py-2 text-center">Client Unique ID</th>
+                    <th className="uppercase border border-black px-4 py-2 text-center">TICKET DATE</th>
 
-                      <td className="border border-black px-4 py-2">
-                        <button
-                          onClick={() => handleview(ticket.ticket_number)}
-                          className="bg-blue-500 hover:bg-blue-600 font-bold hover:scale-105 text-white px-4 py-2 rounded-md"
-                        >
-                          View
-                        </button>
-                        <button
-                          disabled={deletingId === ticket.ticket_number}
-                          className={`bg-red-500 hover:scale-105 hover:bg-red-600 ml-2 text-white px-4 py-2 rounded ${deletingId === ticket.ticket_number
-                            ? "opacity-50 cursor-not-allowed"
-                            : ""
-                            } `}
-                          onClick={() => handleDelete(ticket.ticket_number)}
-                        >
-                          {deletingId === ticket.ticket_number ? "Deleting..." : "Delete"}
-                        </button>
+                    <th className="uppercase border border-black px-4 py-2 text-center">Ticket Number</th>
+                    <th className="uppercase border border-black px-4 py-2 text-center">Title</th>
+                    <th className="uppercase border border-black px-4 py-2 text-center">TICKET REMARKS</th>
+                    <th className="uppercase border border-black px-4 py-2 text-center">TICKET STATUS</th>
+                    <th className="uppercase border border-black px-4 py-2 text-center">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading ? (
+                    <tr>
+                      <td colSpan="10" className="text-center py-4">
+                        <div className="flex w-full justify-center items-center h-20">
+                          <div className="loader border-t-4 border-[#2c81ba] rounded-full w-10 h-10 animate-spin"></div>
+                        </div>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : currentItems.length === 0 ? (
+                    <tr>
+                      <td colSpan="10" className="text-center text-red-500 p-4">
+                        {responseError && responseError !== "" ? responseError : "No data available in table"}
+                      </td>
+                    </tr>
+                  ) : (
+                    currentItems.map((ticket, index) => (
+                      <tr key={ticket.ticket_number} className="text-center">
+                        <td className="border border-black px-4 py-2">
+                          {(currentPage - 1) * itemsPerPage + index + 1}
+                        </td>
+                        <td className="border border-black px-4 py-2">
+                          {ticket.customer_name}
+                        </td>
+                        <td className="border border-black px-4 py-2">
+                          {ticket.client_unique_id}
+                        </td>
+                        <td className="border border-black px-4 py-2">
+                          {ticket.created_at
+                            ? new Date(ticket.created_at).toLocaleDateString('en-GB').replace(/\//g, '-')
+                            : 'NIL'}
+                        </td>
+                        <td className="border border-black px-4 py-2">{ticket.ticket_number}</td>
+                        <td className="border border-black px-4 py-2">{ticket.title}</td>
+                        <td className="border border-black px-4 py-2">{ticket.remarks}</td>
+                        <td className="border border-black px-4 py-2">{ticket.status}</td>
+
+                        <td className="border border-black px-4 py-2">
+                          <button
+                            onClick={() => handleview(ticket.ticket_number)}
+                            className="bg-blue-500 hover:bg-blue-600 font-bold hover:scale-105 text-white px-4 py-2 rounded-md"
+                          >
+                            View
+                          </button>
+                          <button
+                            disabled={deletingId === ticket.ticket_number}
+                            className={`bg-red-500 hover:scale-105 hover:bg-red-600 ml-2 text-white px-4 py-2 rounded ${deletingId === ticket.ticket_number
+                              ? "opacity-50 cursor-not-allowed"
+                              : ""
+                              } `}
+                            onClick={() => handleDelete(ticket.ticket_number)}
+                          >
+                            {deletingId === ticket.ticket_number ? "Deleting..." : "Delete"}
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           <div className="flex justify-between mt-4">

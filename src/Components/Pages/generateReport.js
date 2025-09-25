@@ -46,6 +46,7 @@ const MultiSelect = ({ id, name, value, onChange, options, isDisabled }) => {
         onChange(name, values);
     };
 
+
     return (
         <Select
             isMulti
@@ -75,6 +76,19 @@ const MultiSelect = ({ id, name, value, onChange, options, isDisabled }) => {
 
 
 const GenerateReport = () => {
+    const tableScrollRef = useRef(null);
+    const topScrollRef = useRef(null);
+    const [scrollWidth, setScrollWidth] = useState("100%");
+
+    // 🔹 Sync scroll positions
+    const syncScroll = (e) => {
+        if (e.target === topScrollRef.current) {
+            tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+        } else {
+            topScrollRef.current.scrollLeft = e.target.scrollLeft;
+        }
+    };
+
     const [isAllEmpty, setIsAllEmpty] = useState(false);
     const parseDate = (value) => {
         if (!value) return null;
@@ -2554,6 +2568,11 @@ const GenerateReport = () => {
             },
         }));
     };
+    useEffect(() => {
+        if (tableScrollRef.current) {
+            setScrollWidth(tableScrollRef.current.scrollWidth + "px");
+        }
+    }, [servicesDataInfo, loading]);
 
     return (
         <div className="bg-[#c1dff2] border border-black">
@@ -3135,52 +3154,63 @@ const GenerateReport = () => {
                                                                         </div>
                                                                     )}
                                                                     <div className="border-[#c1dff2] border overflow-scroll border-t-0 rounded-md">
-                                                                        <table className="w-full table-auto">
-                                                                            <thead>
-                                                                                <tr className="bg-gray-100 whitespace-nowrap">
-                                                                                    {formJson.headers.map((header, idx) => (
-                                                                                        <th
-                                                                                            key={idx}
-                                                                                            className="py-2 px-4 border  border-gray-300 text-left"
-                                                                                        >
-                                                                                            {header}
-                                                                                        </th>
-                                                                                    ))}
-                                                                                </tr>
-                                                                            </thead>
-                                                                            <tbody>
-                                                                                {formJson.rows.map((row, idx) => (
-                                                                                    <tr key={idx} className="odd:bg-gray-50 w-full">
-                                                                                        <td
-                                                                                            className="py-2 px-4  border md:w-1/3 whitespace-nowrap border-gray-300"
-                                                                                            ref={(el) => (inputRefs.current["annexure"] = el)}
-                                                                                        >
-                                                                                            {changeLabel(row.label)}
-                                                                                        </td>
+                                                                        <div className="table-container rounded-lg">
+                                                                            {/* Top Scroll */}
+                                                                            <div className="top-scroll" ref={topScrollRef} onScroll={syncScroll}>
+                                                                                <div className="top-scroll-inner" style={{ width: scrollWidth }} />
+                                                                            </div>
 
-                                                                                        {row.inputs.length === 1 ? (
+                                                                            {/* Actual Table Scroll */}
+                                                                            <div className="table-scroll rounded-lg" ref={tableScrollRef} onScroll={syncScroll}>
 
-                                                                                            <td
-                                                                                                colSpan={formJson.headers.length - 1}
-                                                                                                className="py-2 px-4 border md:w-1/3 border-gray-300"
-                                                                                            >
-
-
-                                                                                                {renderInput(index, dbTable, row.inputs[0], annexureImagesSplitArr, row.label, 0)}
-
-
-                                                                                            </td>
-                                                                                        ) : (
-                                                                                            row.inputs.map((input, i) => (
-                                                                                                <td key={i} className="py-2 px-4 md:w-1/3 border border-gray-300">
-                                                                                                    {renderInput(index, dbTable, input, annexureImagesSplitArr, row.label, i)}
+                                                                                <table className="w-full table-auto">
+                                                                                    <thead>
+                                                                                        <tr className="bg-gray-100 whitespace-nowrap">
+                                                                                            {formJson.headers.map((header, idx) => (
+                                                                                                <th
+                                                                                                    key={idx}
+                                                                                                    className="py-2 px-4 border  border-gray-300 text-left"
+                                                                                                >
+                                                                                                    {header}
+                                                                                                </th>
+                                                                                            ))}
+                                                                                        </tr>
+                                                                                    </thead>
+                                                                                    <tbody>
+                                                                                        {formJson.rows.map((row, idx) => (
+                                                                                            <tr key={idx} className="odd:bg-gray-50 w-full">
+                                                                                                <td
+                                                                                                    className="py-2 px-4  border md:w-1/3 whitespace-nowrap border-gray-300"
+                                                                                                    ref={(el) => (inputRefs.current["annexure"] = el)}
+                                                                                                >
+                                                                                                    {changeLabel(row.label)}
                                                                                                 </td>
-                                                                                            ))
-                                                                                        )}
-                                                                                    </tr>
-                                                                                ))}
-                                                                            </tbody>
-                                                                        </table>
+
+                                                                                                {row.inputs.length === 1 ? (
+
+                                                                                                    <td
+                                                                                                        colSpan={formJson.headers.length - 1}
+                                                                                                        className="py-2 px-4 border md:w-1/3 border-gray-300"
+                                                                                                    >
+
+
+                                                                                                        {renderInput(index, dbTable, row.inputs[0], annexureImagesSplitArr, row.label, 0)}
+
+
+                                                                                                    </td>
+                                                                                                ) : (
+                                                                                                    row.inputs.map((input, i) => (
+                                                                                                        <td key={i} className="py-2 px-4 md:w-1/3 border border-gray-300">
+                                                                                                            {renderInput(index, dbTable, input, annexureImagesSplitArr, row.label, i)}
+                                                                                                        </td>
+                                                                                                    ))
+                                                                                                )}
+                                                                                            </tr>
+                                                                                        ))}
+                                                                                    </tbody>
+                                                                                </table>
+                                                                            </div>
+                                                                        </div>
                                                                         {errors[`annexure_${index}`] && (
                                                                             <p className="text-red-500 text-sm">{errors[`annexure_${index}`]}</p>
                                                                         )}

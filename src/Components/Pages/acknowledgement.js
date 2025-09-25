@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import Swal from "sweetalert2";
 import * as XLSX from "xlsx";
 import { useNavigate } from "react-router-dom";
@@ -12,6 +12,18 @@ const Acknowledgement = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [tableData, setTableData] = useState([]);
+     const tableScrollRef = useRef(null);
+    const topScrollRef = useRef(null);
+    const [scrollWidth, setScrollWidth] = useState("100%");
+
+    // 🔹 Sync scroll positions
+    const syncScroll = (e) => {
+        if (e.target === topScrollRef.current) {
+            tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+        } else {
+            topScrollRef.current.scrollLeft = e.target.scrollLeft;
+        }
+    };
 
   const navigate = useNavigate();
 
@@ -128,7 +140,7 @@ const Acknowledgement = () => {
       });
   };
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const optionsPerPage = [10, 50, 100, 200,500,1000];
+  const optionsPerPage = [10, 50, 100, 200, 500, 1000];
   const [currentPage, setCurrentPage] = useState(1);
 
 
@@ -154,6 +166,12 @@ const Acknowledgement = () => {
     XLSX.utils.book_append_sheet(wb, ws, "Acknowledgement");
     XLSX.writeFile(wb, "Acknowledgement.xlsx");
   };
+    useEffect(() => {
+    if (tableScrollRef.current) {
+      setScrollWidth(tableScrollRef.current.scrollWidth + "px");
+    }
+  }, [tableData, loading]); // recalc whenever data changes
+
 
   const Loader = () => (
     <tr>
@@ -203,58 +221,66 @@ const Acknowledgement = () => {
 
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="min-w-full border-collapse border border-black rounded-lg overflow-scroll whitespace-nowrap">
-            <thead className="rounded-lg">
-              <tr className="bg-[#c1dff2] text-[#4d606b] rounded-lg">
-                <th className="border border-black uppercase px-4 py-2">SL</th>
-                <th className="border border-black uppercase px-4 py-2">Client Code</th>
-                <th className="border border-black uppercase px-4 py-2">Company Name</th>
-                <th className="border border-black uppercase px-4 py-2">Application Count</th>
-                <th className="border border-black uppercase px-4 py-2">Send Approvals</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan={5}>
-                    <div className="flex justify-center items-center h-24">
-                      <Loader />
-                    </div>
-                  </td>
+         <div className="table-container rounded-lg">
+      {/* Top Scroll */}
+      <div className="top-scroll" ref={topScrollRef} onScroll={syncScroll}>
+        <div className="top-scroll-inner" style={{ width: scrollWidth }} />
+      </div>
+
+      {/* Actual Table Scroll */}
+      <div className="table-scroll rounded-lg" ref={tableScrollRef} onScroll={syncScroll}>
+            <table className="min-w-full border-collapse border border-black rounded-lg overflow-scroll whitespace-nowrap">
+              <thead className="rounded-lg">
+                <tr className="bg-[#c1dff2] text-[#4d606b] rounded-lg">
+                  <th className="border border-black uppercase px-4 py-2">SL</th>
+                  <th className="border border-black uppercase px-4 py-2">Client Code</th>
+                  <th className="border border-black uppercase px-4 py-2">Company Name</th>
+                  <th className="border border-black uppercase px-4 py-2">Application Count</th>
+                  <th className="border border-black uppercase px-4 py-2">Send Approvals</th>
                 </tr>
-              ) : (
-                <>
-                  {paginatedData.length > 0 ? (
-                    paginatedData.map((row, index) => (
-                      <tr className="text-center" key={index}>
-                        <td className="border border-black px-4 py-2">
-                          {(currentPage - 1) * itemsPerPage + index + 1}
-                        </td>
-                        <td className="border border-black px-4 py-2">{row.client_unique_id}</td>
-                        <td className="border border-black px-4 py-2">{row.name}</td>
-                        <td className="border border-black px-4 py-2">{row.applicationCount}</td>
-                        <td className="border border-black px-4 py-2">
-                          <button
-                            onClick={() => handleSendApproval(row.id)}
-                            className="px-4 py-2 text-white rounded-md font-bold bg-green-500 hover:bg-green-600 hover:scale-105 transition-transform duration-300 ease-in-out transform"
-                          >
-                            Send
-                          </button>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={5}>
+                      <div className="flex justify-center items-center h-24">
+                        <Loader />
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  <>
+                    {paginatedData.length > 0 ? (
+                      paginatedData.map((row, index) => (
+                        <tr className="text-center" key={index}>
+                          <td className="border border-black px-4 py-2">
+                            {(currentPage - 1) * itemsPerPage + index + 1}
+                          </td>
+                          <td className="border border-black px-4 py-2">{row.client_unique_id}</td>
+                          <td className="border border-black px-4 py-2">{row.name}</td>
+                          <td className="border border-black px-4 py-2">{row.applicationCount}</td>
+                          <td className="border border-black px-4 py-2">
+                            <button
+                              onClick={() => handleSendApproval(row.id)}
+                              className="px-4 py-2 text-white rounded-md font-bold bg-green-500 hover:bg-green-600 hover:scale-105 transition-transform duration-300 ease-in-out transform"
+                            >
+                              Send
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="5" className="text-center text-red-500 p-4">
+                          {responseError && responseError !== "" ? responseError : "No data available in table"}
                         </td>
                       </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="5" className="text-center text-red-500 p-4">
-                        {responseError && responseError !== "" ? responseError : "No data available in table"}
-                      </td>
-                    </tr>
-                  )}
-                </>
-              )}
-            </tbody>
-          </table>
+                    )}
+                  </>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
         {totalPages > 1 && (
           <div className="flex justify-between items-center mt-4">

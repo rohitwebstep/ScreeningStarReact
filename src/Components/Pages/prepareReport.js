@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState, useRef } from "react";
 import { useNavigate } from 'react-router-dom';
 import { useApiLoading } from '../ApiLoadingContext';
 import * as XLSX from "xlsx";
@@ -20,13 +20,24 @@ const PrepareReport = () => {
         reportGeneratedByMonth: ''
     });
     const storedToken = localStorage.getItem("_token");
+    const tableScrollRef = useRef(null);
+    const topScrollRef = useRef(null);
+    const [scrollWidth, setScrollWidth] = useState("100%");
 
+    // 🔹 Sync scroll positions
+    const syncScroll = (e) => {
+        if (e.target === topScrollRef.current) {
+            tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+        } else {
+            topScrollRef.current.scrollLeft = e.target.scrollLeft;
+        }
+    };
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
 
     const [currentPage, setCurrentPage] = useState(1);
     const [entriesPerPage, setEntriesPerPage] = useState(10);
-    const optionsPerPage = [10, 50, 100, 200,500,1000];
+    const optionsPerPage = [10, 50, 100, 200, 500, 1000];
     const fetchData = useCallback(() => {
         setLoading(true); // Set loading to true before starting the fetch
         const adminId = JSON.parse(localStorage.getItem("admin"))?.id;
@@ -166,6 +177,11 @@ const PrepareReport = () => {
         setCurrentPage(1)
         setFilteredData(filtered);
     };
+    useEffect(() => {
+        if (tableScrollRef.current) {
+            setScrollWidth(tableScrollRef.current.scrollWidth + "px");
+        }
+    }, [filteredData, loading]);
     const maxServicesCount = Math.max(...filteredData.map(row => Object.keys(row.services_status || {}).length));
     console.log('filteredData', filteredData)
     return (
@@ -175,28 +191,28 @@ const PrepareReport = () => {
                 <div className="md:flex justify-between">
                     <div className="block ">
                         <div>
-                        <button
-                            onClick={handleDownload}
-                            className="bg-green-500 text-white rounded mb-2 px-4 py-2 hover:scale-105 hover:bg-green-600 border"
-                        >
-                            Export to Excel
-                        </button>
+                            <button
+                                onClick={handleDownload}
+                                className="bg-green-500 text-white rounded mb-2 px-4 py-2 hover:scale-105 hover:bg-green-600 border"
+                            >
+                                Export to Excel
+                            </button>
                         </div>
                         <div>
-                        <select
-                            value={entriesPerPage}
-                            onChange={(e) => {
-                                setEntriesPerPage(Number(e.target.value));
-                                setCurrentPage(1);
-                            }}
-                            className="border rounded-lg px-3 py-1 text-gray-700 bg-white  shadow-sm focus:ring-2 focus:ring-blue-400"
-                        >
-                            {optionsPerPage.map((option) => (
-                                <option key={option} value={option}>
-                                    {option}
-                                </option>
-                            ))}
-                        </select>
+                            <select
+                                value={entriesPerPage}
+                                onChange={(e) => {
+                                    setEntriesPerPage(Number(e.target.value));
+                                    setCurrentPage(1);
+                                }}
+                                className="border rounded-lg px-3 py-1 text-gray-700 bg-white  shadow-sm focus:ring-2 focus:ring-blue-400"
+                            >
+                                {optionsPerPage.map((option) => (
+                                    <option key={option} value={option}>
+                                        {option}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
                     </div>
                     <input
@@ -207,63 +223,71 @@ const PrepareReport = () => {
                         className="border rounded-lg md:w-1/3 w-full px-3 py-1 text-gray-700 bg-white my-4 shadow-sm focus:ring-2 focus:ring-blue-400"
                     />
                 </div>
-                <div className="mt-10 overflow-scroll ">
-                    <table className="min-w-full border-collapse border border-black ">
-                        <thead>
-                            <tr className="bg-[#c1dff2] whitespace-nowrap text-[#4d606b] uppercase">
-                                <th className="border border-black px-4 py-2">SL No</th>
-                                <th className="border border-black px-4 py-2">Application Date</th>
-                                <th className="border border-black px-4 py-2">Reference ID</th>
-                                <th className="border border-black px-4 py-2">Name of the Organization</th>
-                                <th className="border border-black px-4 py-2">Name of the Applicant</th>
-                                <th
-                                    className="border border-black px-4 py-2 text-center"
-                                    colSpan={maxServicesCount}
-                                >
-                                    SCOPE OF SERVICES
-                                </th>
-                                
-                            </tr>
-                        </thead>
-                        <tbody className="overflow-auto">
-                            {loading ? (
-                                <tr className="">
-                                    <td colSpan="12" className="w-full py-10 h-10  text-center">
-                                        <div className="flex justify-center  items-center w-full h-full">
-                                            <div className="loader border-t-4 border-[#2c81ba] rounded-full w-10 h-10 animate-spin"></div>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ) : filteredData.length === 0 ? (
-                                <tr>
-                                    <td colSpan="12" className="w-full py-10 h-10 text-center text-red-500">
-                                        {responseError && responseError !== "" ? responseError : "No data available in table"}
-                                    </td>
-                                </tr>
-                            ) : (
-                                paginateData(filteredData).map((row, index) => (
-                                    <tr key={row.applicationId}>
-                                        <td className="border border-black text-center px-4 py-2">{index + 1}</td>
-                                        <td className="border border-black px-4 py-2 whitespace-nowrap">{formatDate(row.applicationDate)}</td>
-                                        <td className="border border-black px-4 py-2 whitespace-nowrap">{row.applicationId}</td>
-                                        <td className="border border-black px-4 py-2">{row?.customerName}</td>
-                                        <td className="border border-black px-4 py-2">{row?.applicationName}</td>
-                                        {Object.keys(row?.services_status).map((service) => (
-                                            <td key={service} className="border border-black whitespace-nowrap text-center px-4 py-2">
-                                                {service}
-                                            </td>
-                                        ))}
-                                        {[...Array(maxServicesCount - Object.keys(row?.services_status).length)].map((_, i) => (
-                                            <td key={`empty-${row?.applicationId}-${i}`} className="border border-black px-4 py-2"></td>
-                                        ))}
+                <div className="table-container rounded-lg">
+                    {/* Top Scroll */}
+                    <div className="top-scroll" ref={topScrollRef} onScroll={syncScroll}>
+                        <div className="top-scroll-inner" style={{ width: scrollWidth }} />
+                    </div>
 
-                                      
+                    {/* Actual Table Scroll */}
+                    <div className="table-scroll rounded-lg" ref={tableScrollRef} onScroll={syncScroll}>
+                        <table className="min-w-full border-collapse border border-black ">
+                            <thead>
+                                <tr className="bg-[#c1dff2] whitespace-nowrap text-[#4d606b] uppercase">
+                                    <th className="border border-black px-4 py-2">SL No</th>
+                                    <th className="border border-black px-4 py-2">Application Date</th>
+                                    <th className="border border-black px-4 py-2">Reference ID</th>
+                                    <th className="border border-black px-4 py-2">Name of the Organization</th>
+                                    <th className="border border-black px-4 py-2">Name of the Applicant</th>
+                                    <th
+                                        className="border border-black px-4 py-2 text-center"
+                                        colSpan={maxServicesCount}
+                                    >
+                                        SCOPE OF SERVICES
+                                    </th>
 
+                                </tr>
+                            </thead>
+                            <tbody className="overflow-auto">
+                                {loading ? (
+                                    <tr className="">
+                                        <td colSpan="12" className="w-full py-10 h-10  text-center">
+                                            <div className="flex justify-center  items-center w-full h-full">
+                                                <div className="loader border-t-4 border-[#2c81ba] rounded-full w-10 h-10 animate-spin"></div>
+                                            </div>
+                                        </td>
                                     </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
+                                ) : filteredData.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="12" className="w-full py-10 h-10 text-center text-red-500">
+                                            {responseError && responseError !== "" ? responseError : "No data available in table"}
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    paginateData(filteredData).map((row, index) => (
+                                        <tr key={row.applicationId}>
+                                            <td className="border border-black text-center px-4 py-2">{index + 1}</td>
+                                            <td className="border border-black px-4 py-2 whitespace-nowrap">{formatDate(row.applicationDate)}</td>
+                                            <td className="border border-black px-4 py-2 whitespace-nowrap">{row.applicationId}</td>
+                                            <td className="border border-black px-4 py-2">{row?.customerName}</td>
+                                            <td className="border border-black px-4 py-2">{row?.applicationName}</td>
+                                            {Object.keys(row?.services_status).map((service) => (
+                                                <td key={service} className="border border-black whitespace-nowrap text-center px-4 py-2">
+                                                    {service}
+                                                </td>
+                                            ))}
+                                            {[...Array(maxServicesCount - Object.keys(row?.services_status).length)].map((_, i) => (
+                                                <td key={`empty-${row?.applicationId}-${i}`} className="border border-black px-4 py-2"></td>
+                                            ))}
+
+
+
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
                 <div className="flex justify-between mt-4">
                     <button

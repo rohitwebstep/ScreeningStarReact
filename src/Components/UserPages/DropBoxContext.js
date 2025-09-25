@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState ,useRef} from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { jsPDF } from "jspdf";
 import "jspdf-autotable";
@@ -7,6 +7,18 @@ import { FaChevronLeft } from 'react-icons/fa';
 
 const DataCheckin = () => {
     const [applicationStatus, setApplicationStatus] = useState([]);
+     const tableScrollRef = useRef(null);
+    const topScrollRef = useRef(null);
+    const [scrollWidth, setScrollWidth] = useState("100%");
+
+    // 🔹 Sync scroll positions
+    const syncScroll = (e) => {
+        if (e.target === topScrollRef.current) {
+            tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+        } else {
+            topScrollRef.current.scrollLeft = e.target.scrollLeft;
+        }
+    };
 
     const [servicesDataInfo, setServicesDataInfo] = useState('');
     const [expandedRow, setExpandedRow] = useState({ index: '', headingsAndStatuses: [] });
@@ -1327,6 +1339,11 @@ const DataCheckin = () => {
         initialize();
     }, []);
 
+     useEffect(() => {
+    if (tableScrollRef.current) {
+      setScrollWidth(tableScrollRef.current.scrollWidth + "px");
+    }
+  }, [filteredData, loading]); 
 
     return (
         <div className="bg-[#c1dff2]">
@@ -1369,83 +1386,91 @@ const DataCheckin = () => {
                     </div>
                 </div>
 
-                <div className="rounded-lg overflow-scroll">
-                    <table className="min-w-full border-collapse border border-black overflow-scroll rounded-lg whitespace-nowrap">
-                        <thead className='rounded-lg'>
-                            <tr className="bg-[#c1dff2] text-[#4d606b]">
-                                <th className="uppercase border border-black px-4 py-2">SL NO</th>
-                                <th className="uppercase border border-black px-4 py-2">Date of Initiation</th>
-                                <th className="uppercase border border-black px-4 py-2">Applicant Employee Id</th>
-                                <th className="uppercase border border-black px-4 py-2">Reference Id</th>
-                                <th className="uppercase border border-black px-4 py-2">Photo</th>
-                                <th className="uppercase border border-black px-4 py-2">Name Of Applicant</th>
-                                <th className="uppercase border border-black px-4 py-2">Report Data</th>
+              <div className="table-container rounded-lg">
+                    {/* Top Scroll */}
+                    <div className="top-scroll" ref={topScrollRef} onScroll={syncScroll}>
+                        <div className="top-scroll-inner" style={{ width: scrollWidth }} />
+                    </div>
 
-                                {/* Dynamic Headings for each service */}
-                                {applicationStatus[0]?.serviceDetails?.map((service, index) => (
-                                    <th key={index} className="uppercase border border-black px-4 py-2">
-                                        {service.heading}
-                                    </th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {loading ? (
-                                <tr>
-                                    <td colSpan={17} className="py-4 text-center text-gray-500">
-                                        <Loader className="text-center" />
-                                    </td>
-                                </tr>
-                            ) : filteredData.length === 0 ? (
-                                <tr>
-                                    <td colSpan={17} className="py-4 text-center text-gray-500">
-                                        No data available in table
-                                    </td>
-                                </tr>
-                            ) : (
-                                <>
-                                    {filteredData.map((data, index) => (
-                                        <React.Fragment key={data.id}>
-                                            <tr className="text-center">
-                                                <td className="border border-black px-4 py-2">{index + 1}</td>
-                                                <td className="border border-black px-4 py-2">
-                                                    {new Date(data.created_at).toLocaleDateString()}
-                                                </td>
-                                                <td className="border border-black px-4 py-2">{data.employee_id || 'NIL'}</td>
-                                                <td className="border border-black px-4 py-2">{data.application_id || 'NIL'}</td>
-                                                <td className="border border-black px-4 py-2 text-center">
-                                                    <div className='flex justify-center items-center'>
-                                                        <img src={`${data.photo}`} alt={data.name} className="w-10 h-10 rounded-full" />
-                                                    </div>
-                                                </td>
-                                                <td className="border border-black px-4 py-2">{data.name || 'NIL'}</td>
+                    {/* Actual Table Scroll */}
+                    <div className="table-scroll rounded-lg" ref={tableScrollRef} onScroll={syncScroll}>
+                        <table className="min-w-full border-collapse border border-black overflow-scroll rounded-lg whitespace-nowrap">
+                            <thead className='rounded-lg'>
+                                <tr className="bg-[#c1dff2] text-[#4d606b]">
+                                    <th className="uppercase border border-black px-4 py-2">SL NO</th>
+                                    <th className="uppercase border border-black px-4 py-2">Date of Initiation</th>
+                                    <th className="uppercase border border-black px-4 py-2">Applicant Employee Id</th>
+                                    <th className="uppercase border border-black px-4 py-2">Reference Id</th>
+                                    <th className="uppercase border border-black px-4 py-2">Photo</th>
+                                    <th className="uppercase border border-black px-4 py-2">Name Of Applicant</th>
+                                    <th className="uppercase border border-black px-4 py-2">Report Data</th>
 
-                                                {/* Report Data Button */}
-                                                <td className="border border-black px-4 py-2">
-                                                    <button
-                                                        className="bg-white border border-[#073d88] text-[#073d88] px-4 py-2 rounded hover:bg-[#073d88] hover:text-white"
-                                                        onClick={() => handleUpload(data.id, data.branch_id)}
-                                                    >
-                                                        BASIC ENTRY
-                                                    </button>
-                                                </td>
-
-                                                {/* Service Statuses */}
-                                                {applicationStatus.map((application, idx) => (
-                                                    application.serviceDetails.map((service, index) => (
-                                                        <td key={`${idx}-${index}`} className="border border-black px-4 py-2">
-                                                            {service.status || 'INITIATED'}
-                                                        </td>
-                                                    ))
-                                                ))}
-                                            </tr>
-                                        </React.Fragment>
+                                    {/* Dynamic Headings for each service */}
+                                    {applicationStatus[0]?.serviceDetails?.map((service, index) => (
+                                        <th key={index} className="uppercase border border-black px-4 py-2">
+                                            {service.heading}
+                                        </th>
                                     ))}
-                                </>
-                            )}
-                        </tbody>
-                    </table>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {loading ? (
+                                    <tr>
+                                        <td colSpan={17} className="py-4 text-center text-gray-500">
+                                            <Loader className="text-center" />
+                                        </td>
+                                    </tr>
+                                ) : filteredData.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={17} className="py-4 text-center text-gray-500">
+                                            No data available in table
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    <>
+                                        {filteredData.map((data, index) => (
+                                            <React.Fragment key={data.id}>
+                                                <tr className="text-center">
+                                                    <td className="border border-black px-4 py-2">{index + 1}</td>
+                                                    <td className="border border-black px-4 py-2">
+                                                        {new Date(data.created_at).toLocaleDateString()}
+                                                    </td>
+                                                    <td className="border border-black px-4 py-2">{data.employee_id || 'NIL'}</td>
+                                                    <td className="border border-black px-4 py-2">{data.application_id || 'NIL'}</td>
+                                                    <td className="border border-black px-4 py-2 text-center">
+                                                        <div className='flex justify-center items-center'>
+                                                            <img src={`${data.photo}`} alt={data.name} className="w-10 h-10 rounded-full" />
+                                                        </div>
+                                                    </td>
+                                                    <td className="border border-black px-4 py-2">{data.name || 'NIL'}</td>
 
+                                                    {/* Report Data Button */}
+                                                    <td className="border border-black px-4 py-2">
+                                                        <button
+                                                            className="bg-white border border-[#073d88] text-[#073d88] px-4 py-2 rounded hover:bg-[#073d88] hover:text-white"
+                                                            onClick={() => handleUpload(data.id, data.branch_id)}
+                                                        >
+                                                            BASIC ENTRY
+                                                        </button>
+                                                    </td>
+
+                                                    {/* Service Statuses */}
+                                                    {applicationStatus.map((application, idx) => (
+                                                        application.serviceDetails.map((service, index) => (
+                                                            <td key={`${idx}-${index}`} className="border border-black px-4 py-2">
+                                                                {service.status || 'INITIATED'}
+                                                            </td>
+                                                        ))
+                                                    ))}
+                                                </tr>
+                                            </React.Fragment>
+                                        ))}
+                                    </>
+                                )}
+                            </tbody>
+                        </table>
+
+                    </div>
                 </div>
                 <div className="flex justify-between items-center mt-4">
                     <button

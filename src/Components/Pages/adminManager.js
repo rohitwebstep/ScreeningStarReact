@@ -26,9 +26,20 @@ const AdminManager = () => {
 
     const [currentPage, setCurrentPage] = useState(1);
     const [rowsPerPage, setRowsPerPage] = useState(10);
-    const optionsPerPage = [10, 50, 100, 200,500,1000];
+    const optionsPerPage = [10, 50, 100, 200, 500, 1000];
     const totalPages = Math.ceil(clientData.length / rowsPerPage);
+    const tableScrollRef = useRef(null);
+    const topScrollRef = useRef(null);
+    const [scrollWidth, setScrollWidth] = useState("100%");
 
+    // 🔹 Sync scroll positions
+    const syncScroll = (e) => {
+        if (e.target === topScrollRef.current) {
+            tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+        } else {
+            topScrollRef.current.scrollLeft = e.target.scrollLeft;
+        }
+    };
     const dropdownRef = useRef(null);
     const handlePageChange = (page) => {
         ;
@@ -303,58 +314,62 @@ const AdminManager = () => {
             "Completed Orange": String(item?.currentMonthStats?.completed_orange_count || 0),
         }));
 
-            // Total row → keep numbers numeric
-    const totals = rows.reduce((acc, row) => {
-        columns.forEach((key) => {
-            if (key !== "Client Name") {
-                acc[key] = (acc[key] || 0) + Number(row[key] || 0);
-            }
+        // Total row → keep numbers numeric
+        const totals = rows.reduce((acc, row) => {
+            columns.forEach((key) => {
+                if (key !== "Client Name") {
+                    acc[key] = (acc[key] || 0) + Number(row[key] || 0);
+                }
+            });
+            return acc;
+        }, {});
+        rows.push({ "Client Name": "Total", ...totals });
+
+        // Generate worksheet with fixed header order
+        const worksheet = XLSX.utils.json_to_sheet(rows, { header: columns });
+
+        // Auto-size columns
+        const colWidths = columns.map((col) => {
+            let maxLength = col.length;
+            rows.forEach((row) => {
+                const val = row[col] ? row[col].toString() : "";
+                if (val.length > maxLength) maxLength = val.length;
+            });
+            return { wch: maxLength + 2 }; // padding
         });
-        return acc;
-    }, {});
-    rows.push({ "Client Name": "Total", ...totals });
+        worksheet["!cols"] = colWidths;
 
-    // Generate worksheet with fixed header order
-    const worksheet = XLSX.utils.json_to_sheet(rows, { header: columns });
+        // Freeze top row
+        worksheet["!freeze"] = { xSplit: 0, ySplit: 1 };
 
-    // Auto-size columns
-    const colWidths = columns.map((col) => {
-        let maxLength = col.length;
-        rows.forEach((row) => {
-            const val = row[col] ? row[col].toString() : "";
-            if (val.length > maxLength) maxLength = val.length;
+        // Bold headers
+        columns.forEach((col, idx) => {
+            const cellRef = XLSX.utils.encode_cell({ r: 0, c: idx });
+            if (!worksheet[cellRef]) return;
+            if (!worksheet[cellRef].s) worksheet[cellRef].s = {};
+            worksheet[cellRef].s = { font: { bold: true } };
         });
-        return { wch: maxLength + 2 }; // padding
-    });
-    worksheet["!cols"] = colWidths;
 
-    // Freeze top row
-    worksheet["!freeze"] = { xSplit: 0, ySplit: 1 };
+        // Create workbook
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Report");
 
-    // Bold headers
-    columns.forEach((col, idx) => {
-        const cellRef = XLSX.utils.encode_cell({ r: 0, c: idx });
-        if (!worksheet[cellRef]) return;
-        if (!worksheet[cellRef].s) worksheet[cellRef].s = {};
-        worksheet[cellRef].s = { font: { bold: true } };
-    });
-
-    // Create workbook
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Report");
-
-    // Export to Excel
-    const excelBuffer = XLSX.write(workbook, {
-        bookType: "xlsx",
-        type: "array",
-        cellStyles: true,
-    });
-    const blob = new Blob([excelBuffer], {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    });
-    saveAs(blob, "report.xlsx");
+        // Export to Excel
+        const excelBuffer = XLSX.write(workbook, {
+            bookType: "xlsx",
+            type: "array",
+            cellStyles: true,
+        });
+        const blob = new Blob([excelBuffer], {
+            type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        });
+        saveAs(blob, "report.xlsx");
     };
-    console.log('clientData', clientData)
+    useEffect(() => {
+        if (tableScrollRef.current) {
+            setScrollWidth(tableScrollRef.current.scrollWidth + "px");
+        }
+    }, [paginatedData, loading]);
     return (
         <div className="">
             <div className="bg-white border border-black md:p-12 p-6 w-full mx-auto">
@@ -453,144 +468,152 @@ const AdminManager = () => {
                     </div>
 
                 </div>
-                <div className='overflow-x-scroll'>
-                    <table className="min-w-full border-collapse border border-black rounded-lg ">
-                        <thead>
-                            <tr className="bg-[#c1dff2] text-left text-[#4d606b] whitespace-nowrap">
-                                <th className="uppercase border border-black px-4 py-2 text-center">SL</th>
-                                <th className="uppercase border border-black px-4 py-2">Client ID</th>
-                                <th className="uppercase border border-black px-4 py-2">Organization Name</th>
-                                <th className="uppercase border border-black px-4 py-2">Client Spoc</th>
-                                <th className="uppercase border border-black px-4 py-2 text-center">Active Cases</th>
-                                <th className="uppercase border border-black px-4 py-2 text-center" >View Status</th>
-                            </tr>
-                        </thead>
-                        {loading ? (
-                            <tbody className="h-10">
-                                <tr className="">
-                                    <td colSpan="10" className="w-full py-10 h-10  text-center">
-                                        <div className="flex justify-center  items-center w-full h-full">
-                                            <div className="loader border-t-4 border-[#2c81ba] rounded-full w-10 h-10 animate-spin"></div>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        ) : (
-                            <tbody>
-                                {paginatedData.length > 0 ? (
-                                    paginatedData.map((item, index) => (
-                                        <React.Fragment key={item.client_unique_id}>
-                                            <tr className="text-left">
-                                                <td className="border border-black px-4 py-2 text-center">{(currentPage - 1) * rowsPerPage + index + 1}</td>
-                                                <td className="border border-black px-4 py-2">{item.client_unique_id}</td>
-                                                <td className="border border-black px-4 py-2">{item.name || 'N/A'}</td>
-                                                <td className="border border-black px-4 py-2">
-                                                    {item.client_spoc_name || 'N/A'}
-                                                </td>
-                                                <td className="border border-black px-4 py-2 text-center">{item.application_count}</td>
+                <div className="table-container rounded-lg">
+                    {/* Top Scroll */}
+                    <div className="top-scroll" ref={topScrollRef} onScroll={syncScroll}>
+                        <div className="top-scroll-inner" style={{ width: scrollWidth }} />
+                    </div>
 
-                                                {item.head_branch_applications_count >= 0 && (
-                                                    <td className="border border-black px-4 py-2 text-center">
-                                                        <div className="flex gap-3 ">
-                                                            {item.application_count <= item.head_branch_applications_count ? (
-                                                                // Condition 1: Show only CHECK IN button
-                                                                <button
-                                                                    className="px-4 py-2 text-white  whitespace-nowrap rounded-md font-bold bg-green-500 hover:bg-green-600 hover:scale-105 transition-transform duration-300 ease-in-out transform"
-                                                                    onClick={() => handleCheckInGo(item.head_branch_id, item.main_id, item.name)}
-                                                                >
-                                                                    CHECK IN
-                                                                </button>
-                                                            ) : item.application_count > item.head_branch_applications_count && item.head_branch_applications_count > 0 ? (
-                                                                // Condition 2: Show both CHECK IN and VIEW BRANCHES buttons
-                                                                <>
+                    {/* Actual Table Scroll */}
+                    <div className="table-scroll rounded-lg" ref={tableScrollRef} onScroll={syncScroll}>
+                        <table className="min-w-full border-collapse border border-black rounded-lg ">
+                            <thead>
+                                <tr className="bg-[#c1dff2] text-left text-[#4d606b] whitespace-nowrap">
+                                    <th className="uppercase border border-black px-4 py-2 text-center">SL</th>
+                                    <th className="uppercase border border-black px-4 py-2">Client ID</th>
+                                    <th className="uppercase border border-black px-4 py-2">Organization Name</th>
+                                    <th className="uppercase border border-black px-4 py-2">Client Spoc</th>
+                                    <th className="uppercase border border-black px-4 py-2 text-center">Active Cases</th>
+                                    <th className="uppercase border border-black px-4 py-2 text-center" >View Status</th>
+                                </tr>
+                            </thead>
+                            {loading ? (
+                                <tbody className="h-10">
+                                    <tr className="">
+                                        <td colSpan="10" className="w-full py-10 h-10  text-center">
+                                            <div className="flex justify-center  items-center w-full h-full">
+                                                <div className="loader border-t-4 border-[#2c81ba] rounded-full w-10 h-10 animate-spin"></div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            ) : (
+                                <tbody>
+                                    {paginatedData.length > 0 ? (
+                                        paginatedData.map((item, index) => (
+                                            <React.Fragment key={item.client_unique_id}>
+                                                <tr className="text-left">
+                                                    <td className="border border-black px-4 py-2 text-center">{(currentPage - 1) * rowsPerPage + index + 1}</td>
+                                                    <td className="border border-black px-4 py-2">{item.client_unique_id}</td>
+                                                    <td className="border border-black px-4 py-2">{item.name || 'N/A'}</td>
+                                                    <td className="border border-black px-4 py-2">
+                                                        {item.client_spoc_name || 'N/A'}
+                                                    </td>
+                                                    <td className="border border-black px-4 py-2 text-center">{item.application_count}</td>
+
+                                                    {item.head_branch_applications_count >= 0 && (
+                                                        <td className="border border-black px-4 py-2 text-center">
+                                                            <div className="flex gap-3 ">
+                                                                {item.application_count <= item.head_branch_applications_count ? (
+                                                                    // Condition 1: Show only CHECK IN button
                                                                     <button
-                                                                        className="px-4 py-2 text-white rounded-md font-bold bg-green-500 hover:bg-green-600 hover:scale-105 transition-transform duration-300 ease-in-out transform"
+                                                                        className="px-4 py-2 text-white  whitespace-nowrap rounded-md font-bold bg-green-500 hover:bg-green-600 hover:scale-105 transition-transform duration-300 ease-in-out transform"
                                                                         onClick={() => handleCheckInGo(item.head_branch_id, item.main_id, item.name)}
                                                                     >
                                                                         CHECK IN
                                                                     </button>
-                                                                    <button
-                                                                        onClick={() => handleCheckIn(item.main_id)}
-                                                                        className={`ml-2 px-4 py-2  whitespace-nowrap text-white rounded-md font-bold bg-green-500 hover:bg-green-600 transition-transform duration-300 ease-in-out transform ${isLoading === item.main_id
-                                                                            ? 'opacity-50 cursor-not-allowed'
-                                                                            : activeCases && activeCases.main_id === item.main_id
-                                                                                ? 'bg-red-500 hover:bg-red-600 focus:ring-2 focus:ring-red-300'
-                                                                                : 'bg-green-500 hover:bg-green-600 focus:ring-2 focus:ring-green-300'
-                                                                            } ${!isLoading && 'hover:scale-105'}`}
-                                                                        disabled={isLoading === item.main_id}
-                                                                    >
-                                                                        {activeCases && activeCases.main_id === item.main_id ? 'Less' : 'View Status'}
-                                                                    </button>
-                                                                </>
-                                                            ) : (
-                                                                // Condition 3: Show only VIEW BRANCHES button
-                                                                item.head_branch_applications_count === 0 && item.application_count > 0 && (
-                                                                    <button
-                                                                        onClick={() => handleCheckIn(item.main_id)}
-                                                                        className={`px-4 py-2  whitespace-nowrap text-white rounded-md font-bold bg-green-500 hover:bg-green-600 transition-transform duration-300 ease-in-out transform ${isLoading === item.main_id
-                                                                            ? 'opacity-50 cursor-not-allowed'
-                                                                            : activeCases && activeCases.main_id === item.main_id
-                                                                                ? 'bg-red-500 hover:bg-red-600 focus:ring-2 focus:ring-red-300'
-                                                                                : 'bg-green-500 hover:bg-green-600 focus:ring-2 focus:ring-green-300'
-                                                                            } ${!isLoading && 'hover:scale-105'}`}
-                                                                        disabled={isLoading === item.main_id}
-                                                                    >
-                                                                        {activeCases && activeCases.main_id === item.main_id ? 'Less' : 'View Status'}
-                                                                    </button>
-                                                                )
-                                                            )}
+                                                                ) : item.application_count > item.head_branch_applications_count && item.head_branch_applications_count > 0 ? (
+                                                                    // Condition 2: Show both CHECK IN and VIEW BRANCHES buttons
+                                                                    <>
+                                                                        <button
+                                                                            className="px-4 py-2 text-white rounded-md font-bold bg-green-500 hover:bg-green-600 hover:scale-105 transition-transform duration-300 ease-in-out transform"
+                                                                            onClick={() => handleCheckInGo(item.head_branch_id, item.main_id, item.name)}
+                                                                        >
+                                                                            CHECK IN
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => handleCheckIn(item.main_id)}
+                                                                            className={`ml-2 px-4 py-2  whitespace-nowrap text-white rounded-md font-bold bg-green-500 hover:bg-green-600 transition-transform duration-300 ease-in-out transform ${isLoading === item.main_id
+                                                                                ? 'opacity-50 cursor-not-allowed'
+                                                                                : activeCases && activeCases.main_id === item.main_id
+                                                                                    ? 'bg-red-500 hover:bg-red-600 focus:ring-2 focus:ring-red-300'
+                                                                                    : 'bg-green-500 hover:bg-green-600 focus:ring-2 focus:ring-green-300'
+                                                                                } ${!isLoading && 'hover:scale-105'}`}
+                                                                            disabled={isLoading === item.main_id}
+                                                                        >
+                                                                            {activeCases && activeCases.main_id === item.main_id ? 'Less' : 'View Status'}
+                                                                        </button>
+                                                                    </>
+                                                                ) : (
+                                                                    // Condition 3: Show only VIEW BRANCHES button
+                                                                    item.head_branch_applications_count === 0 && item.application_count > 0 && (
+                                                                        <button
+                                                                            onClick={() => handleCheckIn(item.main_id)}
+                                                                            className={`px-4 py-2  whitespace-nowrap text-white rounded-md font-bold bg-green-500 hover:bg-green-600 transition-transform duration-300 ease-in-out transform ${isLoading === item.main_id
+                                                                                ? 'opacity-50 cursor-not-allowed'
+                                                                                : activeCases && activeCases.main_id === item.main_id
+                                                                                    ? 'bg-red-500 hover:bg-red-600 focus:ring-2 focus:ring-red-300'
+                                                                                    : 'bg-green-500 hover:bg-green-600 focus:ring-2 focus:ring-green-300'
+                                                                                } ${!isLoading && 'hover:scale-105'}`}
+                                                                            disabled={isLoading === item.main_id}
+                                                                        >
+                                                                            {activeCases && activeCases.main_id === item.main_id ? 'Less' : 'View Status'}
+                                                                        </button>
+                                                                    )
+                                                                )}
 
-                                                        </div>
-                                                    </td>
-                                                )}
-                                            </tr>
-                                            {activeCases && activeCases.main_id === item.main_id && nonHeadBranchData.length > 0 && (
-                                                <tr className="text-center py-4">
-                                                    <td colSpan="8" className="border border-black px-4 py-8">
-                                                        <table className="w-full mt-2">
-                                                            <thead>
-                                                                <tr className="bg-gray-300">
-                                                                    <th className=" uppercase border border-black px-4 py-2">SL</th>
-                                                                    <th className=" uppercase border border-black px-4 py-2">Branch Name</th>
-                                                                    <th className=" uppercase border border-black px-4 py-2">Application Count</th>
-                                                                    <th className=" uppercase border border-black px-4 py-2">CHECK IN</th>
-
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody>
-                                                                {nonHeadBranchData.map((branch, index) => (
-                                                                    <tr key={branch.branch_id}>
-                                                                        <td className="border border-black px-4 py-2">{index + 1}</td>
-                                                                        <td className="border border-black px-4 py-2">{branch.branch_name}</td>
-                                                                        <td className="border border-black px-4 py-2">{branch.application_count}</td>
-
-                                                                        <td className="border border-black px-4 py-2">
-                                                                            <button
-                                                                                className="px-4 py-2 text-white rounded-md font-bold bg-green-500 hover:bg-green-600 hover:scale-105  transition-transform duration-300 ease-in-out transform "
-                                                                                onClick={() => handleCheckInGo(branch.branch_id, item.main_id, branch.branch_name)}
-                                                                            >
-                                                                                CHECK IN
-                                                                            </button>
-                                                                        </td>
-                                                                    </tr>
-                                                                ))}
-                                                            </tbody>
-                                                        </table>
-                                                    </td>
+                                                            </div>
+                                                        </td>
+                                                    )}
                                                 </tr>
-                                            )}
-                                        </React.Fragment>
-                                    ))
-                                ) : (
-                                    <tr>
-                                        <td colSpan="6" className="text-center text-red-500 p-4">
-                                            {responseError && responseError !== "" ? responseError : "No data available in table"}
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        )}
-                    </table>
+                                                {activeCases && activeCases.main_id === item.main_id && nonHeadBranchData.length > 0 && (
+                                                    <tr className="text-center py-4">
+                                                        <td colSpan="8" className="border border-black px-4 py-8">
+                                                            <table className="w-full mt-2">
+                                                                <thead>
+                                                                    <tr className="bg-gray-300">
+                                                                        <th className=" uppercase border border-black px-4 py-2">SL</th>
+                                                                        <th className=" uppercase border border-black px-4 py-2">Branch Name</th>
+                                                                        <th className=" uppercase border border-black px-4 py-2">Application Count</th>
+                                                                        <th className=" uppercase border border-black px-4 py-2">CHECK IN</th>
+
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                    {nonHeadBranchData.map((branch, index) => (
+                                                                        <tr key={branch.branch_id}>
+                                                                            <td className="border border-black px-4 py-2">{index + 1}</td>
+                                                                            <td className="border border-black px-4 py-2">{branch.branch_name}</td>
+                                                                            <td className="border border-black px-4 py-2">{branch.application_count}</td>
+
+                                                                            <td className="border border-black px-4 py-2">
+                                                                                <button
+                                                                                    className="px-4 py-2 text-white rounded-md font-bold bg-green-500 hover:bg-green-600 hover:scale-105  transition-transform duration-300 ease-in-out transform "
+                                                                                    onClick={() => handleCheckInGo(branch.branch_id, item.main_id, branch.branch_name)}
+                                                                                >
+                                                                                    CHECK IN
+                                                                                </button>
+                                                                            </td>
+                                                                        </tr>
+                                                                    ))}
+                                                                </tbody>
+                                                            </table>
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </React.Fragment>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan="6" className="text-center text-red-500 p-4">
+                                                {responseError && responseError !== "" ? responseError : "No data available in table"}
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            )}
+                        </table>
+                    </div>
                 </div>
                 <div className="flex justify-between items-center mt-4">
                     <button

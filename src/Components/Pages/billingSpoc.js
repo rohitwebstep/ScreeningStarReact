@@ -1,13 +1,13 @@
-import React, { useEffect,useRef, useState, useCallback } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import Swal from 'sweetalert2';
 import swal from 'sweetalert';
 import { useNavigate } from 'react-router-dom';
 import { useApiLoading } from '../ApiLoadingContext';
 
 const BillingSpoc = () => {
-    const clientEditRef = useRef(null);
+  const clientEditRef = useRef(null);
   const [deletingId, setDeletingId] = useState(null);
-  const {validateAdminLogin,setApiLoading,apiLoading} = useApiLoading();
+  const { validateAdminLogin, setApiLoading, apiLoading } = useApiLoading();
   const navigate = useNavigate();
   const [spocs, setSpocs] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -18,6 +18,19 @@ const BillingSpoc = () => {
     phone: "",
     email: "",
   });
+     const tableScrollRef = useRef(null);
+    const topScrollRef = useRef(null);
+    const [scrollWidth, setScrollWidth] = useState("100%");
+
+    // 🔹 Sync scroll positions
+    const syncScroll = (e) => {
+        if (e.target === topScrollRef.current) {
+            tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+        } else {
+            topScrollRef.current.scrollLeft = e.target.scrollLeft;
+        }
+    };
+
   const [isEditing, setIsEditing] = useState(false);
   const [currentSpocId, setCurrentSpocId] = useState(null);
 
@@ -49,7 +62,7 @@ const BillingSpoc = () => {
 
     fetch(url, requestOptions)
       .then((response) => {
-        const newToken = response.token || response._token || storedToken ||'';
+        const newToken = response.token || response._token || storedToken || '';
         if (newToken) {
           localStorage.setItem("_token", newToken); // Store new token if available
         }
@@ -76,7 +89,7 @@ const BillingSpoc = () => {
       })
       .finally(() => {
         setLoading(false);
-        setApiLoading(false); 
+        setApiLoading(false);
       });
 
   }, []);
@@ -85,8 +98,8 @@ const BillingSpoc = () => {
     const initialize = async () => {
       try {
         if (apiLoading == false) {
-        await validateAdminLogin(); // Verify admin first
-        await fetchData(); 
+          await validateAdminLogin(); // Verify admin first
+          await fetchData();
         }
       } catch (error) {
         console.error(error.message);
@@ -192,7 +205,7 @@ const BillingSpoc = () => {
       method: "DELETE",
       redirect: "follow",
     };
-  
+
     try {
       const willDelete = await swal({
         title: "Are you sure?",
@@ -201,18 +214,18 @@ const BillingSpoc = () => {
         buttons: true,
         dangerMode: true,
       });
-  
+
       if (willDelete) {
         setDeletingId(id);
         const response = await fetch(
           `https://api.screeningstar.co.in/billing-spoc/delete?id=${id}&admin_id=${admin_id}&_token=${storedToken}`,
           requestOptions
         );
-  
+
         if (!response.ok) {
           throw new Error(`Error: ${response.statusText}`);
         }
-  
+
         // Remove the deleted SPOC from the state immediately
         setSpocs((prevSpocs) => prevSpocs.filter((spoc) => spoc.id !== id));
         swal("Deleted!", "The data has been deleted successfully.", "success");
@@ -256,14 +269,14 @@ const BillingSpoc = () => {
     setFormData({ name: "", designation: "", phone: "", email: "" });
     setIsEditing(false);
     setCurrentSpocId(null);
-};
+  };
   return (
 
     <div className=" ">
       <div className="bg-white  md:p-12 p-6 border border-black w-full mx-auto">
         <div className="md:flex space-x-4">
 
-          <div  ref={clientEditRef} className="md:w-2/5">
+          <div ref={clientEditRef} className="md:w-2/5">
             <form className="space-y-4 ps-0 pb-[30px]  md:pr-[30px] bg-white rounded-md" id="client-spoc" onSubmit={handleSubmit}>
               <div>
                 <label htmlFor="name" className="block mb-2">Name of the Spoc<span className="text-red-500 text-xl" >*</span></label>
@@ -346,58 +359,74 @@ const BillingSpoc = () => {
                 onChange={handleSearch}
               />
             </div>
-            <div className="overflow-auto">
-              <table className="min-w-full border-collapse border border-black rounded-lg">
-                <thead className="rounded-lg border border-black">
-                  <tr className="bg-[#c1dff2] text-[#4d606b] text-left rounded-lg whitespace-nowrap">
-                    <th className="py-2 px-4 border border-black uppercase">No.</th>
-                    <th className="py-2 px-4 border border-black uppercase">Name of the Spoc</th>
-                    <th className="py-2 px-4 border border-black uppercase">Designation</th>
-                    <th className="py-2 px-4 border border-black uppercase">Contact Number</th>
-                    <th className="py-2 px-4 border border-black uppercase">Email ID</th>
-                    <th className="py-2 px-4 border border-black text-center uppercase">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    <tr>
-                      <td colSpan={6} className="py-4 text-center text-gray-500">
-                        <Loader className="text-center" />
-                      </td>
+            <div className="table-container rounded-lg">
+              {/* Top Scroll */}
+              <div
+                className="top-scroll"
+                ref={topScrollRef}
+                onScroll={syncScroll}
+              >
+                <div className="top-scroll-inner" style={{ width: tableScrollRef.current?.scrollWidth || "100%" }} />
+              </div>
+
+              {/* Actual Table Scroll */}
+              <div
+                className="table-scroll rounded-lg"
+                ref={tableScrollRef}
+                onScroll={syncScroll}
+              >
+                <table className="min-w-full border-collapse border border-black rounded-lg">
+                  <thead className="rounded-lg border border-black">
+                    <tr className="bg-[#c1dff2] text-[#4d606b] text-left rounded-lg whitespace-nowrap">
+                      <th className="py-2 px-4 border border-black uppercase">No.</th>
+                      <th className="py-2 px-4 border border-black uppercase">Name of the Spoc</th>
+                      <th className="py-2 px-4 border border-black uppercase">Designation</th>
+                      <th className="py-2 px-4 border border-black uppercase">Contact Number</th>
+                      <th className="py-2 px-4 border border-black uppercase">Email ID</th>
+                      <th className="py-2 px-4 border border-black text-center uppercase">Actions</th>
                     </tr>
-                  ) : (
-                    <>
-                      {currentSpocs.length === 0 ? (
-                        <tr>
-                          <td colSpan={6} className="py-4 text-center text-gray-500">
-                            Your Table Is Empty.
-                          </td>
-                        </tr>
-                      ) : (
-                        currentSpocs.map((spoc, index) => (
-                          <tr key={spoc.id} className="hover:bg-gray-200">
-                            <td className="py-2 px-4 border border-black">{index + indexOfFirstItem + 1}</td>
-                            <td className="py-2 px-4 border border-black">{spoc.name}</td>
-                            <td className="py-2 px-4 border border-black">{spoc.designation}</td>
-                            <td className="py-2 px-4 border border-black">{spoc.phone}</td>
-                            <td className="py-2 px-4 border border-black">{spoc.email}</td>
-                            <td className="py-2 px-4 border border-black whitespace-nowrap">
-                              <button className="bg-green-500 hover:scale-105 hover:bg-green-600 text-white px-4 py-2 rounded mr-2" onClick={() => handleEdit(spoc)}>Edit</button>
-                              <button
-                                 disabled={deletingId === spoc.id} 
-                                className={`bg-red-500 hover:scale-105 hover:bg-red-600  text-white px-4 py-2 rounded ${deletingId === spoc.id ? "opacity-50 cursor-not-allowed" : ""} `}
-                                 onClick={() => handleDelete(spoc.id)}>
-                                  {deletingId === spoc.id ? "Deleting..." : "Delete"}
-                                </button>
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <tr>
+                        <td colSpan={6} className="py-4 text-center text-gray-500">
+                          <Loader className="text-center" />
+                        </td>
+                      </tr>
+                    ) : (
+                      <>
+                        {currentSpocs.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="py-4 text-center text-gray-500">
+                              Your Table Is Empty.
                             </td>
                           </tr>
-                        ))
-                      )}
-                    </>
-                  )}
-                </tbody>
+                        ) : (
+                          currentSpocs.map((spoc, index) => (
+                            <tr key={spoc.id} className="hover:bg-gray-200">
+                              <td className="py-2 px-4 border border-black">{index + indexOfFirstItem + 1}</td>
+                              <td className="py-2 px-4 border border-black">{spoc.name}</td>
+                              <td className="py-2 px-4 border border-black">{spoc.designation}</td>
+                              <td className="py-2 px-4 border border-black">{spoc.phone}</td>
+                              <td className="py-2 px-4 border border-black">{spoc.email}</td>
+                              <td className="py-2 px-4 border border-black whitespace-nowrap">
+                                <button className="bg-green-500 hover:scale-105 hover:bg-green-600 text-white px-4 py-2 rounded mr-2" onClick={() => handleEdit(spoc)}>Edit</button>
+                                <button
+                                  disabled={deletingId === spoc.id}
+                                  className={`bg-red-500 hover:scale-105 hover:bg-red-600  text-white px-4 py-2 rounded ${deletingId === spoc.id ? "opacity-50 cursor-not-allowed" : ""} `}
+                                  onClick={() => handleDelete(spoc.id)}>
+                                  {deletingId === spoc.id ? "Deleting..." : "Delete"}
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </>
+                    )}
+                  </tbody>
 
-              </table>
+                </table>
+              </div>
             </div>
             <div className="flex justify-center mt-4">
               {Array.from({ length: totalPages }, (_, index) => (

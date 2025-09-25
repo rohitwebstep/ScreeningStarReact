@@ -13,11 +13,22 @@ const ClientManager = () => {
     const [isExist, setIsExist] = useState([])
     const fileInputRef = useRef();
     const attachDocsRef = useRef();
+    const tableScrollRef = useRef(null);
+    const topScrollRef = useRef(null);
+    const [scrollWidth, setScrollWidth] = useState("100%");
 
+    // 🔹 Sync scroll positions
+    const syncScroll = (e) => {
+        if (e.target === topScrollRef.current) {
+            tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+        } else {
+            topScrollRef.current.scrollLeft = e.target.scrollLeft;
+        }
+    };
     const [searchTerm, setSearchTerm] = useState("");
     const [tableCurrentPage, setTableCurrentPage] = useState(1);
     const [rowsPerPage, setRowsPerPage] = useState(10);
-    const optionsPerPage = [10, 50, 100, 200,500,1000];
+    const optionsPerPage = [10, 50, 100, 200, 500, 1000];
     const navigate = useNavigate();
     const [loadingStates, setLoadingStates] = useState({});
     const clientEditRef = useRef(null);
@@ -720,6 +731,12 @@ const ClientManager = () => {
             ? formData.package.map(pkg => ({ label: pkg, value: pkg }))
             : [];
     // console.log('myipadress is', ipAddress);
+
+    useEffect(() => {
+        if (tableScrollRef.current) {
+            setScrollWidth(tableScrollRef.current.scrollWidth + "px");
+        }
+    }, [paginatedData, loading]);
     return (
         <div className="bg-[#c1dff2]  border border-black " ref={clientEditRef} id="clientedit">
             <div className="bg-white md:p-12 p-6 w-full mx-auto">
@@ -1209,130 +1226,137 @@ const ClientManager = () => {
                             ))}
                         </select>
                     </div>
-                    <div className='overflow-scroll '>
+                    <div className="table-container rounded-lg">
+                        {/* Top Scroll */}
+                        <div className="top-scroll" ref={topScrollRef} onScroll={syncScroll}>
+                            <div className="top-scroll-inner" style={{ width: scrollWidth }} />
+                        </div>
 
+                        {/* Actual Table Scroll */}
+                        <div className="table-scroll rounded-lg" ref={tableScrollRef} onScroll={syncScroll}>
 
-                        <table className="m-auto w-full border-collapse border border-black rounded-lg">
-                            <thead>
-                                <tr className="bg-[#c1dff2] text-[#4d606b] whitespace-nowrap">
-                                    <th className=" uppercase border border-black px-4 py-2">Sl No.</th>
-                                    <th className=" uppercase border border-black px-4 py-2">Photo</th>
-                                    <th className=" uppercase border border-black px-4 py-2 text-left">Name Of The Applicant</th>
-                                    <th className=" uppercase border border-black px-4 py-2 text-left">Generate Report Type</th>
-                                    <th className=" uppercase border border-black px-4 py-2 text-left">Application Id</th>
-                                    {isExist.employeIdExist && (
-                                        <th className="uppercase border border-black px-4 py-2 text-left">Employe Id</th>
-                                    )}
-                                    {isExist.locationExist && (
-                                        <th className="uppercase border border-black px-4 py-2 text-left">Location</th>
-                                    )}
-                                    <th className=" uppercase border border-black px-4 py-2 text-left">Service</th>
-                                    <th className=" uppercase border border-black px-4 py-2">Edit</th>
-                                    <th className=" uppercase border border-black px-4 py-2">Delete</th>
+                            <table className="m-auto w-full border-collapse border border-black rounded-lg">
+                                <thead>
+                                    <tr className="bg-[#c1dff2] text-[#4d606b] whitespace-nowrap">
+                                        <th className=" uppercase border border-black px-4 py-2">Sl No.</th>
+                                        <th className=" uppercase border border-black px-4 py-2">Photo</th>
+                                        <th className=" uppercase border border-black px-4 py-2 text-left">Name Of The Applicant</th>
+                                        <th className=" uppercase border border-black px-4 py-2 text-left">Generate Report Type</th>
+                                        <th className=" uppercase border border-black px-4 py-2 text-left">Application Id</th>
+                                        {isExist.employeIdExist && (
+                                            <th className="uppercase border border-black px-4 py-2 text-left">Employe Id</th>
+                                        )}
+                                        {isExist.locationExist && (
+                                            <th className="uppercase border border-black px-4 py-2 text-left">Location</th>
+                                        )}
+                                        <th className=" uppercase border border-black px-4 py-2 text-left">Service</th>
+                                        <th className=" uppercase border border-black px-4 py-2">Edit</th>
+                                        <th className=" uppercase border border-black px-4 py-2">Delete</th>
 
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {loading ? (
-
-                                    <tr>
-                                        <td colSpan={100} className="py-4 text-center text-gray-500">
-                                            <Loader className="text-center" />
-                                        </td>
                                     </tr>
-                                ) : paginatedData.length == 0 ? (
+                                </thead>
+                                <tbody>
+                                    {loading ? (
 
-                                    <tr>
-                                        <td colSpan={100} className="py-4 text-center text-gray-500">
-                                            No data available
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    <>
-                                        {
-                                            paginatedData.map((item, index) => (
-                                                <tr key={item.id} className="text-center">
-                                                    <td className="border border-black px-4 py-2">
-                                                        {index + 1 + (tableCurrentPage - 1) * rowsPerPage}
-                                                    </td>
-                                                    <td className="border border-black px-4 text-center py-2">
-                                                        <div className='flex justify-center'>
-                                                            <img src={item.photo ? item.photo : `${Default}`} alt="Photo" className="h-10 w-10 object-cover" />
-                                                        </div>
-                                                    </td>
-                                                    <td className="border border-black px-4 py-2 text-left">{item.name}</td>
-                                                    <td className="border border-black px-4 py-2 text-left">{item.generate_report_type}</td>
-                                                    <td className="border border-black px-4 py-2 text-left">{item.application_id}</td>
-                                                    {isExist.employeIdExist && (
-                                                        <td className="border border-black px-4 py-2 text-left">{item.employee_id || "null"}</td>
-                                                    )}
-                                                    {isExist.locationExist && (
-                                                        <td className="border border-black px-4 py-2 text-left ">{item.location}</td>
-                                                    )}
-                                                    <td className="border border-black px-4 py-2  text-left">
-                                                        <div className='flex whitespace-nowrap'>
-                                                            {Array.isArray(item.serviceNames) && item.serviceNames.length > 0 ? (
-                                                                item.serviceNames.length === 1 ? (
-                                                                    // Single service
-                                                                    <span className="px-4 py-2 bg-blue-100 border border-blue-500 rounded-lg text-sm">
-                                                                        {typeof item.serviceNames[0] === "string"
-                                                                            ? item.serviceNames[0]
-                                                                            : item.serviceNames[0].join(", ")}
-                                                                    </span>
+                                        <tr>
+                                            <td colSpan={100} className="py-4 text-center text-gray-500">
+                                                <Loader className="text-center" />
+                                            </td>
+                                        </tr>
+                                    ) : paginatedData.length == 0 ? (
+
+                                        <tr>
+                                            <td colSpan={100} className="py-4 text-center text-gray-500">
+                                                No data available
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        <>
+                                            {
+                                                paginatedData.map((item, index) => (
+                                                    <tr key={item.id} className="text-center">
+                                                        <td className="border border-black px-4 py-2">
+                                                            {index + 1 + (tableCurrentPage - 1) * rowsPerPage}
+                                                        </td>
+                                                        <td className="border border-black px-4 text-center py-2">
+                                                            <div className='flex justify-center'>
+                                                                <img src={item.photo ? item.photo : `${Default}`} alt="Photo" className="h-10 w-10 object-cover" />
+                                                            </div>
+                                                        </td>
+                                                        <td className="border border-black px-4 py-2 text-left">{item.name}</td>
+                                                        <td className="border border-black px-4 py-2 text-left">{item.generate_report_type}</td>
+                                                        <td className="border border-black px-4 py-2 text-left">{item.application_id}</td>
+                                                        {isExist.employeIdExist && (
+                                                            <td className="border border-black px-4 py-2 text-left">{item.employee_id || "null"}</td>
+                                                        )}
+                                                        {isExist.locationExist && (
+                                                            <td className="border border-black px-4 py-2 text-left ">{item.location}</td>
+                                                        )}
+                                                        <td className="border border-black px-4 py-2  text-left">
+                                                            <div className='flex whitespace-nowrap'>
+                                                                {Array.isArray(item.serviceNames) && item.serviceNames.length > 0 ? (
+                                                                    item.serviceNames.length === 1 ? (
+                                                                        // Single service
+                                                                        <span className="px-4 py-2 bg-blue-100 border border-blue-500 rounded-lg text-sm">
+                                                                            {typeof item.serviceNames[0] === "string"
+                                                                                ? item.serviceNames[0]
+                                                                                : item.serviceNames[0].join(", ")}
+                                                                        </span>
+                                                                    ) : (
+                                                                        // Multiple services
+                                                                        <>
+                                                                            {typeof item.serviceNames[0] === "string" ? (
+                                                                                <span className="px-4 py-2 bg-blue-100 border border-blue-500 rounded-lg text-sm">
+                                                                                    {item.serviceNames[0]}
+                                                                                </span>
+                                                                            ) : (
+                                                                                <span className="px-4 py-2 bg-blue-100 border border-blue-500 rounded-lg text-sm">
+                                                                                    {item.serviceNames[0].join(", ")}
+                                                                                </span>
+                                                                            )}
+                                                                            <button
+                                                                                className="text-blue-500 ml-2"
+                                                                                onClick={() => handleViewMore(item.serviceNames)}
+                                                                            >
+                                                                                View More
+                                                                            </button>
+                                                                        </>
+                                                                    )
                                                                 ) : (
-                                                                    // Multiple services
-                                                                    <>
-                                                                        {typeof item.serviceNames[0] === "string" ? (
-                                                                            <span className="px-4 py-2 bg-blue-100 border border-blue-500 rounded-lg text-sm">
-                                                                                {item.serviceNames[0]}
-                                                                            </span>
-                                                                        ) : (
-                                                                            <span className="px-4 py-2 bg-blue-100 border border-blue-500 rounded-lg text-sm">
-                                                                                {item.serviceNames[0].join(", ")}
-                                                                            </span>
-                                                                        )}
-                                                                        <button
-                                                                            className="text-blue-500 ml-2"
-                                                                            onClick={() => handleViewMore(item.serviceNames)}
-                                                                        >
-                                                                            View More
-                                                                        </button>
-                                                                    </>
-                                                                )
-                                                            ) : (
-                                                                // No services or serviceNames is not an array
-                                                                <span className="px-4 py-2 bg-red-100 border border-red-500 rounded-lg">
-                                                                    You have no services
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    </td>
-                                                    <td className="border  border-black px-4 py-2">
-                                                        <button
-                                                            className="bg-green-500 hover:scale-105 transition duration-200  text-white px-4 py-2 rounded-md"
-                                                            onClick={() => handleEdit(item)}
-                                                        >
-                                                            Edit
-                                                        </button>
-                                                    </td>
-                                                    <td className="border  border-black px-4 py-2">
-                                                        <button
-                                                            className={`bg-red-500 hover:scale-105 transition duration-200 text-white px-4 py-2 rounded-md 
+                                                                    // No services or serviceNames is not an array
+                                                                    <span className="px-4 py-2 bg-red-100 border border-red-500 rounded-lg">
+                                                                        You have no services
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                        <td className="border  border-black px-4 py-2">
+                                                            <button
+                                                                className="bg-green-500 hover:scale-105 transition duration-200  text-white px-4 py-2 rounded-md"
+                                                                onClick={() => handleEdit(item)}
+                                                            >
+                                                                Edit
+                                                            </button>
+                                                        </td>
+                                                        <td className="border  border-black px-4 py-2">
+                                                            <button
+                                                                className={`bg-red-500 hover:scale-105 transition duration-200 text-white px-4 py-2 rounded-md 
         ${loadingStates[item.id] ? 'opacity-50 cursor-not-allowed' : 'opacity-100'}`}
-                                                            onClick={() => handleDelete(item.id)}
-                                                            disabled={loadingStates[item.id]} // Disable button when loading
-                                                        >
-                                                            {loadingStates[item.id] ? 'Deleting...' : 'Delete'}
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))
-                                        }
-                                    </>
-                                )}
-                            </tbody>
-                        </table>
+                                                                onClick={() => handleDelete(item.id)}
+                                                                disabled={loadingStates[item.id]} // Disable button when loading
+                                                            >
+                                                                {loadingStates[item.id] ? 'Deleting...' : 'Delete'}
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            }
+                                        </>
+                                    )}
+                                </tbody>
+                            </table>
 
+                        </div>
                     </div>
                     <div className="flex justify-between items-center mt-4">
                         <button

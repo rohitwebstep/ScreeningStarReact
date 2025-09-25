@@ -10,6 +10,18 @@ const AuthorizedDetails = () => {
    const {validateAdminLogin,setApiLoading,apiLoading} = useApiLoading();
 
   const clientEditRef = useRef(null);
+     const tableScrollRef = useRef(null);
+    const topScrollRef = useRef(null);
+    const [scrollWidth, setScrollWidth] = useState("100%");
+
+    // 🔹 Sync scroll positions
+    const syncScroll = (e) => {
+        if (e.target === topScrollRef.current) {
+            tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+        } else {
+            topScrollRef.current.scrollLeft = e.target.scrollLeft;
+        }
+    };
 
   const [spocs, setSpocs] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -341,7 +353,14 @@ const AuthorizedDetails = () => {
                 onChange={handleSearch}
               />
             </div>
-            <div className="overflow-auto">
+        <div className="table-container rounded-lg">
+                    {/* Top Scroll */}
+                    <div className="top-scroll" ref={topScrollRef} onScroll={syncScroll}>
+                        <div className="top-scroll-inner" style={{ width: scrollWidth }} />
+                    </div>
+
+                    {/* Actual Table Scroll */}
+                    <div className="table-scroll rounded-lg" ref={tableScrollRef} onScroll={syncScroll}>
               <table className="min-w-full border-collapse border border-black rounded-lg">
                 <thead className="rounded-lg">
                   <tr className="bg-[#c1dff2] text-[#4d606b] text-left rounded-lg whitespace-nowrap">
@@ -395,6 +414,7 @@ const AuthorizedDetails = () => {
                 </tbody>
               </table>
 
+            </div>
             </div>
             <div className="flex justify-center mt-4">
               {Array.from({ length: totalPages }, (_, i) => (

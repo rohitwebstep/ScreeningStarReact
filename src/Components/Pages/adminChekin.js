@@ -66,13 +66,16 @@ const AdminChekin = () => {
     const [isBulkDownloading, setIsBulkDownloading] = useState(false);
 
     const [viewLoading, setViewLoading] = useState(false);
-    const tableScrollRef = useRef(null);
+   const tableScrollRef = useRef(null);
     const topScrollRef = useRef(null);
+    const [scrollWidth, setScrollWidth] = useState("100%");
 
-    const syncScroll = () => {
-        if (tableScrollRef.current && topScrollRef.current) {
-            topScrollRef.current.scrollLeft = tableScrollRef.current.scrollLeft;
-            tableScrollRef.current.scrollLeft = topScrollRef.current.scrollLeft;
+    // 🔹 Sync scroll positions
+    const syncScroll = (e) => {
+        if (e.target === topScrollRef.current) {
+            tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+        } else {
+            topScrollRef.current.scrollLeft = e.target.scrollLeft;
         }
     };
 
@@ -2722,6 +2725,13 @@ const AdminChekin = () => {
     const modifiedNames = customerEmails.map(name =>
         name[0] + name.slice(2)
     );
+          useEffect(() => {
+    if (tableScrollRef.current) {
+      setScrollWidth(tableScrollRef.current.scrollWidth + "px");
+    }
+  }, [paginatedData, loading]); 
+
+  
     const removeColorNames = (text) => {
         const colorRegex = new RegExp(`\\b(${colorNames.join('|')})\\b`, 'gi');
         return text.replace(colorRegex, '').trim();
@@ -2868,22 +2878,14 @@ const AdminChekin = () => {
 
                     </div>
                 </div>
-                <div className="table-container rounded-lg">
+              <div className="table-container rounded-lg">
                     {/* Top Scroll */}
-                    <div
-                        className="top-scroll"
-                        ref={topScrollRef}
-                        onScroll={syncScroll}
-                    >
-                        <div className="top-scroll-inner" style={{ width: tableScrollRef.current?.scrollWidth || "100%" }} />
+                    <div className="top-scroll" ref={topScrollRef} onScroll={syncScroll}>
+                        <div className="top-scroll-inner" style={{ width: scrollWidth }} />
                     </div>
 
                     {/* Actual Table Scroll */}
-                    <div
-                        className="table-scroll rounded-lg"
-                        ref={tableScrollRef}
-                        onScroll={syncScroll}
-                    >
+                    <div className="table-scroll rounded-lg" ref={tableScrollRef} onScroll={syncScroll}>
                         <table className="min-w-full border-collapse border border-black overflow-scroll rounded-lg whitespace-nowrap">
                             <thead className='rounded-lg'>
                                 <tr className="bg-[#c1dff2] text-[#4d606b]">

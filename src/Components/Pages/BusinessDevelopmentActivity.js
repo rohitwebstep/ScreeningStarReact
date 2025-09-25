@@ -21,6 +21,18 @@ const BusinessDevelopmentActivity = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [responseError, setResponseError] = useState(null);
+     const tableScrollRef = useRef(null);
+    const topScrollRef = useRef(null);
+    const [scrollWidth, setScrollWidth] = useState("100%");
+
+    // 🔹 Sync scroll positions
+    const syncScroll = (e) => {
+        if (e.target === topScrollRef.current) {
+            tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+        } else {
+            topScrollRef.current.scrollLeft = e.target.scrollLeft;
+        }
+    };
 
   const [formData, setFormData] = useState({
     bd_expert_name: "",
@@ -67,12 +79,12 @@ const BusinessDevelopmentActivity = () => {
     if (regex.test(date)) {
       return date; // Return the date as is if it matches dd-mm-yyyy format
     }
-  
+
     // Check if the date is invalid or not provided
     if (!date || isNaN(new Date(date))) {
       return 'nll'; // Return 'nll' if the date is invalid or not provided
     }
-  
+
     // Format the date if it's a valid Date object
     const dateObj = new Date(date);
     const day = String(dateObj.getDate()).padStart(2, '0'); // Ensures two-digit day
@@ -80,7 +92,7 @@ const BusinessDevelopmentActivity = () => {
     const year = dateObj.getFullYear();
     return `${day}-${month}-${year}`;
   };
-  
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     setApiLoading(true);
@@ -182,7 +194,7 @@ const BusinessDevelopmentActivity = () => {
       date: formData.date ? format(formData.date, "yyyy-MM-dd") : "", // format the date here
       callback_asked_at: formData.callback_asked_at ? format(formData.callback_asked_at, "yyyy-MM-dd") : "",
       followup_date: formData.followup_date ? format(formData.followup_date, "yyyy-MM-dd") : "",
-            admin_id,
+      admin_id,
       _token: storedToken,
     });
 
@@ -584,13 +596,13 @@ const BusinessDevelopmentActivity = () => {
               <div className="w-full">
                 <label htmlFor="callback_asked_at" className="block text-left w-full m-auto mb-2 text-gray-700">When did they ask you to call back</label>
                 <DatePicker
-  selected={formData.callback_asked_at}
-  onChange={(date) => setFormData((prev) => ({ ...prev, callback_asked_at: date }))}
-  placeholderText="When did they ask you to call back"
-  className="w-full m-auto p-3 mb-[20px] border border-gray-300 rounded-md"
-  dateFormat="dd-MM-yyyy"
-  name="callback_asked_at"
-/>
+                  selected={formData.callback_asked_at}
+                  onChange={(date) => setFormData((prev) => ({ ...prev, callback_asked_at: date }))}
+                  placeholderText="When did they ask you to call back"
+                  className="w-full m-auto p-3 mb-[20px] border border-gray-300 rounded-md"
+                  dateFormat="dd-MM-yyyy"
+                  name="callback_asked_at"
+                />
               </div>
 
               <div className="w-full">
@@ -640,13 +652,13 @@ const BusinessDevelopmentActivity = () => {
               <div className="w-full">
                 <label htmlFor="followup_date" className="block text-left w-full m-auto mb-2 text-gray-700">Follow up Date</label>
                 <DatePicker
-  selected={formData.followup_date}
-  onChange={(date) => setFormData((prev) => ({ ...prev, followup_date: date }))}
-  className="w-full m-auto p-3 mb-[20px] border border-gray-300 rounded-md"
-  placeholderText="Follow up Date"
-  dateFormat="dd-MM-yyyy"
-  name="followup_date"
-/>
+                  selected={formData.followup_date}
+                  onChange={(date) => setFormData((prev) => ({ ...prev, followup_date: date }))}
+                  className="w-full m-auto p-3 mb-[20px] border border-gray-300 rounded-md"
+                  placeholderText="Follow up Date"
+                  dateFormat="dd-MM-yyyy"
+                  name="followup_date"
+                />
               </div>
 
               <div className="w-full">
@@ -724,88 +736,104 @@ const BusinessDevelopmentActivity = () => {
                 onChange={handleSearch}
               />
             </div>
-            <div className="overflow-auto">
-              <table className="min-w-full border-collapse border border-black rounded-lg">
-                <thead className="rounded-lg border border-black">
-                  <tr className="bg-[#c1dff2] text-[#4d606b] text-left rounded-lg whitespace-nowrap">
-                    <th className="uppercase border border-black px-4 py-2">Sl no.</th>
-                    <th className="uppercase border border-black px-4 py-2">Name of the BD Expert</th>
-                    <th className="uppercase border border-black px-4 py-2">Date</th>
-                    <th className="uppercase border border-black px-4 py-2">Client Organization Full Name</th>
-                    <th className="uppercase border border-black px-4 py-2">Company Size (Contact only companies with 100+ employees)</th>
-                    <th className="uppercase border border-black px-4 py-2">Whom You Spoke To</th>
-                    <th className="uppercase border border-black px-4 py-2">Designation</th>
-                    <th className="uppercase border border-black px-4 py-2">Contact no.</th>
-                    <th className="uppercase border border-black px-4 py-2">Email Id</th>
-                    <th className="uppercase border border-black px-4 py-2">BGV Vendor?</th>
-                    <th className="uppercase border border-black px-4 py-2">Vendor Name</th>
-                    <th className="uppercase border border-black px-4 py-2">Interested?</th>
-                    <th className="uppercase border border-black px-4 py-2">Reason not Using</th>
-                    <th className="uppercase border border-black px-4 py-2">Reason Using</th>
-                    <th className="uppercase border border-black px-4 py-2">When did they ask you to call back</th>
-                    <th className="uppercase border border-black px-4 py-2">Is Prospect?</th>
-                    <th className="uppercase border border-black px-4 py-2">Comments</th>
-                    <th className="uppercase border border-black px-4 py-2">Follow up Date</th>
-                    <th className="uppercase border border-black px-4 py-2">Follow up Comments</th>
-                    <th className="uppercase border border-black px-4 py-2">Final Remarks</th>
-                    <th className="uppercase border border-black px-4 py-2 text-center">Actions</th>
-                  </tr>
-                </thead>
+            <div className="table-container rounded-lg">
+              {/* Top Scroll */}
+              <div
+                className="top-scroll"
+                ref={topScrollRef}
+                onScroll={syncScroll}
+              >
+                <div className="top-scroll-inner" style={{ width: tableScrollRef.current?.scrollWidth || "100%" }} />
+              </div>
 
-                <tbody>
-                  {loading ? (
-                    <tr>
-                      <td colSpan={6} className="py-4 text-center text-gray-500">
-                        <Loader className="text-center" />
-                      </td>
+              {/* Actual Table Scroll */}
+              <div
+                className="table-scroll rounded-lg"
+                ref={tableScrollRef}
+                onScroll={syncScroll}
+              >
+                <table className="min-w-full border-collapse border border-black rounded-lg">
+                  <thead className="rounded-lg border border-black">
+                    <tr className="bg-[#c1dff2] text-[#4d606b] text-left rounded-lg whitespace-nowrap">
+                      <th className="uppercase border border-black px-4 py-2">Sl no.</th>
+                      <th className="uppercase border border-black px-4 py-2">Name of the BD Expert</th>
+                      <th className="uppercase border border-black px-4 py-2">Date</th>
+                      <th className="uppercase border border-black px-4 py-2">Client Organization Full Name</th>
+                      <th className="uppercase border border-black px-4 py-2">Company Size (Contact only companies with 100+ employees)</th>
+                      <th className="uppercase border border-black px-4 py-2">Whom You Spoke To</th>
+                      <th className="uppercase border border-black px-4 py-2">Designation</th>
+                      <th className="uppercase border border-black px-4 py-2">Contact no.</th>
+                      <th className="uppercase border border-black px-4 py-2">Email Id</th>
+                      <th className="uppercase border border-black px-4 py-2">BGV Vendor?</th>
+                      <th className="uppercase border border-black px-4 py-2">Vendor Name</th>
+                      <th className="uppercase border border-black px-4 py-2">Interested?</th>
+                      <th className="uppercase border border-black px-4 py-2">Reason not Using</th>
+                      <th className="uppercase border border-black px-4 py-2">Reason Using</th>
+                      <th className="uppercase border border-black px-4 py-2">When did they ask you to call back</th>
+                      <th className="uppercase border border-black px-4 py-2">Is Prospect?</th>
+                      <th className="uppercase border border-black px-4 py-2">Comments</th>
+                      <th className="uppercase border border-black px-4 py-2">Follow up Date</th>
+                      <th className="uppercase border border-black px-4 py-2">Follow up Comments</th>
+                      <th className="uppercase border border-black px-4 py-2">Final Remarks</th>
+                      <th className="uppercase border border-black px-4 py-2 text-center">Actions</th>
                     </tr>
-                  ) : (
-                    <>
-                      {currentSpocs.length === 0 ? (
-                        <tr>
-                          <td colSpan={6} className="py-4 text-center text-red-500">
-                            {responseError && responseError !== "" ? responseError : "no data available in table"}
-                          </td>
-                        </tr>
-                      ) : (
-                        currentSpocs.map((spoc, index) => (
-                          <tr key={spoc.id} className="hover:bg-gray-200 ">
-                            <td className="py-2 px-4 border border-black">{index + indexOfFirstItem + 1}</td>
-                            <td className="border border-black px-4 py-2">{spoc.bd_expert_name}</td>
-                            <td className="border border-black px-4 py-2 whitespace-nowrap">{formatDate(spoc.date)}</td>
-                            <td className="border border-black px-4 py-2">{spoc.client_organization_name}</td>
-                            <td className="border border-black px-4 py-2">{spoc.company_size}</td>
-                            <td className="border border-black px-4 py-2">{spoc.spoc_name}</td>
-                            <td className="border border-black px-4 py-2">{spoc.spoc_designation}</td>
-                            <td className="border border-black px-4 py-2 whitespace-nowrap">{spoc.contact_number}</td>
-                            <td className="border border-black px-4 py-2">{spoc.email}</td>
-                            <td className="border border-black px-4 py-2">{spoc.is_using_any_bgv_vendor}</td>
-                            <td className="border border-black px-4 py-2">{spoc.vendor_name}</td>
-                            <td className="border border-black px-4 py-2">{spoc.is_interested_in_using_our_services}</td>
-                            <td className="border border-black px-4 py-2">{spoc.reason_for_not_using_our_services}</td>
-                            <td className="border border-black px-4 py-2">{spoc.reason_for_using_our_services}</td>
-                            <td className="border border-black px-4 py-2">{formatDate(spoc.callback_asked_at)}</td>
-                            <td className="border border-black px-4 py-2">{spoc.is_prospect}</td>
-                            <td className="border border-black px-4 py-2">{spoc.comments}</td>
-                            <td className="border border-black px-4 py-2">{formatDate(spoc.followup_date)}</td>
-                            <td className="border border-black px-4 py-2">{spoc.followup_comments}</td>
-                            <td className="border border-black px-4 py-2">{spoc.remarks}</td>
-                            <td className="py-2  px-4 border border-black">
-                              <div className="flex gap-2">
-                                <button className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded mr-2" onClick={() => handleEdit(spoc)}>Edit</button>
-                                <button className={`bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded ${deletingId === spoc.id ? "opacity-50 cursor-not-allowed" : ""}`} disabled={deletingId === spoc.id} onClick={() => handleDelete(spoc.id)}>
-                                  {deletingId === spoc.id ? "Deleting..." : "Delete"}
-                                </button>
-                              </div></td>
+                  </thead>
+
+                  <tbody>
+                    {loading ? (
+                      <tr>
+                        <td colSpan={6} className="py-4 text-center text-gray-500">
+                          <Loader className="text-center" />
+                        </td>
+                      </tr>
+                    ) : (
+                      <>
+                        {currentSpocs.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="py-4 text-center text-red-500">
+                              {responseError && responseError !== "" ? responseError : "no data available in table"}
+                            </td>
                           </tr>
+                        ) : (
+                          currentSpocs.map((spoc, index) => (
+                            <tr key={spoc.id} className="hover:bg-gray-200 ">
+                              <td className="py-2 px-4 border border-black">{index + indexOfFirstItem + 1}</td>
+                              <td className="border border-black px-4 py-2">{spoc.bd_expert_name}</td>
+                              <td className="border border-black px-4 py-2 whitespace-nowrap">{formatDate(spoc.date)}</td>
+                              <td className="border border-black px-4 py-2">{spoc.client_organization_name}</td>
+                              <td className="border border-black px-4 py-2">{spoc.company_size}</td>
+                              <td className="border border-black px-4 py-2">{spoc.spoc_name}</td>
+                              <td className="border border-black px-4 py-2">{spoc.spoc_designation}</td>
+                              <td className="border border-black px-4 py-2 whitespace-nowrap">{spoc.contact_number}</td>
+                              <td className="border border-black px-4 py-2">{spoc.email}</td>
+                              <td className="border border-black px-4 py-2">{spoc.is_using_any_bgv_vendor}</td>
+                              <td className="border border-black px-4 py-2">{spoc.vendor_name}</td>
+                              <td className="border border-black px-4 py-2">{spoc.is_interested_in_using_our_services}</td>
+                              <td className="border border-black px-4 py-2">{spoc.reason_for_not_using_our_services}</td>
+                              <td className="border border-black px-4 py-2">{spoc.reason_for_using_our_services}</td>
+                              <td className="border border-black px-4 py-2">{formatDate(spoc.callback_asked_at)}</td>
+                              <td className="border border-black px-4 py-2">{spoc.is_prospect}</td>
+                              <td className="border border-black px-4 py-2">{spoc.comments}</td>
+                              <td className="border border-black px-4 py-2">{formatDate(spoc.followup_date)}</td>
+                              <td className="border border-black px-4 py-2">{spoc.followup_comments}</td>
+                              <td className="border border-black px-4 py-2">{spoc.remarks}</td>
+                              <td className="py-2  px-4 border border-black">
+                                <div className="flex gap-2">
+                                  <button className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded mr-2" onClick={() => handleEdit(spoc)}>Edit</button>
+                                  <button className={`bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded ${deletingId === spoc.id ? "opacity-50 cursor-not-allowed" : ""}`} disabled={deletingId === spoc.id} onClick={() => handleDelete(spoc.id)}>
+                                    {deletingId === spoc.id ? "Deleting..." : "Delete"}
+                                  </button>
+                                </div></td>
+                            </tr>
 
-                        ))
-                      )}
-                    </>
-                  )}
-                </tbody>
+                          ))
+                        )}
+                      </>
+                    )}
+                  </tbody>
 
-              </table>
+                </table>
+              </div>
             </div>
             <div className="flex justify-center mt-4">
               {Array.from({ length: totalPages }, (_, index) => (

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState,useRef } from "react";
 import { useNavigate } from 'react-router-dom';
 import { useApiLoading } from '../ApiLoadingContext';
 import * as XLSX from "xlsx";
@@ -10,6 +10,18 @@ import { format } from 'date-fns';
 const ApplicationStatus = () => {
     const { validateAdminLogin, setApiLoading, apiLoading } = useApiLoading();
     const [responseError, setResponseError] = useState(null);
+     const tableScrollRef = useRef(null);
+    const topScrollRef = useRef(null);
+    const [scrollWidth, setScrollWidth] = useState("100%");
+
+    // 🔹 Sync scroll positions
+    const syncScroll = (e) => {
+        if (e.target === topScrollRef.current) {
+            tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+        } else {
+            topScrollRef.current.scrollLeft = e.target.scrollLeft;
+        }
+    };
 
 
     const [tableData, setTableData] = useState([]);
@@ -219,7 +231,11 @@ const ApplicationStatus = () => {
         const data = new Blob([excelBuffer], { type: "application/octet-stream" });
         saveAs(data, "ClientsData.xlsx");
     };
-
+          useEffect(() => {
+    if (tableScrollRef.current) {
+      setScrollWidth(tableScrollRef.current.scrollWidth + "px");
+    }
+  }, [filteredData, loading]); 
 
     const maxServicesCount = Math.max(...filteredData.map(row => Object.keys(row.services_status || {}).length));
 
@@ -325,7 +341,14 @@ const ApplicationStatus = () => {
                 </form>
 
 
-                <div className="mt-10 overflow-scroll">
+             <div className="table-container rounded-lg">
+                    {/* Top Scroll */}
+                    <div className="top-scroll" ref={topScrollRef} onScroll={syncScroll}>
+                        <div className="top-scroll-inner" style={{ width: scrollWidth }} />
+                    </div>
+
+                    {/* Actual Table Scroll */}
+                    <div className="table-scroll rounded-lg" ref={tableScrollRef} onScroll={syncScroll}>
                     <table className="min-w-full border-collapse border border-black overflow-scroll">
                         <thead>
                             <tr className="bg-[#c1dff2] whitespace-nowrap text-[#4d606b] uppercase">
@@ -389,6 +412,7 @@ const ApplicationStatus = () => {
 
                     {/* Pagination */}
 
+                </div>
                 </div>
                 <div className="flex justify-between mt-4">
                     <button

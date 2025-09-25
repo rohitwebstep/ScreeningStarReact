@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import Modal from 'react-modal';
 import { useApiLoading } from '../ApiLoadingContext';
 import * as XLSX from 'xlsx';
@@ -20,7 +20,19 @@ const CustomerTrash = () => {
   const [isUpdateLoading, setIsUpdateLoading] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
   const [isRestoreLoading, setIsRestoreLoading] = useState(false);
-  
+  const tableScrollRef = useRef(null);
+  const topScrollRef = useRef(null);
+  const [scrollWidth, setScrollWidth] = useState("100%");
+
+  // 🔹 Sync scroll positions
+  const syncScroll = (e) => {
+    if (e.target === topScrollRef.current) {
+      tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+    } else {
+      topScrollRef.current.scrollLeft = e.target.scrollLeft;
+    }
+  };
+
   const [searchTerm, setSearchTerm] = useState('');
   const [activeList, setActiveList] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -40,7 +52,7 @@ const CustomerTrash = () => {
   const [isBlockLoading, setIsBlockLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  const optionsPerPage = [10, 50, 100, 200,500,1000];
+  const optionsPerPage = [10, 50, 100, 200, 500, 1000];
   const totalPages = Math.ceil(activeList.length / rowsPerPage);
 
   console.log('thisscedclien', selectedClient);
@@ -365,7 +377,7 @@ const CustomerTrash = () => {
           });
       } else {
         Swal.fire('Cancelled', 'Customer restoration has been cancelled.', 'info');
-    }
+      }
     });
   }, [fetchActiveAccounts]);
 
@@ -646,7 +658,11 @@ const CustomerTrash = () => {
         });
       });
   };
-
+  useEffect(() => {
+    if (tableScrollRef.current) {
+      setScrollWidth(tableScrollRef.current.scrollWidth + "px");
+    }
+  }, [filteredData, loading]);
 
   return (
     <div className="w-full bg-[#c1dff2] overflow-hidden">
@@ -690,166 +706,174 @@ const CustomerTrash = () => {
         </div>
 
 
-        <div className=" overflow-scroll">
-          <table className="min-w-full border-collapse border border-black rounded-lg">
-            <thead className="rounded-lg border border-black">
-              <tr className="bg-[#c1dff2] text-[#4d606b] whitespace-nowrap text-left">
-                <th className=" uppercase border  border-black px-4 py-2 text-center">SL</th>
-                <th className=" uppercase border  border-black px-4 py-2">Client ID</th>
-                <th className=" uppercase border  border-black px-4 py-2">Company Name</th>
-                <th className=" uppercase border  border-black px-4 py-2">Registered Address</th>
-                <th className=" uppercase border  border-black px-4 py-2">Email</th>
-                <th className=" uppercase border  border-black px-4 py-2 text-center">State</th>
-                <th className=" uppercase border  border-black px-4 py-2 text-center">State Code</th>
-                <th className=" uppercase border  border-black px-4 py-2 text-center">ROLE</th>
-                <th className=" uppercase border  border-black px-4 py-2">GST Number</th>
-                <th className=" uppercase border  border-black px-4 py-2">Mobile Number</th>
-                <th className=" uppercase border  border-black px-4 py-2 text-center">TAT</th>
-                <th className=" uppercase border  border-black px-4 py-2 text-center">Date of Service Agreement</th>
-                <th className=" uppercase border  border-black px-4 py-2 text-center">Standard Process</th>
-                <th className=" uppercase border  border-black px-4 py-2 text-center">Agreement Period</th>
-                <th className=" uppercase border  border-black px-4 py-2 text-center">Upload Client Logo</th>
-                <th className=" uppercase border  border-black px-4 py-2">Scope of Services</th>
-                <th className=" uppercase border  border-black px-4 py-2 text-center">Additional Login Required?</th>
-                <th className=" uppercase border  border-black px-4 py-2 text-center">Created At</th>
-                <th className=" uppercase border  border-black px-4 py-2 text-center">Updated At</th>
-                <th className=" uppercase border  border-black px-4 py-2 text-center" colSpan={2}>
-                  Action
-                </th>
-              </tr>
-            </thead>
-            {loading ? (
-              <tbody className="h-10">
-                <tr className="">
-                  <td colSpan="12" className="w-full py-10 h-10  text-center">
-                    <div className="flex justify-center  items-center w-full h-full">
-                      <div className="loader border-t-4 border-[#2c81ba] rounded-full w-10 h-10 animate-spin"></div>
-                    </div>
-                  </td>
+        <div className="table-container rounded-lg">
+          {/* Top Scroll */}
+          <div className="top-scroll" ref={topScrollRef} onScroll={syncScroll}>
+            <div className="top-scroll-inner" style={{ width: scrollWidth }} />
+          </div>
+
+          {/* Actual Table Scroll */}
+          <div className="table-scroll rounded-lg" ref={tableScrollRef} onScroll={syncScroll}>
+            <table className="min-w-full border-collapse border border-black rounded-lg">
+              <thead className="rounded-lg border border-black">
+                <tr className="bg-[#c1dff2] text-[#4d606b] whitespace-nowrap text-left">
+                  <th className=" uppercase border  border-black px-4 py-2 text-center">SL</th>
+                  <th className=" uppercase border  border-black px-4 py-2">Client ID</th>
+                  <th className=" uppercase border  border-black px-4 py-2">Company Name</th>
+                  <th className=" uppercase border  border-black px-4 py-2">Registered Address</th>
+                  <th className=" uppercase border  border-black px-4 py-2">Email</th>
+                  <th className=" uppercase border  border-black px-4 py-2 text-center">State</th>
+                  <th className=" uppercase border  border-black px-4 py-2 text-center">State Code</th>
+                  <th className=" uppercase border  border-black px-4 py-2 text-center">ROLE</th>
+                  <th className=" uppercase border  border-black px-4 py-2">GST Number</th>
+                  <th className=" uppercase border  border-black px-4 py-2">Mobile Number</th>
+                  <th className=" uppercase border  border-black px-4 py-2 text-center">TAT</th>
+                  <th className=" uppercase border  border-black px-4 py-2 text-center">Date of Service Agreement</th>
+                  <th className=" uppercase border  border-black px-4 py-2 text-center">Standard Process</th>
+                  <th className=" uppercase border  border-black px-4 py-2 text-center">Agreement Period</th>
+                  <th className=" uppercase border  border-black px-4 py-2 text-center">Upload Client Logo</th>
+                  <th className=" uppercase border  border-black px-4 py-2">Scope of Services</th>
+                  <th className=" uppercase border  border-black px-4 py-2 text-center">Additional Login Required?</th>
+                  <th className=" uppercase border  border-black px-4 py-2 text-center">Created At</th>
+                  <th className=" uppercase border  border-black px-4 py-2 text-center">Updated At</th>
+                  <th className=" uppercase border  border-black px-4 py-2 text-center" colSpan={2}>
+                    Action
+                  </th>
                 </tr>
-              </tbody>
-            ) : (
-              <tbody>
-                {filteredData.length === 0 ? (
-                  <tr>
-                    <td colSpan="21" className="text-center py-4 text-red-500">
-                      {responseError && responseError !== "" ? responseError : "No data available in table"}
+              </thead>
+              {loading ? (
+                <tbody className="h-10">
+                  <tr className="">
+                    <td colSpan="12" className="w-full py-10 h-10  text-center">
+                      <div className="flex justify-center  items-center w-full h-full">
+                        <div className="loader border-t-4 border-[#2c81ba] rounded-full w-10 h-10 animate-spin"></div>
+                      </div>
                     </td>
                   </tr>
-                ) : (
-                  filteredData.map((client, index) => {
-                    const services = client.services ? JSON.parse(client.services).flatMap(group => group.services) : [];
-                    console.log('this is my client ', client)
-                    return (
-                      <tr key={client.clientId} className="border-b border-gray-300 text-left">
-                        <td className="border  border-black px-4 py-2 text-center">
-                          {(currentPage - 1) * rowsPerPage + index + 1}
-                        </td>
-                        <td className="border  border-black px-4 py-2 whitespace-nowrap">{client.client_unique_id || 'null'}</td>
-                        <td className="border  border-black px-4 py-2 min-w-[200px] whitespace-nowrap">{client.name || 'null'}</td>
-                        <td className="border  border-black px-4 py-2">{client.address || 'null'}</td>
-                        <td className="border  border-black px-4 py-2">
-                          {client.emails ? JSON.parse(client.emails).join(', ') : 'NIL'}
-                        </td>
-                        <td className="border  border-black px-4 py-2 text-center">{client.state || 'null'}</td>
-                        <td className="border  border-black px-4 py-2 text-center">{client.state_code || 'null'}</td>
-                        <td className="border  border-black px-4 py-2 text-center whitespace-nowrap">{client.role || 'null'}</td>
-                        <td className="border  border-black px-4 py-2 min-w-[200px] whitespace-nowrap">{client.gst_number || 'null'}</td>
-                        <td className="border  border-black px-4 py-2 min-w-[200px]">{client.mobile || 'null'}</td>
-                        <td className="border  border-black px-4 py-2 text-center whitespace-nowrap">{client.tat_days}</td>
-                        <td className="border  border-black px-4 py-2 min-w-[300px] text-center">
-                          {client.agreement_date
-                            ? new Date(client.agreement_date).toLocaleDateString('en-GB').replace(/\//g, '-')
-                            : 'NIL'}
-                        </td>
-                        <td className="border  border-black px-4 py-2 min-w-[300px] text-center">{client.client_standard || 'null'}</td>
-                        <td className="border border-black px-4 py-2 text-center">
-                          {client.agreement_duration && !isNaN(new Date(client.agreement_duration))
-                            ? new Date(client.agreement_duration).toLocaleDateString('en-GB', {
-                              day: 'numeric',
-                              month: 'short',
-                              year: 'numeric',
-                            })
-                            : client.agreement_duration || 'No date available'}
-                        </td>
+                </tbody>
+              ) : (
+                <tbody>
+                  {filteredData.length === 0 ? (
+                    <tr>
+                      <td colSpan="21" className="text-center py-4 text-red-500">
+                        {responseError && responseError !== "" ? responseError : "No data available in table"}
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredData.map((client, index) => {
+                      const services = client.services ? JSON.parse(client.services).flatMap(group => group.services) : [];
+                      console.log('this is my client ', client)
+                      return (
+                        <tr key={client.clientId} className="border-b border-gray-300 text-left">
+                          <td className="border  border-black px-4 py-2 text-center">
+                            {(currentPage - 1) * rowsPerPage + index + 1}
+                          </td>
+                          <td className="border  border-black px-4 py-2 whitespace-nowrap">{client.client_unique_id || 'null'}</td>
+                          <td className="border  border-black px-4 py-2 min-w-[200px] whitespace-nowrap">{client.name || 'null'}</td>
+                          <td className="border  border-black px-4 py-2">{client.address || 'null'}</td>
+                          <td className="border  border-black px-4 py-2">
+                            {client.emails ? JSON.parse(client.emails).join(', ') : 'NIL'}
+                          </td>
+                          <td className="border  border-black px-4 py-2 text-center">{client.state || 'null'}</td>
+                          <td className="border  border-black px-4 py-2 text-center">{client.state_code || 'null'}</td>
+                          <td className="border  border-black px-4 py-2 text-center whitespace-nowrap">{client.role || 'null'}</td>
+                          <td className="border  border-black px-4 py-2 min-w-[200px] whitespace-nowrap">{client.gst_number || 'null'}</td>
+                          <td className="border  border-black px-4 py-2 min-w-[200px]">{client.mobile || 'null'}</td>
+                          <td className="border  border-black px-4 py-2 text-center whitespace-nowrap">{client.tat_days}</td>
+                          <td className="border  border-black px-4 py-2 min-w-[300px] text-center">
+                            {client.agreement_date
+                              ? new Date(client.agreement_date).toLocaleDateString('en-GB').replace(/\//g, '-')
+                              : 'NIL'}
+                          </td>
+                          <td className="border  border-black px-4 py-2 min-w-[300px] text-center">{client.client_standard || 'null'}</td>
+                          <td className="border border-black px-4 py-2 text-center">
+                            {client.agreement_duration && !isNaN(new Date(client.agreement_duration))
+                              ? new Date(client.agreement_duration).toLocaleDateString('en-GB', {
+                                day: 'numeric',
+                                month: 'short',
+                                year: 'numeric',
+                              })
+                              : client.agreement_duration || 'No date available'}
+                          </td>
 
 
-                        <td className="border  border-black px-4 py-2 text-center">
-                          <img
-                            src={client.logo ? client.logo : `${Default}`}
-                            alt="Client Logo"
-                            className="w-10 text-center m-auto h-10"
-                          />
-                        </td>
-                        <td className="border  border-black px-4 py-2 text-center">
-                          <div className="flex items-center">
-                            {services.length > 0 ? (
-                              <>
-                                <span className="px-4 py-2 bg-blue-100 whitespace-nowrap border border-blue-500 rounded-lg text-sm">
-                                  {services[0].serviceTitle}
+                          <td className="border  border-black px-4 py-2 text-center">
+                            <img
+                              src={client.logo ? client.logo : `${Default}`}
+                              alt="Client Logo"
+                              className="w-10 text-center m-auto h-10"
+                            />
+                          </td>
+                          <td className="border  border-black px-4 py-2 text-center">
+                            <div className="flex items-center">
+                              {services.length > 0 ? (
+                                <>
+                                  <span className="px-4 py-2 bg-blue-100 whitespace-nowrap border border-blue-500 rounded-lg text-sm">
+                                    {services[0].serviceTitle}
+                                  </span>
+                                  {services.length > 1 && (
+                                    <button
+                                      className="text-blue-500 whitespace-nowrap ml-2"
+                                      onClick={() => handleViewMore(services)}
+                                    >
+                                      View More
+                                    </button>
+                                  )}
+                                </>
+                              ) : (
+                                <span className="px-4 py-2 bg-red-100 border border-red-500 rounded-lg">
+                                  No Services Available
                                 </span>
-                                {services.length > 1 && (
-                                  <button
-                                    className="text-blue-500 whitespace-nowrap ml-2"
-                                    onClick={() => handleViewMore(services)}
-                                  >
-                                    View More
-                                  </button>
-                                )}
-                              </>
-                            ) : (
-                              <span className="px-4 py-2 bg-red-100 border border-red-500 rounded-lg">
-                                No Services Available
-                              </span>
-                            )}
-                          </div>
+                              )}
+                            </div>
 
 
-                        </td>
-                        <td className="border  border-black px-4 py-2 text-center">
-                          {client.additional_login == 1 ? 'Yes' : 'No'}
-                        </td>
-                        <td className="border  border-black px-4 py-2 text-center">
-                          {client.created_at
-                            ? new Date(client.created_at).toLocaleDateString('en-GB').replace(/\//g, '-')
-                            : 'NIL'}
-                        </td>
-                        <td className="border  border-black px-4 py-2 text-center">
-                          {client.updated_at
-                            ? new Date(client.updated_at).toLocaleDateString('en-GB').replace(/\//g, '-')
-                            : 'NIL'}
-                        </td>
-                        <td className="border  border-black px-4 py-2 gap-1 text-center items-center">
-                          <div className="flex justify-center gap-1">
-                            <button
-                              onClick={() => handleDelete(client.main_id)}
-                              disabled={isDeleteLoading && activeId == client.main_id}
-                              className={`bg-red-500 hover:scale-105 hover:bg-red-600 text-white px-4 py-2 rounded ${isDeleteLoading && activeId == client.main_id ? "opacity-50 cursor-not-allowed" : ""}`}
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </td>
-                        <td className="border  border-black px-4 py-2 gap-1 text-center items-center">
-                          <div className="flex justify-center gap-1">
-                            <button
-                              onClick={() => handleRestore(client.main_id)}
-                              disabled={isRestoreLoading && activeId == client.main_id}
-                              className={`bg-green-500 hover:scale-105 hover:bg-green-600 text-white px-4 py-2 rounded ${isRestoreLoading && activeId == client.main_id ? "opacity-50 cursor-not-allowed" : ""}`}
-                            >
-                              Restore
-                            </button>
-                          
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            )}
-          </table>
+                          </td>
+                          <td className="border  border-black px-4 py-2 text-center">
+                            {client.additional_login == 1 ? 'Yes' : 'No'}
+                          </td>
+                          <td className="border  border-black px-4 py-2 text-center">
+                            {client.created_at
+                              ? new Date(client.created_at).toLocaleDateString('en-GB').replace(/\//g, '-')
+                              : 'NIL'}
+                          </td>
+                          <td className="border  border-black px-4 py-2 text-center">
+                            {client.updated_at
+                              ? new Date(client.updated_at).toLocaleDateString('en-GB').replace(/\//g, '-')
+                              : 'NIL'}
+                          </td>
+                          <td className="border  border-black px-4 py-2 gap-1 text-center items-center">
+                            <div className="flex justify-center gap-1">
+                              <button
+                                onClick={() => handleDelete(client.main_id)}
+                                disabled={isDeleteLoading && activeId == client.main_id}
+                                className={`bg-red-500 hover:scale-105 hover:bg-red-600 text-white px-4 py-2 rounded ${isDeleteLoading && activeId == client.main_id ? "opacity-50 cursor-not-allowed" : ""}`}
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                          <td className="border  border-black px-4 py-2 gap-1 text-center items-center">
+                            <div className="flex justify-center gap-1">
+                              <button
+                                onClick={() => handleRestore(client.main_id)}
+                                disabled={isRestoreLoading && activeId == client.main_id}
+                                className={`bg-green-500 hover:scale-105 hover:bg-green-600 text-white px-4 py-2 rounded ${isRestoreLoading && activeId == client.main_id ? "opacity-50 cursor-not-allowed" : ""}`}
+                              >
+                                Restore
+                              </button>
 
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              )}
+            </table>
+
+          </div>
         </div>
         <div className="flex justify-between items-center mt-4">
           <button

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState,useRef } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
@@ -23,6 +23,20 @@ const PackageManagement = () => {
     const storedToken = localStorage.getItem("_token");
     const [packagesPerPage, setPackagesPerPage] = useState(10);
     const optionsPerPage = [10, 50, 100, 200,500,1000];
+         const tableScrollRef = useRef(null);
+    const topScrollRef = useRef(null);
+    const [scrollWidth, setScrollWidth] = useState("100%");
+
+    // 🔹 Sync scroll positions
+    const syncScroll = (e) => {
+        if (e.target === topScrollRef.current) {
+            tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+        } else {
+            topScrollRef.current.scrollLeft = e.target.scrollLeft;
+        }
+    };
+
+
     const fetchPackages = useCallback(async () => {
         setLoading(true);
         setApiLoading(true);
@@ -231,6 +245,11 @@ const PackageManagement = () => {
     const indexOfLastPackage = currentPage * packagesPerPage;
     const indexOfFirstPackage = indexOfLastPackage - packagesPerPage;
     const currentPackages = filteredPackages.slice(indexOfFirstPackage, indexOfLastPackage);
+          useEffect(() => {
+    if (tableScrollRef.current) {
+      setScrollWidth(tableScrollRef.current.scrollWidth + "px");
+    }
+  }, [currentPackages, loading]); 
 
     const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
@@ -314,7 +333,14 @@ const PackageManagement = () => {
                                 Export to Excel
                             </button>
                         </div>
-                        <div className="overflow-auto">
+                   <div className="table-container rounded-lg">
+                    {/* Top Scroll */}
+                    <div className="top-scroll" ref={topScrollRef} onScroll={syncScroll}>
+                        <div className="top-scroll-inner" style={{ width: scrollWidth }} />
+                    </div>
+
+                    {/* Actual Table Scroll */}
+                    <div className="table-scroll rounded-lg" ref={tableScrollRef} onScroll={syncScroll}>
                             <table className="min-w-full border-collapse border border-black  rounded-lg overflow-scroll whitespace-nowrap">
                                 <thead className="rounded-lg">
                                     <tr className="bg-[#c1dff2] text-[#4d606b]">
@@ -362,6 +388,7 @@ const PackageManagement = () => {
                                     )}
                                 </tbody>
                             </table>
+                        </div>
                         </div>
 
                         {/* Pagination */}

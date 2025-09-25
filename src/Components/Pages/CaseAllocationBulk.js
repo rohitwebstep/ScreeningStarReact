@@ -11,7 +11,7 @@ import CustomMultiSelect from '../UserPages/CustomMultiselect';
 import { FaChevronLeft } from 'react-icons/fa';
 
 const CaseAllocationBulk = () => {
-    
+
     const { validateAdminLogin, setApiLoading, apiLoading } = useApiLoading();
 
     const [fileName, setFileName] = useState("");
@@ -39,13 +39,24 @@ const CaseAllocationBulk = () => {
 
     const [isModalOpen, setIsModalOpen] = React.useState(false);
     const [modalServices, setModalServices] = React.useState([]);
+    const tableScrollRef = useRef(null);
+    const topScrollRef = useRef(null);
+    const [scrollWidth, setScrollWidth] = useState("100%");
 
-    
+    // 🔹 Sync scroll positions
+    const syncScroll = (e) => {
+        if (e.target === topScrollRef.current) {
+            tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+        } else {
+            topScrollRef.current.scrollLeft = e.target.scrollLeft;
+        }
+    };
+
     const allServices = services.map((service, index) => ({
         ...service,
         groupSymbol: service.group_symbol || service.group_name,
         index,
-      }));
+    }));
     // Calculate total pages
     const totalEntries = allServices.length;
     const totalPages = Math.ceil(totalEntries / entriesPerPage);
@@ -65,7 +76,7 @@ const CaseAllocationBulk = () => {
         const branchData = JSON.parse(localStorage.getItem("branch"));
         const adminId = JSON.parse(localStorage.getItem("admin"))?.id;
         const token = localStorage.getItem('_token');
-    
+
 
         const branch_token = localStorage.getItem("branch_token");
         const url = `https://api.screeningstar.co.in/internal-storage/ex-employment/list?admin_id=${adminId}&_token=${token}`;
@@ -73,7 +84,7 @@ const CaseAllocationBulk = () => {
         try {
             let response;
             // Assuming branchData is already an object; no need for JSON.parse
-                response = await fetch(url);
+            response = await fetch(url);
             if (response.ok) {
                 setLoading(false);
                 setApiLoading(false);
@@ -85,8 +96,8 @@ const CaseAllocationBulk = () => {
                 }
 
                 const services = result.data.services;
-                                setServices(services);
-             
+                setServices(services);
+
                 setSpocID(result.data.customer.spoc_details[0].id);
                 setSpocName(result.data.customer.spoc_details[0].name);
             } else {
@@ -132,8 +143,8 @@ const CaseAllocationBulk = () => {
 
             // Extract selected service IDs
             const selectedServiceIds = services
-            .filter((service) => service?.isSelected)
-            .map((service) => service?.id);
+                .filter((service) => service?.isSelected)
+                .map((service) => service?.id);
 
             // Validate required data
             if (
@@ -152,20 +163,20 @@ const CaseAllocationBulk = () => {
 
             let modifiedData = data.map((item) => ({
                 ...item,
-                
+
                 service_ids: JSON.stringify(selectedServiceIds), // or any specific value per item
                 package: "xyz", // if needed in each object
             }));
-            
+
             let requestBody = {
                 admin_id: adminId,
                 _token: token,
                 data: modifiedData,
             };
-            
-            
 
-          
+
+
+
             const response = await fetch(
                 "https://api.screeningstar.co.in/client-allocation/bulk/create",
                 {
@@ -220,24 +231,24 @@ const CaseAllocationBulk = () => {
 
 
 
-  
-      const selectPackageById = (selectedPackageIds) => {
-          // Iterate over the services and update isSelected based on selected package IDs
-          services.forEach(group => {
-              group.services.forEach(service => {
-                  // Check if any package within the service matches the selected package ID
-                  const matchingPackage = service.packages.some(pkg => selectedPackageIds.includes(pkg.name));
-  
-                  // Update the service's isSelected based on whether any package matches
-                  service.isSelected = matchingPackage;
-              });
-          });
-  
-          // Optional: Log the updated services to verify
-          console.log(services);
-      };
-  
-      const handlePackageChange = (selectedOptions) => {
+
+    const selectPackageById = (selectedPackageIds) => {
+        // Iterate over the services and update isSelected based on selected package IDs
+        services.forEach(group => {
+            group.services.forEach(service => {
+                // Check if any package within the service matches the selected package ID
+                const matchingPackage = service.packages.some(pkg => selectedPackageIds.includes(pkg.name));
+
+                // Update the service's isSelected based on whether any package matches
+                service.isSelected = matchingPackage;
+            });
+        });
+
+        // Optional: Log the updated services to verify
+        console.log(services);
+    };
+
+    const handlePackageChange = (selectedOptions) => {
         console.log("handlePackageChange triggered");
         console.log("Selected Options:", selectedOptions);
 
@@ -248,17 +259,17 @@ const CaseAllocationBulk = () => {
         const isCurrentlyAllSelected = formData?.package?.includes("select_all");
 
         if (isSelectAllSelected && !isCurrentlyAllSelected) {
-            console.log('"select_all"',services);
+            console.log('"select_all"', services);
             const groupedServices = {};
 
             services.forEach(service => {
-              if (!groupedServices[service.group_name]) {
-                groupedServices[service.group_name] = [];
-              }
-              service.isSelected = true;
-              groupedServices[service.group_name].push(service);
+                if (!groupedServices[service.group_name]) {
+                    groupedServices[service.group_name] = [];
+                }
+                service.isSelected = true;
+                groupedServices[service.group_name].push(service);
             });
-            
+
             const updatedFormData = {
                 ...formData,
                 package: ["select_all"]
@@ -275,8 +286,8 @@ const CaseAllocationBulk = () => {
             services.forEach(service => {
                 service.isSelected = false;
                 console.log(`Service ${service.title} deselected`);
-              });
-              
+            });
+
 
             const updatedFormData = {
                 ...formData,
@@ -311,120 +322,125 @@ const CaseAllocationBulk = () => {
         setFormData(updatedFormData);
         console.log("FormData updated with specific packages");
     };
-  
-      const handleCheckboxChange = (index) => {
-        console.log('index---',index)
+
+    const handleCheckboxChange = (index) => {
+        console.log('index---', index)
         const updatedServices = [...services];
         updatedServices[index].isSelected = !updatedServices[index].isSelected;
         setServices(updatedServices);
-      };
-      const uniquePackages = [
-          ...new Map(
+    };
+    const uniquePackages = [
+        ...new Map(
             services
-              .flatMap(service => service.packages || [])
-              .map(pkg => [pkg.id, pkg]) // use Map to keep uniqueness by id
-          ).values()
-        ];
-        
-  
-      const handleFileUpload = (e) => {
-          const file = e.target.files[0];
-          if (file && file.type === 'text/csv') {
-              console.log("File selected:", file.name); // Log file selection
-  
-              const reader = new FileReader();
-              reader.onload = () => {
-                  const fileContent = reader.result;
-                  console.log("File content loaded:", fileContent); // Log CSV content
-                  setFileName(file.name);
-                  setIsFileValid(true);
-                  const parsedData = parseCSV(fileContent);
-                  const csvHeaders = csvHeadings(fileContent); // Ass-uming csvHeadings correctly returns column headers.
-                  console.log("Headers:", csvHeaders); // Log headers
-  
-                  const newData = [];
-                  let hasError = false;
-  
-                  // Validate and process data
-                  parsedData.forEach((row, index) => {
-                      const values = Object.values(row).map((value) => value.trim());
-                      const allEmpty = values.every((val) => val === '');
-                      const someEmpty = values.some((val) => val === '') && !allEmpty;
-  
-                      if (allEmpty) {
-                          console.log(`Skipping row ${index + 1}: Empty row.`); // Skip empty rows
-                      } else if (someEmpty) {
-                          setFileName('');
-                          setIsFileValid(false);
-                          console.log(`Error in row ${index + 1}: Missing values.`); // Log error for incomplete rows
-                          hasError = true;
-  
-                          // Check which fields are missing
-                          const missingFields = csvHeaders.filter((header, i) => !values[i] || values[i] === '');
-                          const errorMessage = `Row ${index + 1} is incomplete. Missing fields: ${missingFields.join(', ')}`;
-  
-                          // Display the error
-                          Swal.fire({
-                              icon: 'error',
-                              title: 'Error',
-                              text: errorMessage,
-                          });
-                      } else {
-                          newData.push(cleanFieldNames(row)); // Only add valid rows
-                      }
-                  });
-  
-                  if (hasError) {
-                      console.log("Errors found. Not processing file further."); // Stop processing on error
-                      return;
-                  }
-  
-                  // Set valid data if no errors
-                  setData(newData);
-                  console.log("Processed and set valid data:", newData); // Log valid data
-              };
-  
-              reader.readAsText(file);
-          } else {
-              console.log("Invalid file type selected."); // Log invalid file type
-              Swal.fire({
-                  icon: 'error',
-                  title: 'Invalid File',
-                  text: 'Please upload a valid CSV file.',
-              });
-          }
-      };
-  
-      const cleanFieldNames = (row) => {
-          const cleanedRow = {};
-          Object.keys(row).forEach((key) => {
-              const cleanKey = key.replace(/^_+|_+$/g, ''); // Remove leading and trailing underscores
-              cleanedRow[cleanKey] = row[key];
-          });
-          return cleanedRow;
-      };
-  
-      const csvHeadings = (csv) => {
-          const rows = csv.split('\n');
-          const headers = rows[0].split(','); // Get headers (first row)
-          return headers.map((header) => header);
-      };
-  
-      const parseCSV = (csv) => {
-          const rows = csv.split('\n');
-          const headers = rows[0].split(','); // Get headers (first row)
-          const dataArray = rows.slice(1).map((row) => {
-              const values = row.split(',');
-              let rowObject = {};
-              headers.forEach((header, index) => {
-                  const formattedHeader = formatKey(header);
-                  rowObject[formattedHeader] = values[index] ? values[index].trim() : '';
-              });
-              return rowObject;
-          });
-          return dataArray;
-      };
-  
+                .flatMap(service => service.packages || [])
+                .map(pkg => [pkg.id, pkg]) // use Map to keep uniqueness by id
+        ).values()
+    ];
+
+
+    const handleFileUpload = (e) => {
+        const file = e.target.files[0];
+        if (file && file.type === 'text/csv') {
+            console.log("File selected:", file.name); // Log file selection
+
+            const reader = new FileReader();
+            reader.onload = () => {
+                const fileContent = reader.result;
+                console.log("File content loaded:", fileContent); // Log CSV content
+                setFileName(file.name);
+                setIsFileValid(true);
+                const parsedData = parseCSV(fileContent);
+                const csvHeaders = csvHeadings(fileContent); // Ass-uming csvHeadings correctly returns column headers.
+                console.log("Headers:", csvHeaders); // Log headers
+
+                const newData = [];
+                let hasError = false;
+
+                // Validate and process data
+                parsedData.forEach((row, index) => {
+                    const values = Object.values(row).map((value) => value.trim());
+                    const allEmpty = values.every((val) => val === '');
+                    const someEmpty = values.some((val) => val === '') && !allEmpty;
+
+                    if (allEmpty) {
+                        console.log(`Skipping row ${index + 1}: Empty row.`); // Skip empty rows
+                    } else if (someEmpty) {
+                        setFileName('');
+                        setIsFileValid(false);
+                        console.log(`Error in row ${index + 1}: Missing values.`); // Log error for incomplete rows
+                        hasError = true;
+
+                        // Check which fields are missing
+                        const missingFields = csvHeaders.filter((header, i) => !values[i] || values[i] === '');
+                        const errorMessage = `Row ${index + 1} is incomplete. Missing fields: ${missingFields.join(', ')}`;
+
+                        // Display the error
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: errorMessage,
+                        });
+                    } else {
+                        newData.push(cleanFieldNames(row)); // Only add valid rows
+                    }
+                });
+
+                if (hasError) {
+                    console.log("Errors found. Not processing file further."); // Stop processing on error
+                    return;
+                }
+
+                // Set valid data if no errors
+                setData(newData);
+                console.log("Processed and set valid data:", newData); // Log valid data
+            };
+
+            reader.readAsText(file);
+        } else {
+            console.log("Invalid file type selected."); // Log invalid file type
+            Swal.fire({
+                icon: 'error',
+                title: 'Invalid File',
+                text: 'Please upload a valid CSV file.',
+            });
+        }
+    };
+
+    const cleanFieldNames = (row) => {
+        const cleanedRow = {};
+        Object.keys(row).forEach((key) => {
+            const cleanKey = key.replace(/^_+|_+$/g, ''); // Remove leading and trailing underscores
+            cleanedRow[cleanKey] = row[key];
+        });
+        return cleanedRow;
+    };
+
+    const csvHeadings = (csv) => {
+        const rows = csv.split('\n');
+        const headers = rows[0].split(','); // Get headers (first row)
+        return headers.map((header) => header);
+    };
+
+    const parseCSV = (csv) => {
+        const rows = csv.split('\n');
+        const headers = rows[0].split(','); // Get headers (first row)
+        const dataArray = rows.slice(1).map((row) => {
+            const values = row.split(',');
+            let rowObject = {};
+            headers.forEach((header, index) => {
+                const formattedHeader = formatKey(header);
+                rowObject[formattedHeader] = values[index] ? values[index].trim() : '';
+            });
+            return rowObject;
+        });
+        return dataArray;
+    };
+    useEffect(() => {
+        if (tableScrollRef.current) {
+            setScrollWidth(tableScrollRef.current.scrollWidth + "px");
+        }
+    }, [currentServices, loading]);
+
     const formatKey = (key) => {
         // Convert to lowercase, remove special characters, replace spaces with underscores, and double underscores with a single one
         return key
@@ -444,18 +460,18 @@ const CaseAllocationBulk = () => {
     const csvData = `application_id,employee_id,name,month_year,dob,gender,contact_number,contact_number2,father_name,spouse_name,permanent_address_house_no,permanent_address_floor,permanent_address_cross,permanent_address_street,permanent_address_main,permanent_address_area,permanent_address_locality,permanent_address_city,permanent_address_landmark,permanent_address_taluk,permanent_address_district,permanent_address_state,permanent_address_pin_code,deadline_date,report_date,delay_reason,color_code,vendor_name,case_aging,remarks
 SS-INDVI-1,ABCD,ABCD,ABCD,ABCD,ABCD,ABCD,ABCD,ABCD,ABCD,ABCD,ABCD,ABCD,ABCD,ABCD,ABCD,ABCD,ABCD,ABCD,ABCD,ABCD,ABCD,ABCD,ABCD,ABCD,ABCD,ABCD,ABCD,ABCD,ABCD
 `;
-    
-        const handleDownload = () => {
-            const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
-            const url = window.URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', 'CASE-ALLOCATION-SAMPLE.csv');
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            window.URL.revokeObjectURL(url);
-        };
+
+    const handleDownload = () => {
+        const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', 'CASE-ALLOCATION-SAMPLE.csv');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+    };
     return (
 
         <div className="bg-[#c1dff2] border border-black" ref={clientEditRef} id="clientedit" >
@@ -490,7 +506,7 @@ SS-INDVI-1,ABCD,ABCD,ABCD,ABCD,ABCD,ABCD,ABCD,ABCD,ABCD,ABCD,ABCD,ABCD,ABCD,ABCD
                                         onChange={handleFileUpload}
                                         className="hidden"
                                     />
-   <button
+                                    <button
                                         type='button'
                                         onClick={handleDownload}
                                         className="bg-orange-600 ml-4 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded"
@@ -534,45 +550,54 @@ SS-INDVI-1,ABCD,ABCD,ABCD,ABCD,ABCD,ABCD,ABCD,ABCD,ABCD,ABCD,ABCD,ABCD,ABCD,ABCD
                                 />
 
                             </div>
-                            <div className='p-2.5 overflow-x-auto   '>
-                            <table className="m-auto w-full border-collapse border border-black rounded-lg">
-                                    <thead>
-                                        <tr className="bg-[#c1dff2] whitespace-nowrap text-[#4d606b]">
-                                            <th className=" uppercase border border-black px-4 py-2">SERVICE</th>
-                                            <th className=" uppercase border border-black px-4 py-2">SERVICE NAMES</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {loading ? (
+                            <div className="table-container rounded-lg">
+                                {/* Top Scroll */}
+                                <div className="top-scroll" ref={topScrollRef} onScroll={syncScroll}>
+                                    <div className="top-scroll-inner" style={{ width: scrollWidth }} />
+                                </div>
 
-                                            <tr>
-                                                <td colSpan={6} className="py-4 text-center text-gray-500">
-                                                    <Loader className="text-center" />
-                                                </td>
+                                {/* Actual Table Scroll */}
+                                <div className="table-scroll rounded-lg" ref={tableScrollRef} onScroll={syncScroll}>
+
+                                    <table className="m-auto w-full border-collapse border border-black rounded-lg">
+                                        <thead>
+                                            <tr className="bg-[#c1dff2] whitespace-nowrap text-[#4d606b]">
+                                                <th className=" uppercase border border-black px-4 py-2">SERVICE</th>
+                                                <th className=" uppercase border border-black px-4 py-2">SERVICE NAMES</th>
                                             </tr>
-                                        ) : (
-                                            <>
-                                                {currentServices.map((service,index) => (
-                                                    <tr className="text-center" key={service.id}>
-                                                        <td className="border border-black px-4 py-2">
-                                                            <input
-                                                                type="checkbox"
-                                                                className='w-6 h-6'
-                                                                checked={service.isSelected || false}
-                                                                name="services[]"
-                                                                onChange={() =>
-                                                                    handleCheckboxChange(service.index)
-                                                                }
-                                                            />
-                                                        </td>
+                                        </thead>
+                                        <tbody>
+                                            {loading ? (
 
-                                                        <td className="border border-black px-4 text-left py-2 whitespace-nowrap">{service.title}</td>
-                                                    </tr>
-                                                ))}
-                                            </>
-                                        )}
-                                    </tbody>       
-                                </table>
+                                                <tr>
+                                                    <td colSpan={6} className="py-4 text-center text-gray-500">
+                                                        <Loader className="text-center" />
+                                                    </td>
+                                                </tr>
+                                            ) : (
+                                                <>
+                                                    {currentServices.map((service, index) => (
+                                                        <tr className="text-center" key={service.id}>
+                                                            <td className="border border-black px-4 py-2">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    className='w-6 h-6'
+                                                                    checked={service.isSelected || false}
+                                                                    name="services[]"
+                                                                    onChange={() =>
+                                                                        handleCheckboxChange(service.index)
+                                                                    }
+                                                                />
+                                                            </td>
+
+                                                            <td className="border border-black px-4 text-left py-2 whitespace-nowrap">{service.title}</td>
+                                                        </tr>
+                                                    ))}
+                                                </>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                             <div className="flex justify-center mt-4 space-x-2">
                                 <button

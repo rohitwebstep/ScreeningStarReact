@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback ,useRef} from 'react';
 import "../../App.css";
 import { MultiSelect } from 'react-multi-select-component';
 
@@ -8,6 +8,18 @@ const ClientManagementData = () => {
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(false);
     const [selectedData, setSelectedData] = useState({});
+    const tableScrollRef = useRef(null);
+    const topScrollRef = useRef(null);
+    const [scrollWidth, setScrollWidth] = useState("100%");
+
+    // 🔹 Sync scroll positions
+    const syncScroll = (e) => {
+        if (e.target === topScrollRef.current) {
+            tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+        } else {
+            topScrollRef.current.scrollLeft = e.target.scrollLeft;
+        }
+    };
 
     const fetchServices = useCallback(async () => {
         setLoading(true);
@@ -129,6 +141,11 @@ const ClientManagementData = () => {
             }
         }));
     };
+      useEffect(() => {
+    if (tableScrollRef.current) {
+      setScrollWidth(tableScrollRef.current.scrollWidth + "px");
+    }
+  }, [services, loading]); 
 
     const handleSubmit = () => {
     };
@@ -137,8 +154,15 @@ const ClientManagementData = () => {
     if (error) return <p>Error: {error}</p>;
 
     return (
-        <div className="overflow-x-auto py-6 px-0 bg-white mt-10 m-auto">
-            <table className="min-w-full">
+  <div className="table-container rounded-lg">
+      {/* Top Scroll */}
+      <div className="top-scroll" ref={topScrollRef} onScroll={syncScroll}>
+        <div className="top-scroll-inner" style={{ width: scrollWidth }} />
+      </div>
+
+      {/* Actual Table Scroll */}
+      <div className="table-scroll rounded-lg" ref={tableScrollRef} onScroll={syncScroll}>  
+                <table className="min-w-full">
                 <thead>
                     <tr className='bg-[#073d88]'>
                         <th className="py-2 md:py-3 px-4 text-white border-r border-b text-left uppercase whitespace-nowrap">Group</th>
@@ -204,6 +228,7 @@ const ClientManagementData = () => {
             <button onClick={handleSubmit} className="p-6 py-3 bg-[#2c81ba] text-white font-bold rounded-md hover:bg-[#0f5381]">
                 Submit & Log Data
             </button>
+        </div>
         </div>
     );
 };

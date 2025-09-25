@@ -46,6 +46,19 @@ const TeamManagementCheckin = () => {
         const colorRegex = new RegExp(`\\b(${colorNames.join('|')})\\b`, 'gi');
         return text.replace(colorRegex, '').trim();
     };
+
+    const tableScrollRef = useRef(null);
+    const topScrollRef = useRef(null);
+    const [scrollWidth, setScrollWidth] = useState("100%");
+
+    // 🔹 Sync scroll positions
+    const syncScroll = (e) => {
+        if (e.target === topScrollRef.current) {
+            tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+        } else {
+            topScrollRef.current.scrollLeft = e.target.scrollLeft;
+        }
+    };
     const [currentPage, setCurrentPage] = useState(1);
     const [rowsPerPage, setRowsPerPage] = useState(10);
     const optionsPerPage = [10, 50, 100, 200, 500, 1000]; const totalPages = Math.ceil(data.length / rowsPerPage);
@@ -2016,9 +2029,9 @@ const TeamManagementCheckin = () => {
 
     // Function to format the date to "Month Day, Year" format
     const formatDate = (date) => {
-        if (!date) return "NOT APPLICABLE"; // Check for null, undefined, or empty
+        if (!date) return "N/A"; // Check for null, undefined, or empty
         const dateObj = new Date(date);
-        if (isNaN(dateObj.getTime())) return "Nill"; // Check for invalid date
+        if (isNaN(dateObj.getTime())) return "N/A"; // Check for invalid date
         const day = String(dateObj.getDate()).padStart(2, '0');
         const month = String(dateObj.getMonth() + 1).padStart(2, '0');
         const year = dateObj.getFullYear();
@@ -2073,7 +2086,11 @@ const TeamManagementCheckin = () => {
     const filteredDropdownData = statusList.filter((item) =>
         item.status.toLowerCase().includes(searchQuery.toLowerCase())
     );
-
+    useEffect(() => {
+        if (tableScrollRef.current) {
+            setScrollWidth(tableScrollRef.current.scrollWidth + "px");
+        }
+    }, [filteredData, loading]);
 
     const handleDownload = async (index) => {
         setLoadingGenrate(index); // Show loader
@@ -2199,202 +2216,210 @@ const TeamManagementCheckin = () => {
                     </div>
                 </div>
 
-                <div className="rounded-lg overflow-scroll" ref={scrollContainerRef}>
-                    <table className="min-w-full border-collapse border border-black overflow-scroll rounded-lg whitespace-nowrap">
-                        <thead className='rounded-lg'>
-                            <tr className="bg-[#c1dff2] text-[#4d606b]">
-                                <th className="uppercase border border-black px-4 py-2">SL NO</th>
-                                <th className="uppercase border border-black px-4 py-2">TAT Days</th>
-                                <th className="uppercase border border-black px-4 py-2">Location</th>
-                                <th className="uppercase border border-black px-4 py-2">Name</th>
-                                <th className="uppercase border border-black px-4 py-2">Name Of Organisation</th>
-                                <th className="uppercase border border-black px-4 py-2">Reference Id</th>
-                                <th className="uppercase border border-black px-4 py-2">Photo</th>
-                                <th className="uppercase border border-black px-4 py-2">Applicant Employe Id</th>
-                                <th className="uppercase border border-black px-4 py-2">
-                                    <button
-                                        className="bg-orange-500 hover:scale-105  hover:bg-orange-600 text-white px-6 py-2 rounded"
-                                        onClick={() => setViewServices(prev => !prev)}
+                <div className="table-container rounded-lg">
+                    {/* Top Scroll */}
+                    <div className="top-scroll" ref={topScrollRef} onScroll={syncScroll}>
+                        <div className="top-scroll-inner" style={{ width: scrollWidth }} />
+                    </div>
 
-                                    >
-                                        {viewServices ? "Hide Services" : "View Services"}
-                                    </button><br />
-                                    Initiation Date</th>
-                                {viewServices && servicesHeadings && servicesHeadings.length > 0 ? (
-                                    servicesHeadings.map((heading, index) => {
-                                        return (
-                                            <th key={index} className="uppercase border border-black px-4 py-2">
-                                                {heading.heading}
-                                            </th>
-                                        );
-                                    })
-                                ) : null}
-                                <th className="uppercase border border-black px-4 py-2">Deadline Date</th>
-                                <th className="uppercase border border-black px-4 py-2">Report Data</th>
-                                <th className="uppercase border border-black px-4 py-2">Download Status</th>
-                                <th className="border border-black uppercase px-4 py-2">First Level Insuff</th>
-                                <th className="border border-black uppercase px-4 py-2">First Insuff Date</th>
-                                <th className="border border-black uppercase px-4 py-2">First Insuff Reopen</th>
-                                <th className="border border-black uppercase px-4 py-2">Second Level Insuff</th>
-                                <th className="border border-black uppercase px-4 py-2">Second Insuff Date</th>
-                                <th className="border border-black uppercase px-4 py-2">Third Level Insuff</th>
-                                <th className="border border-black uppercase px-4 py-2">Third Insuff Date</th>
-                                <th className="border border-black uppercase px-4 py-2">Reason for Delay</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {loading ? (
+                    {/* Actual Table Scroll */}
+                    <div className="table-scroll rounded-lg" ref={tableScrollRef} onScroll={syncScroll}>
+                        <table ref={scrollContainerRef} className="min-w-full border-collapse border border-black overflow-scroll rounded-lg whitespace-nowrap">
+                            <thead className='rounded-lg'>
+                                <tr className="bg-[#c1dff2] text-[#4d606b]">
+                                    <th className="uppercase border border-black px-4 py-2">SL NO</th>
+                                    <th className="uppercase border border-black px-4 py-2">TAT Days</th>
+                                    <th className="uppercase border border-black px-4 py-2">Location</th>
+                                    <th className="uppercase border border-black px-4 py-2">Name</th>
+                                    <th className="uppercase border border-black px-4 py-2">Name Of Organisation</th>
+                                    <th className="uppercase border border-black px-4 py-2">Reference Id</th>
+                                    <th className="uppercase border border-black px-4 py-2">Photo</th>
+                                    <th className="uppercase border border-black px-4 py-2">Applicant Employe Id</th>
+                                    <th className="uppercase border border-black px-4 py-2">
+                                        <button
+                                            className="bg-orange-500 hover:scale-105  hover:bg-orange-600 text-white px-6 py-2 rounded"
+                                            onClick={() => setViewServices(prev => !prev)}
 
-                                <tr>
-                                    <td colSpan={17} className="py-4 text-center text-gray-500">
-                                        <Loader className="text-center" />
-                                    </td>
+                                        >
+                                            {viewServices ? "Hide Services" : "View Services"}
+                                        </button><br />
+                                        Initiation Date</th>
+                                    {viewServices && servicesHeadings && servicesHeadings.length > 0 ? (
+                                        servicesHeadings.map((heading, index) => {
+                                            return (
+                                                <th key={index} className="uppercase border border-black px-4 py-2">
+                                                    {heading.heading}
+                                                </th>
+                                            );
+                                        })
+                                    ) : null}
+                                    <th className="uppercase border border-black px-4 py-2">Deadline Date</th>
+                                    <th className="uppercase border border-black px-4 py-2">Report Data</th>
+                                    <th className="uppercase border border-black px-4 py-2">Download Status</th>
+                                    <th className="border border-black uppercase px-4 py-2">First Level Insuff</th>
+                                    <th className="border border-black uppercase px-4 py-2">First Insuff Date</th>
+                                    <th className="border border-black uppercase px-4 py-2">First Insuff Reopen</th>
+                                    <th className="border border-black uppercase px-4 py-2">Second Level Insuff</th>
+                                    <th className="border border-black uppercase px-4 py-2">Second Insuff Date</th>
+                                    <th className="border border-black uppercase px-4 py-2">Third Level Insuff</th>
+                                    <th className="border border-black uppercase px-4 py-2">Third Insuff Date</th>
+                                    <th className="border border-black uppercase px-4 py-2">Reason for Delay</th>
                                 </tr>
-                            ) : filteredData.length === 0 ? (
-                                <tr>
-                                    <td colSpan={17} className="py-4 text-center text-gray-500">
-                                        No data available in table
-                                    </td>
-                                </tr>
-                            ) : (
-                                <>
-                                    {filteredData.map((data, index) => {
-                                        const actualIndex = (currentPage - 1) * rowsPerPage + index;
+                            </thead>
+                            <tbody>
+                                {loading ? (
 
-                                        return (
-                                            <React.Fragment key={data.id}>
-                                                <tr className="text-center">
-                                                    <td className="border border-black px-4 py-2">{index + 1}</td>
-                                                    <td className="border border-black px-4 py-2">{adminTAT || 'NIL'}</td>
-                                                    <td className="border border-black px-4 py-2">{data.location || 'NIL'}</td>
-                                                    <td className="border border-black px-4 py-2">{data.name || 'NIL'}</td>
+                                    <tr>
+                                        <td colSpan={17} className="py-4 text-center text-gray-500">
+                                            <Loader className="text-center" />
+                                        </td>
+                                    </tr>
+                                ) : filteredData.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={17} className="py-4 text-center text-gray-500">
+                                            No data available in table
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    <>
+                                        {filteredData.map((data, index) => {
+                                            const actualIndex = (currentPage - 1) * rowsPerPage + index;
 
-                                                    <td className="border border-black px-4 py-2">
-                                                        {companyName || branchName || 'NIL'}
-                                                    </td>
-                                                    <td className="border border-black px-4 py-2">{data.application_id || 'NIL'}</td>
-                                                    <td className="border border-black px-4 py-2">
-                                                        <div className='flex justify-center items-center'>
-                                                            <img src={data.photo ? data.photo : `${Default}`}
-                                                                alt={data.name || 'No name available'}
-                                                                className="w-10 h-10 rounded-full" />
+                                            return (
+                                                <React.Fragment key={data.id}>
+                                                    <tr className="text-center">
+                                                        <td className="border border-black px-4 py-2">{index + 1}</td>
+                                                        <td className="border border-black px-4 py-2">{adminTAT || 'NIL'}</td>
+                                                        <td className="border border-black px-4 py-2">{data.location || 'NIL'}</td>
+                                                        <td className="border border-black px-4 py-2">{data.name || 'NIL'}</td>
 
-                                                        </div>
-                                                    </td>
-                                                    <td className="border border-black px-4 py-2">{data.employee_id || 'NIL'}</td>
-                                                    <td className="border border-black px-4 py-2">{new Date(data.created_at).toLocaleDateString('en-GB').replace(/\//g, '-')}</td>
-                                                    {viewServices && servicesHeadings && servicesHeadings.length > 0 ? (
-                                                        servicesHeadings.map((heading, index) => {
-                                                            return (
-                                                                <th key={index} className="uppercase font-normal border border-black px-4 py-2">
-                                                                    {getStatusByServiceId(data.annexureResults, heading.id)}
-                                                                </th>
-                                                            );
-                                                        })
-                                                    ) : null}
-                                                    <td className="border border-black px-4 py-2">{new Date(data.updated_at).toLocaleDateString('en-GB').replace(/\//g, '-')}</td>
-                                                    <td className="border border-black px-4 py-2">
-                                                        <button
-                                                            className={`bg-white border border-[#073d88] text-[#073d88] px-4 py-2 rounded ${!data.services || data.services.length === 0 ? 'cursor-not-allowed opacity-50' : 'hover:bg-[#073d88] hover:text-white'}`}
-                                                            onClick={() => handleUpload(data.id, data.branch_id)}
-                                                            disabled={!data.services || data.services.length === 0}
-                                                        >
-                                                            VERIFICATION STATUS
-                                                        </button>
+                                                        <td className="border border-black px-4 py-2">
+                                                            {companyName || branchName || 'NIL'}
+                                                        </td>
+                                                        <td className="border border-black px-4 py-2">{data.application_id || 'NIL'}</td>
+                                                        <td className="border border-black px-4 py-2">
+                                                            <div className='flex justify-center items-center'>
+                                                                <img src={data.photo ? data.photo : `${Default}`}
+                                                                    alt={data.name || 'No name available'}
+                                                                    className="w-10 h-10 rounded-full" />
+
+                                                            </div>
+                                                        </td>
+                                                        <td className="border border-black px-4 py-2">{data.employee_id || 'NIL'}</td>
+                                                        <td className="border border-black px-4 py-2">{new Date(data.created_at).toLocaleDateString('en-GB').replace(/\//g, '-')}</td>
+                                                        {viewServices && servicesHeadings && servicesHeadings.length > 0 ? (
+                                                            servicesHeadings.map((heading, index) => {
+                                                                return (
+                                                                    <th key={index} className="uppercase font-normal border border-black px-4 py-2">
+                                                                        {getStatusByServiceId(data.annexureResults, heading.id)}
+                                                                    </th>
+                                                                );
+                                                            })
+                                                        ) : null}
+                                                        <td className="border border-black px-4 py-2">{new Date(data.updated_at).toLocaleDateString('en-GB').replace(/\//g, '-')}</td>
+                                                        <td className="border border-black px-4 py-2">
+                                                            <button
+                                                                className={`bg-white border border-[#073d88] text-[#073d88] px-4 py-2 rounded ${!data.services || data.services.length === 0 ? 'cursor-not-allowed opacity-50' : 'hover:bg-[#073d88] hover:text-white'}`}
+                                                                onClick={() => handleUpload(data.id, data.branch_id)}
+                                                                disabled={!data.services || data.services.length === 0}
+                                                            >
+                                                                VERIFICATION STATUS
+                                                            </button>
 
 
-                                                    </td>
+                                                        </td>
 
-                                                    <td className="border border-black px-4 py-2">
-                                                        {(() => {
-                                                            let buttonText = "";
-                                                            let buttonDisabled = false;
+                                                        <td className="border border-black px-4 py-2">
+                                                            {(() => {
+                                                                let buttonText = "";
+                                                                let buttonDisabled = false;
 
-                                                            if (data.overall_status === "completed") {
-                                                                if (data.is_verify === "yes") {
-                                                                    buttonText = "DOWNLOAD";
+                                                                if (data.overall_status === "completed") {
+                                                                    if (data.is_verify === "yes") {
+                                                                        buttonText = "DOWNLOAD";
+                                                                    } else {
+                                                                        buttonText = "QC Pending";
+                                                                    }
+
+                                                                    /*
+                                                                    else {
+                                                                        buttonText = "NOT READY";
+                                                                        buttonDisabled = true;
+                                                                    }
+                                                                    */
                                                                 } else {
-                                                                    buttonText = "QC Pending";
-                                                                }
-
-                                                                /*
-                                                                else {
                                                                     buttonText = "NOT READY";
                                                                     buttonDisabled = true;
                                                                 }
-                                                                */
-                                                            } else {
-                                                                buttonText = "NOT READY";
-                                                                buttonDisabled = true;
-                                                            }
 
-                                                            return buttonDisabled ? (
-                                                                <button
-                                                                    className="bg-gray-500 text-white px-4 py-2 rounded cursor-not-allowed"
-                                                                    disabled
-                                                                >
-                                                                    {buttonText}
-                                                                </button>
-                                                            ) : (
-                                                                <button
-                                                                    onClick={() => handleDownload(actualIndex)}
-                                                                    disabled={downloadingIndex}
-                                                                    className={`bg-green-500 hover:scale-105 uppercase border border-white hover:border-whit text-white px-4 py-2 rounded hover:bg-green-300  ${downloadingIndex === actualIndex ? "opacity-50 cursor-not-allowed " : ""
-                                                                        }`}
-                                                                >
-                                                                    {downloadingIndex === actualIndex ? (
-                                                                        <span className="flex items-center gap-2">
-                                                                            <svg
-                                                                                className="animate-spin h-5 w-5 text-white hover:text-green-500"
-                                                                                viewBox="0 0 24 24"
-                                                                                fill="none"
-                                                                                xmlns="http://www.w3.org/2000/svg"
-                                                                            >
-                                                                                <circle
-                                                                                    className="opacity-25"
-                                                                                    cx="12"
-                                                                                    cy="12"
-                                                                                    r="10"
-                                                                                    stroke="currentColor"
-                                                                                    strokeWidth="4"
-                                                                                ></circle>
-                                                                                <path
-                                                                                    className="opacity-75"
-                                                                                    fill="currentColor"
-                                                                                    d="M4 12a8 8 0 018-8v8H4z"
-                                                                                ></path>
-                                                                            </svg>
-                                                                            Downloading...
-                                                                        </span>
-                                                                    ) : (
-                                                                        buttonText
-                                                                    )}
-                                                                </button>
-                                                            );
-                                                        })()}
-                                                    </td>
+                                                                return buttonDisabled ? (
+                                                                    <button
+                                                                        className="bg-gray-500 text-white px-4 py-2 rounded cursor-not-allowed"
+                                                                        disabled
+                                                                    >
+                                                                        {buttonText}
+                                                                    </button>
+                                                                ) : (
+                                                                    <button
+                                                                        onClick={() => handleDownload(actualIndex)}
+                                                                        disabled={downloadingIndex}
+                                                                        className={`bg-green-500 hover:scale-105 uppercase border border-white hover:border-whit text-white px-4 py-2 rounded hover:bg-green-300  ${downloadingIndex === actualIndex ? "opacity-50 cursor-not-allowed " : ""
+                                                                            }`}
+                                                                    >
+                                                                        {downloadingIndex === actualIndex ? (
+                                                                            <span className="flex items-center gap-2">
+                                                                                <svg
+                                                                                    className="animate-spin h-5 w-5 text-white hover:text-green-500"
+                                                                                    viewBox="0 0 24 24"
+                                                                                    fill="none"
+                                                                                    xmlns="http://www.w3.org/2000/svg"
+                                                                                >
+                                                                                    <circle
+                                                                                        className="opacity-25"
+                                                                                        cx="12"
+                                                                                        cy="12"
+                                                                                        r="10"
+                                                                                        stroke="currentColor"
+                                                                                        strokeWidth="4"
+                                                                                    ></circle>
+                                                                                    <path
+                                                                                        className="opacity-75"
+                                                                                        fill="currentColor"
+                                                                                        d="M4 12a8 8 0 018-8v8H4z"
+                                                                                    ></path>
+                                                                                </svg>
+                                                                                Downloading...
+                                                                            </span>
+                                                                        ) : (
+                                                                            buttonText
+                                                                        )}
+                                                                    </button>
+                                                                );
+                                                            })()}
+                                                        </td>
 
-                                                    <td className="border border-black px-4 py-2">{formatedJson(data.first_insufficiency_marks) || "No Insuff"}</td>
-                                                    <td className="border border-black px-4 py-2">{formatDate(data.first_insuff_date) || "No Insuff"}</td>
-                                                    <td className="border border-black px-4 py-2">{formatDate(data.first_insuff_reopened_date) || "No Insuff"}</td>
-                                                    <td className="border border-black px-4 py-2">{formatedJson(data.second_insufficiency_marks) || "No Insuff"}</td>
-                                                    <td className="border border-black px-4 py-2">{formatDate(data.second_insuff_date) || "No Insuff"}</td>
-                                                    <td className="border border-black px-4 py-2">{formatedJson(data.third_insufficiency_marks) || "No Insuff"}</td>
-                                                    <td className="border border-black px-4 py-2">{formatDate(data.third_insuff_date) || "No Insuff"}</td>
-                                                    <td className="border border-black px-4 py-2">{formatedJson(data.delay_reason) || "No Insuff"}</td>
+                                                        <td className="border border-black px-4 py-2">{formatedJson(data.first_insufficiency_marks) || "No Insuff"}</td>
+                                                        <td className="border border-black px-4 py-2">{formatDate(data.first_insuff_date) || "No Insuff"}</td>
+                                                        <td className="border border-black px-4 py-2">{formatDate(data.first_insuff_reopened_date) || "No Insuff"}</td>
+                                                        <td className="border border-black px-4 py-2">{formatedJson(data.second_insufficiency_marks) || "No Insuff"}</td>
+                                                        <td className="border border-black px-4 py-2">{formatDate(data.second_insuff_date) || "No Insuff"}</td>
+                                                        <td className="border border-black px-4 py-2">{formatedJson(data.third_insufficiency_marks) || "No Insuff"}</td>
+                                                        <td className="border border-black px-4 py-2">{formatDate(data.third_insuff_date) || "No Insuff"}</td>
+                                                        <td className="border border-black px-4 py-2">{formatedJson(data.delay_reason) || "No Insuff"}</td>
 
 
 
-                                                </tr>
+                                                    </tr>
 
 
-                                            </React.Fragment>
-                                        )
-                                    })}
-                                </>
-                            )}
-                        </tbody>
-                    </table>
+                                                </React.Fragment>
+                                            )
+                                        })}
+                                    </>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
                 <div className="flex justify-between items-center mt-4">
                     <button

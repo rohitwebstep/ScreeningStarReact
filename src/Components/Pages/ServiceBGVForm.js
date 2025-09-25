@@ -1,4 +1,4 @@
-import React, { createContext,useCallback, useState,useEffect, useContext } from "react";
+import React, { createContext,useCallback, useState,useEffect, useRef } from "react";
 import Modal from "react-modal";
 import { useNavigate } from "react-router-dom";
 import { useService } from "./ServiceContext";
@@ -20,6 +20,19 @@ const ServiceBGVForm = () => {
   const navigate = useNavigate();
   const { setSelectedService } = useService();
   // Function to fetch client data
+       const tableScrollRef = useRef(null);
+    const topScrollRef = useRef(null);
+    const [scrollWidth, setScrollWidth] = useState("100%");
+
+    // 🔹 Sync scroll positions
+    const syncScroll = (e) => {
+        if (e.target === topScrollRef.current) {
+            tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+        } else {
+            topScrollRef.current.scrollLeft = e.target.scrollLeft;
+        }
+    };
+
   const fetchClientData = useCallback(async () => {
     const adminData = JSON.parse(localStorage.getItem("admin"));
     const admin_id = adminData?.id;
@@ -140,7 +153,14 @@ console.log('service',service)
           className={`px-4 py-2 border border-gray-300  ${previewData ? 'hidden' : ''} rounded-md w-full`}
         />
       </div>
-<div className="overflow-x-auto">
+  <div className="table-container rounded-lg">
+      {/* Top Scroll */}
+      <div className="top-scroll" ref={topScrollRef} onScroll={syncScroll}>
+        <div className="top-scroll-inner" style={{ width: scrollWidth }} />
+      </div>
+
+      {/* Actual Table Scroll */}
+      <div className="table-scroll rounded-lg" ref={tableScrollRef} onScroll={syncScroll}>
       <table className={`${previewData ? 'hidden' : ''} min-w-full border-collapse border border-black`}>
         <thead>
           <tr className="bg-[#c1dff2] whitespace-nowrap text-[#4d606b] text-left">
@@ -178,6 +198,7 @@ console.log('service',service)
           ))}
         </tbody>
       </table>
+      </div>
       </div>
       {/* Pagination Controls */}
       <div className={`flex ${previewData ? 'hidden' : ''}  justify-between items-center mt-4`}>

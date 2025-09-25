@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import SidebarContext from '../SidebarContext'
 import axios from 'axios';
@@ -33,7 +33,7 @@ const LeaveListing = () => {
     const emailFromQuery = query.get('email') || '';
     const [isEditing, setIsEditing] = useState(false);
     const [itemsPerPage, setItemsPerPage] = useState(10);
-    const optionsPerPage = [10, 50, 100, 200,500,1000];
+    const optionsPerPage = [10, 50, 100, 200, 500, 1000];
     const [formData, setFormData] = useState({
         ticket_date: "",
         photo: null,
@@ -49,6 +49,19 @@ const LeaveListing = () => {
     if (storedToken) {
         adminData = JSON.parse(localStorage.getItem('admin'))
     }
+
+    const tableScrollRef = useRef(null);
+    const topScrollRef = useRef(null);
+    const [scrollWidth, setScrollWidth] = useState("100%");
+
+    // 🔹 Sync scroll positions
+    const syncScroll = (e) => {
+        if (e.target === topScrollRef.current) {
+            tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+        } else {
+            topScrollRef.current.scrollLeft = e.target.scrollLeft;
+        }
+    };
     const fetchClientData = async () => {
         const admin_id = JSON.parse(localStorage.getItem("admin"))?.id;
         const storedToken = localStorage.getItem("_token");
@@ -198,18 +211,23 @@ const LeaveListing = () => {
             });
         }
     };
+    useEffect(() => {
+        if (tableScrollRef.current) {
+            setScrollWidth(tableScrollRef.current.scrollWidth + "px");
+        }
+    }, [currentSpocs, loading]);
     const formatDate = (date) => {
         if (!date) return null; // Return null if date is undefined, null, or empty
         const dateObj = new Date(date);
         if (isNaN(dateObj)) return null; // Return null if date is invalid
-    
+
         const day = String(dateObj.getDate()).padStart(2, '0');
         const month = String(dateObj.getMonth() + 1).padStart(2, '0');
         const year = dateObj.getFullYear();
-    
+
         return `${day}-${month}-${year}`;
     };
-    
+
     return (
         <div className="w-full bg-[#c1dff2] border border-black overflow-hidden">
             <div className="space-y-4 py-[30px] md:px-[51px] px-[25px] bg-white">
@@ -239,80 +257,88 @@ const LeaveListing = () => {
                             ))}
                         </select>
                     </div>
-                    <div className=" overflow-scroll">
-                        <table className="min-w-full border-collapse border border-black rounded-lg">
-                            <thead className="rounded-lg border border-black">
-                                <tr className="bg-[#c1dff2] text-[#4d606b] text-left rounded-lg whitespace-nowrap">
-                                    <th className="py-2 px-4 border border-black uppercase">No.</th>
-                                    <th className="py-2 px-4 border border-black uppercase">Ticket Date</th>
-                                    <th className="py-2 px-4 border border-black uppercase">Photo</th>
-                                    <th className="py-2 px-4 border border-black uppercase">Name of the Employee</th>
-                                    <th className="py-2 px-4 border border-black uppercase">Employee ID</th>
-                                    <th className="py-2 px-4 border border-black uppercase">Leave Date</th>
-                                    <th className="py-2 px-4 border border-black uppercase">Purpose of Leave</th>
-                                    <th className="py-2 px-4 border border-black uppercase  w-96">Remarks</th>
-                                    <th className="py-2 px-4 border border-black text-center uppercase">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {loading ? (
-                                    <tr>
-                                        <td colSpan={9} className="py-4 text-center text-gray-500">
-                                            <Loader className="text-center" />
-                                        </td>
+                    <div className="table-container rounded-lg">
+                        {/* Top Scroll */}
+                        <div className="top-scroll" ref={topScrollRef} onScroll={syncScroll}>
+                            <div className="top-scroll-inner" style={{ width: scrollWidth }} />
+                        </div>
+
+                        {/* Actual Table Scroll */}
+                        <div className="table-scroll rounded-lg" ref={tableScrollRef} onScroll={syncScroll}>
+                            <table className="min-w-full border-collapse border border-black rounded-lg">
+                                <thead className="rounded-lg border border-black">
+                                    <tr className="bg-[#c1dff2] text-[#4d606b] text-left rounded-lg whitespace-nowrap">
+                                        <th className="py-2 px-4 border border-black uppercase">No.</th>
+                                        <th className="py-2 px-4 border border-black uppercase">Ticket Date</th>
+                                        <th className="py-2 px-4 border border-black uppercase">Photo</th>
+                                        <th className="py-2 px-4 border border-black uppercase">Name of the Employee</th>
+                                        <th className="py-2 px-4 border border-black uppercase">Employee ID</th>
+                                        <th className="py-2 px-4 border border-black uppercase">Leave Date</th>
+                                        <th className="py-2 px-4 border border-black uppercase">Purpose of Leave</th>
+                                        <th className="py-2 px-4 border border-black uppercase  w-96">Remarks</th>
+                                        <th className="py-2 px-4 border border-black text-center uppercase">Status</th>
                                     </tr>
-                                ) : (
-                                    <>
-                                        {currentSpocs.length === 0 ? (
-                                            <tr>
-                                                <td colSpan={9} className="py-4 text-center text-gray-500">
-                                                    Your Table Is Empty.
-                                                </td>
-                                            </tr>
-                                        ) : (
-                                            currentSpocs.map((spoc, index) => (
-                                                <tr key={spoc.id} className="hover:bg-gray-200">
-                                                    <td className="py-2 px-4 border border-black">{index + indexOfFirstItem + 1}</td>
-                                                    <td className="py-2 px-4 border border-black">{formatDate(spoc.ticket_date)}</td>
-                                                    <td className="py-2 px-4 border border-black">
-                                                        <img src={spoc.photo ? spoc.photo : `${adminData.profile_picture}`} alt="Employee" className="w-12 h-12 object-cover rounded-full" />
+                                </thead>
+                                <tbody>
+                                    {loading ? (
+                                        <tr>
+                                            <td colSpan={9} className="py-4 text-center text-gray-500">
+                                                <Loader className="text-center" />
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        <>
+                                            {currentSpocs.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan={9} className="py-4 text-center text-gray-500">
+                                                        Your Table Is Empty.
                                                     </td>
-                                                    <td className="py-2 px-4 border border-black">{spoc.employee_name}</td>
-                                                    <td className="py-2 px-4 border border-black">{spoc.employee_id}</td>
-                                                    <td className="py-2 px-4 border border-black whitespace-nowrap">
-                                                        {`${formatDate(spoc.from_date)} To ${formatDate(spoc.to_date)}`}
-                                                    </td>
-                                                    <td className="py-2 px-4 border border-black">{spoc.purpose_of_leave}</td>
-                                                    <td className="py-2 px-4 border border-black ">{spoc.remarks}</td>
-                                                    <td className="py-2 px-4 border border-black  whitespace-nowrap">
-                                                        <div className='flex gap-2'>
-                                                            {spoc.status === 1 ? (
-                                                                <button
-                                                                    className="bg-green-600 transition-colors duration-300 ease-in-out text-white rounded-full p-3 font-bold flex items-center justify-center shadow-md  focus:outline-none"
-                                                                    disabled
-                                                                >
-                                                                    ✔ APPROVED
-                                                                </button>
-                                                            ) : spoc.status === 2 ? (
-                                                                <button
-                                                                    className="bg-red-500  transition-colors duration-300 ease-in-out text-white rounded-full p-3 font-bold flex items-center justify-center shadow-md  focus:outline-none"
-                                                                    disabled
-                                                                >
-                                                                    ✖ REJECTED
-                                                                </button>
-                                                            ) : null}
-
-
-                                                        </div>
-                                                    </td>
-
                                                 </tr>
-                                            ))
-                                        )}
-                                    </>
-                                )}
-                            </tbody>
-                        </table>
+                                            ) : (
+                                                currentSpocs.map((spoc, index) => (
+                                                    <tr key={spoc.id} className="hover:bg-gray-200">
+                                                        <td className="py-2 px-4 border border-black">{index + indexOfFirstItem + 1}</td>
+                                                        <td className="py-2 px-4 border border-black">{formatDate(spoc.ticket_date)}</td>
+                                                        <td className="py-2 px-4 border border-black">
+                                                            <img src={spoc.photo ? spoc.photo : `${adminData.profile_picture}`} alt="Employee" className="w-12 h-12 object-cover rounded-full" />
+                                                        </td>
+                                                        <td className="py-2 px-4 border border-black">{spoc.employee_name}</td>
+                                                        <td className="py-2 px-4 border border-black">{spoc.employee_id}</td>
+                                                        <td className="py-2 px-4 border border-black whitespace-nowrap">
+                                                            {`${formatDate(spoc.from_date)} To ${formatDate(spoc.to_date)}`}
+                                                        </td>
+                                                        <td className="py-2 px-4 border border-black">{spoc.purpose_of_leave}</td>
+                                                        <td className="py-2 px-4 border border-black ">{spoc.remarks}</td>
+                                                        <td className="py-2 px-4 border border-black  whitespace-nowrap">
+                                                            <div className='flex gap-2'>
+                                                                {spoc.status === 1 ? (
+                                                                    <button
+                                                                        className="bg-green-600 transition-colors duration-300 ease-in-out text-white rounded-full p-3 font-bold flex items-center justify-center shadow-md  focus:outline-none"
+                                                                        disabled
+                                                                    >
+                                                                        ✔ APPROVED
+                                                                    </button>
+                                                                ) : spoc.status === 2 ? (
+                                                                    <button
+                                                                        className="bg-red-500  transition-colors duration-300 ease-in-out text-white rounded-full p-3 font-bold flex items-center justify-center shadow-md  focus:outline-none"
+                                                                        disabled
+                                                                    >
+                                                                        ✖ REJECTED
+                                                                    </button>
+                                                                ) : null}
+
+
+                                                            </div>
+                                                        </td>
+
+                                                    </tr>
+                                                ))
+                                            )}
+                                        </>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                     <div className="flex justify-between items-center mt-4">
                         <button

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import Swal from "sweetalert2";
 import * as XLSX from "xlsx";
 import { useNavigate } from "react-router-dom";
@@ -10,7 +10,18 @@ import "react-datepicker/dist/react-datepicker.css";
 const UserHistory = () => {
     const { validateAdminLogin, setApiLoading, apiLoading } = useApiLoading();
     const [responseError, setResponseError] = useState(null);
+    const tableScrollRef = useRef(null);
+    const topScrollRef = useRef(null);
+    const [scrollWidth, setScrollWidth] = useState("100%");
 
+    // 🔹 Sync scroll positions
+    const syncScroll = (e) => {
+        if (e.target === topScrollRef.current) {
+            tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+        } else {
+            topScrollRef.current.scrollLeft = e.target.scrollLeft;
+        }
+    };
 
     const [searchTerm, setSearchTerm] = useState("");
     const [startDate, setStartDate] = useState("");
@@ -20,7 +31,7 @@ const UserHistory = () => {
     const [tableData, setTableData] = useState([]);
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
-    const optionsPerPage = [10, 50, 100, 200,500,1000];
+    const optionsPerPage = [10, 50, 100, 200, 500, 1000];
     const navigate = useNavigate();
 
     const fetchData = useCallback(() => {
@@ -192,6 +203,11 @@ const UserHistory = () => {
         XLSX.utils.book_append_sheet(wb, ws, "Acknowledgement");
         XLSX.writeFile(wb, "Acknowledgement.xlsx");
     };
+    useEffect(() => {
+        if (tableScrollRef.current) {
+            setScrollWidth(tableScrollRef.current.scrollWidth + "px");
+        }
+    }, [paginatedData, loading]);
 
     const Loader = () => (
         <tr>
@@ -278,72 +294,80 @@ const UserHistory = () => {
                         Export to Excel
                     </button>
                 </div>
-                <div className="overflow-x-auto">
-                    <table className="min-w-full border-collapse border border-black rounded-lg overflow-scroll whitespace-nowrap">
-                        <thead>
-                            <tr className="bg-[#c1dff2] text-[#4d606b]">
-                                <th className="border border-black uppercase px-4 py-2">SL</th>
-                                <th className="border border-black uppercase px-4 py-2">Admin Name</th>
-                                <th className="border border-black uppercase px-4 py-2">Employee Id</th>
-                                <th className="border border-black uppercase px-4 py-2">Ip Address</th>
-                                <th className="border border-black uppercase px-4 py-2">Email</th>
-                                {/* <th className="border border-black uppercase px-4 py-2">Mobile Number</th> */}
-                                {/* <th className="border border-black uppercase px-4 py-2">First Login Time</th>
+                <div className="table-container rounded-lg">
+                    {/* Top Scroll */}
+                    <div className="top-scroll" ref={topScrollRef} onScroll={syncScroll}>
+                        <div className="top-scroll-inner" style={{ width: scrollWidth }} />
+                    </div>
+
+                    {/* Actual Table Scroll */}
+                    <div className="table-scroll rounded-lg" ref={tableScrollRef} onScroll={syncScroll}>
+                        <table className="min-w-full border-collapse border border-black rounded-lg overflow-scroll whitespace-nowrap">
+                            <thead>
+                                <tr className="bg-[#c1dff2] text-[#4d606b]">
+                                    <th className="border border-black uppercase px-4 py-2">SL</th>
+                                    <th className="border border-black uppercase px-4 py-2">Admin Name</th>
+                                    <th className="border border-black uppercase px-4 py-2">Employee Id</th>
+                                    <th className="border border-black uppercase px-4 py-2">Ip Address</th>
+                                    <th className="border border-black uppercase px-4 py-2">Email</th>
+                                    {/* <th className="border border-black uppercase px-4 py-2">Mobile Number</th> */}
+                                    {/* <th className="border border-black uppercase px-4 py-2">First Login Time</th>
                                 <th className="border border-black uppercase px-4 py-2">Last Logout Time</th> */}
-                                <th className="border border-black uppercase px-4 py-2">Created At</th>
-                                <th className="border border-black uppercase px-4 py-2">View</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {loading ? (
-                                <Loader />
-                            ) : paginatedData.length > 0 ? (
-                                paginatedData.map((row, index) => (
-                                    <tr className="text-center" key={index}>
-                                        <td className="border border-black px-4 py-2">
-                                            {index + 1 + (currentPage - 1) * itemsPerPage}
-                                        </td>
-                                        {/* <td className="border border-black text-center capitalize px-4 py-2">
+                                    <th className="border border-black uppercase px-4 py-2">Created At</th>
+                                    <th className="border border-black uppercase px-4 py-2">View</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {loading ? (
+                                    <Loader />
+                                ) : paginatedData.length > 0 ? (
+                                    paginatedData.map((row, index) => (
+                                        <tr className="text-center" key={index}>
+                                            <td className="border border-black px-4 py-2">
+                                                {index + 1 + (currentPage - 1) * itemsPerPage}
+                                            </td>
+                                            {/* <td className="border border-black text-center capitalize px-4 py-2">
                                             <div className="flex justify-center items-center">
                                                 <img src={row.profile_picture ? row.profile_picture : `${Default}`} alt={row.admin_name} className="w-10 h-10 rounded-full" />
                                             </div>
                                         </td> */}
-                                        <td className="border border-black capitalize px-4 py-2">{row.admin_name}</td>
-                                        <td className="border border-black capitalize px-4 py-2">{row.emp_id}</td>
-                                        <td className="border border-black capitalize px-4 py-2">
-                                            {row.client_ip || "No Ip Found"}
-                                        </td>
-                                        <td className="border border-black  px-4 py-2">{row.admin_email}</td>
-                                        {/* <td className="border border-black capitalize px-4 py-2">{row.admin_mobile}</td> */}
+                                            <td className="border border-black capitalize px-4 py-2">{row.admin_name}</td>
+                                            <td className="border border-black capitalize px-4 py-2">{row.emp_id}</td>
+                                            <td className="border border-black capitalize px-4 py-2">
+                                                {row.client_ip || "No Ip Found"}
+                                            </td>
+                                            <td className="border border-black  px-4 py-2">{row.admin_email}</td>
+                                            {/* <td className="border border-black capitalize px-4 py-2">{row.admin_mobile}</td> */}
 
-                                        {/* <td className="border border-black capitalize px-4 py-2">{formatDate(row.first_login_time)}</td>
+                                            {/* <td className="border border-black capitalize px-4 py-2">{formatDate(row.first_login_time)}</td>
                                         <td className="border border-black capitalize px-4 py-2">
                                             {formatDate(row.last_logout_time)}
                                         </td> */}
-                                        <td className="border border-black px-4 py-2">
-                                            {formatDate(row.created_at)}
-                                        </td>
-                                        <td className="border border-black px-4 py-2">
-                                            <button
-                                                onClick={() => handleView(row.admin_id, formatDate2(row.created_at))}
-                                                className="bg-green-500 text-white hover:scale-105 font-bold transition duration-200 px-4 py-2 rounded hover:bg-green-700"
-                                            >
-                                                View
-                                            </button>
+                                            <td className="border border-black px-4 py-2">
+                                                {formatDate(row.created_at)}
+                                            </td>
+                                            <td className="border border-black px-4 py-2">
+                                                <button
+                                                    onClick={() => handleView(row.admin_id, formatDate2(row.created_at))}
+                                                    className="bg-green-500 text-white hover:scale-105 font-bold transition duration-200 px-4 py-2 rounded hover:bg-green-700"
+                                                >
+                                                    View
+                                                </button>
 
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td className="text-center text-red-500 border border-black px-4 py-2" colSpan="10">
+                                            {responseError && responseError !== "" ? responseError : "No data available in table"}
                                         </td>
                                     </tr>
-                                ))
-                            ) : (
-                                <tr>
-                                    <td className="text-center text-red-500 border border-black px-4 py-2" colSpan="10">
-                                        {responseError && responseError !== "" ? responseError : "No data available in table"}
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
+                                )}
+                            </tbody>
 
-                    </table>
+                        </table>
+                    </div>
                 </div>
                 <div className="flex justify-between items-center mt-4">
                     <button

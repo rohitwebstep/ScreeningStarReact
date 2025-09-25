@@ -39,6 +39,20 @@ const VerificationStatus = () => {
         const colorRegex = new RegExp(`\\b(${colorNames.join('|')})\\b`, 'gi');
         return text.replace(colorRegex, '').trim();
     };
+         const tableScrollRef = useRef(null);
+    const topScrollRef = useRef(null);
+    const [scrollWidth, setScrollWidth] = useState("100%");
+
+    // 🔹 Sync scroll positions
+    const syncScroll = (e) => {
+        if (e.target === topScrollRef.current) {
+            tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+        } else {
+            topScrollRef.current.scrollLeft = e.target.scrollLeft;
+        }
+    };
+
+
     const [servicesHeadings, setServicesHeadings] = useState([]);
     const [viewServices, setViewServices] = useState(false);
 
@@ -2381,6 +2395,11 @@ const VerificationStatus = () => {
             }
         });
     };
+           useEffect(() => {
+        if (tableScrollRef.current) {
+          setScrollWidth(tableScrollRef.current.scrollWidth + "px");
+        }
+      }, [filteredData, loading]); 
     // console.log('visibleFields', visibleFields);
     return (
         <div className="bg-[#c1dff2]">
@@ -2502,9 +2521,15 @@ const VerificationStatus = () => {
 
                     </div>
                 </div>
+                 <div className="table-container rounded-lg">
+                    {/* Top Scroll */}
+                    <div className="top-scroll" ref={topScrollRef} onScroll={syncScroll}>
+                        <div className="top-scroll-inner" style={{ width: scrollWidth }} />
+                    </div>
 
-                <div className="overflow-scroll " ref={scrollContainerRef}>
-                    <table className="min-w-full border-collapse border border-black overflow-scroll rounded-lg whitespace-nowrap">
+                    {/* Actual Table Scroll */}
+                    <div className="table-scroll rounded-lg" ref={tableScrollRef} onScroll={syncScroll}>
+                    <table  ref={scrollContainerRef} className="min-w-full border-collapse border border-black overflow-scroll rounded-lg whitespace-nowrap">
                         <thead className='rounded-lg'>
                             <tr className="bg-[#c1dff2] text-[#4d606b]">
                                 <th className="border border-black px-4 py-2">
@@ -2808,6 +2833,7 @@ const VerificationStatus = () => {
                             )}
                         </tbody>
                     </table>
+                    </div>
                 </div>
                 <div className="flex justify-between items-center mt-4">
                     <button

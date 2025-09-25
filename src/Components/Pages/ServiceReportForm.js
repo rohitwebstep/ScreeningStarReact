@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useState, useEffect, useContext } from "react";
+import React, { createContext, useCallback, useState, useEffect, useRef } from "react";
 import Modal from "react-modal";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
@@ -9,6 +9,18 @@ Modal.setAppElement("#root");
 const ServiceReportForm = () => {
   const { validateAdminLogin, setApiLoading, apiLoading } = useApiLoading();
   const [responseError, setResponseError] = useState(null);
+     const tableScrollRef = useRef(null);
+    const topScrollRef = useRef(null);
+    const [scrollWidth, setScrollWidth] = useState("100%");
+
+    // 🔹 Sync scroll positions
+    const syncScroll = (e) => {
+        if (e.target === topScrollRef.current) {
+            tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+        } else {
+            topScrollRef.current.scrollLeft = e.target.scrollLeft;
+        }
+    };
 
   const [clientData, setClientData] = useState([]); // Changed to an array to handle multiple entries
   const [loading, setLoading] = useState(true);
@@ -122,44 +134,52 @@ const ServiceReportForm = () => {
             className={`px-4 py-2 border border-gray-300  ${previewData ? 'hidden' : ''} rounded-md w-full`}
           />
         </div>
-        <div className="overflow-x-auto">
-          <table className={`${previewData ? 'hidden' : ''} min-w-full border-collapse border border-black`}>
-            <thead>
-              <tr className="bg-[#c1dff2] whitespace-nowrap text-[#4d606b] text-left">
-                <th className="uppercase border border-black px-4 py-2 text-center">SI</th>
-                <th className="uppercase border border-black px-4 py-2">Service Title</th>
-                <th className="uppercase border border-black px-4 py-2">Service Code</th>
-                <th className="uppercase border border-black px-4 py-2">Group Name</th>
-                <th className="uppercase border border-black px-4 py-2 text-center">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {currentItems.map((service, index) => (
-                <tr key={service.id}>
-                  <td className="border border-black px-4 py-2 text-center">{index + 1}</td>
-                  <td className="border border-black px-4 py-2 whitespace-nowrap">{service.title}</td>
-                  <td className="border border-black px-4 py-2">{service.service_code}</td>
-                  <td className="border border-black px-4 py-2 whitespace-nowrap">{service.group_name}</td>
-                  <td className="border border-black px-4 py-2">
-                    <div className="flex justify-center ">
-                      <button
-                        className="ml-2 p-2 px-4 font-bold text-white bg-blue-500 hover:bg-blue-600 rounded-md"
-                        onClick={() => handleEdit(service)}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        className="ml-2 p-2 px-4 font-bold text-white bg-green-500 hover:bg-green-600 rounded-md"
-                        onClick={() => handlePreview(service.id)}
-                      >
-                        Preview
-                      </button>
-                    </div>
-                  </td>
+         <div className="table-container rounded-lg">
+      {/* Top Scroll */}
+      <div className="top-scroll" ref={topScrollRef} onScroll={syncScroll}>
+        <div className="top-scroll-inner" style={{ width: scrollWidth }} />
+      </div>
+
+      {/* Actual Table Scroll */}
+      <div className="table-scroll rounded-lg" ref={tableScrollRef} onScroll={syncScroll}>
+            <table className={`${previewData ? 'hidden' : ''} min-w-full border-collapse border border-black`}>
+              <thead>
+                <tr className="bg-[#c1dff2] whitespace-nowrap text-[#4d606b] text-left">
+                  <th className="uppercase border border-black px-4 py-2 text-center">SI</th>
+                  <th className="uppercase border border-black px-4 py-2">Service Title</th>
+                  <th className="uppercase border border-black px-4 py-2">Service Code</th>
+                  <th className="uppercase border border-black px-4 py-2">Group Name</th>
+                  <th className="uppercase border border-black px-4 py-2 text-center">Action</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {currentItems.map((service, index) => (
+                  <tr key={service.id}>
+                    <td className="border border-black px-4 py-2 text-center">{index + 1}</td>
+                    <td className="border border-black px-4 py-2 whitespace-nowrap">{service.title}</td>
+                    <td className="border border-black px-4 py-2">{service.service_code}</td>
+                    <td className="border border-black px-4 py-2 whitespace-nowrap">{service.group_name}</td>
+                    <td className="border border-black px-4 py-2">
+                      <div className="flex justify-center ">
+                        <button
+                          className="ml-2 p-2 px-4 font-bold text-white bg-blue-500 hover:bg-blue-600 rounded-md"
+                          onClick={() => handleEdit(service)}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          className="ml-2 p-2 px-4 font-bold text-white bg-green-500 hover:bg-green-600 rounded-md"
+                          onClick={() => handlePreview(service.id)}
+                        >
+                          Preview
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
         {/* Pagination Controls */}
         <div className={`flex ${previewData ? 'hidden' : ''}  justify-between items-center mt-4`}>

@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useState } from "react";
+import React, { useEffect, useCallback, useState, useRef } from "react";
 import axios from "axios";
 import * as XLSX from "xlsx";
 import SelectSearch from "react-select-search";
@@ -26,11 +26,23 @@ const ServiceManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [servicesPerPage, setServicesPerPage] = useState(10);
-  const optionsPerPage = [10, 50, 100, 200,500,1000];
+  const optionsPerPage = [10, 50, 100, 200, 500, 1000];
   const [editingServiceId, setEditingServiceId] = useState(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const storedToken = localStorage.getItem("_token");
+     const tableScrollRef = useRef(null);
+    const topScrollRef = useRef(null);
+    const [scrollWidth, setScrollWidth] = useState("100%");
+
+    // 🔹 Sync scroll positions
+    const syncScroll = (e) => {
+        if (e.target === topScrollRef.current) {
+            tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+        } else {
+            topScrollRef.current.scrollLeft = e.target.scrollLeft;
+        }
+    };
 
   const fetchServices = useCallback(async () => {
     setLoading(true);
@@ -547,91 +559,107 @@ const ServiceManagement = () => {
                 Export to Excel
               </button>
             </div>
-            <div className="overflow-auto">
-              <table className="min-w-full border-collapse border border-black  rounded-lg overflow-scroll whitespace-nowrap">
-                <thead className="rounded-lg">
-                  <tr className="bg-[#c1dff2] text-[#4d606b]">
-                    <th className="uppercase border border-black  px-4 py-2">SL</th>
-                    <th className="uppercase border border-black  px-4 py-2 text-left">
-                      Group
-                    </th>
-                    <th className="uppercase border border-black  px-4 py-2 text-left">
-                      Service Code
-                    </th>
-                    <th className="uppercase border border-black  px-4 py-2 text-left">
-                      Service Name
-                    </th>
-                    <th className="uppercase border border-black  px-4 py-2 text-left">
-                      Service Description
-                    </th>
-                    <th className="uppercase border border-black  px-4 py-2">HSN Code</th>
+            <div className="table-container rounded-lg">
+              {/* Top Scroll */}
+              <div
+                className="top-scroll"
+                ref={topScrollRef}
+                onScroll={syncScroll}
+              >
+                <div className="top-scroll-inner" style={{ width: tableScrollRef.current?.scrollWidth || "100%" }} />
+              </div>
 
-                    <th className="uppercase border border-black  px-4 py-2">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    <tr>
-                      <td
-                        colSpan={6}
-                        className="py-4 text-center text-gray-500"
-                      >
-                        <Loader className="text-center" />
-                      </td>
+              {/* Actual Table Scroll */}
+              <div
+                className="table-scroll rounded-lg"
+                ref={tableScrollRef}
+                onScroll={syncScroll}
+              >
+                <table className="min-w-full border-collapse border border-black  rounded-lg overflow-scroll whitespace-nowrap">
+                  <thead className="rounded-lg">
+                    <tr className="bg-[#c1dff2] text-[#4d606b]">
+                      <th className="uppercase border border-black  px-4 py-2">SL</th>
+                      <th className="uppercase border border-black  px-4 py-2 text-left">
+                        Group
+                      </th>
+                      <th className="uppercase border border-black  px-4 py-2 text-left">
+                        Service Code
+                      </th>
+                      <th className="uppercase border border-black  px-4 py-2 text-left">
+                        Service Name
+                      </th>
+                      <th className="uppercase border border-black  px-4 py-2 text-left">
+                        Service Description
+                      </th>
+                      <th className="uppercase border border-black  px-4 py-2">HSN Code</th>
+
+                      <th className="uppercase border border-black  px-4 py-2">Actions</th>
                     </tr>
-                  ) : currentServices.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="py-4 text-center text-red-500">
-                        {responseError && responseError !== ""
-                          ? responseError
-                          : "No data available in table"}
-                      </td>
-                    </tr>
-                  ) : (
-                    <>
-                      {currentServices.map((service, index) => (
-                        <tr key={service.id} className="text-center">
-                          <td className="border border-black  px-4 py-2">
-                            {index + 1 + (currentPage - 1) * servicesPerPage}
-                          </td>
-                          <td className="border border-black px-4 py-2 text-left">
-                            {service.group_name}{" "}
-                            {service.group_symbol &&
-                              `(${service.group_symbol})`}
-                          </td>
-                          <td className="border border-black  px-4 py-2">
-                            {service.service_code}
-                          </td>
-                          <td className="border border-black  px-4 py-2 text-left">
-                            {service.title}
-                          </td>
-                          <td className="border border-black  px-4 py-2 text-left">
-                            {service.description}
-                          </td>
-                          <td className="border border-black  px-4 py-2">
-                            {service.hsn_code}
-                          </td>
-                          <td className="border border-black  px-4 py-2">
-                            <button
-                              onClick={() => handleEdit(service)}
-                              className="bg-green-500 hover:scale-105 hover:bg-green-600 text-white px-4 py-2 rounded-md mr-2"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              disabled={deletingId === service.id}
-                              onClick={() => handleDelete(service.id)}
-                              className={`bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md  ${deletingId === service.id ? "opacity-50 cursor-not-allowed" : " hover:scale-105"} `}
-                            >
-                              {deletingId === service.id ? "Deleting..." : "Delete"}
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </>
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <tr>
+                        <td
+                          colSpan={6}
+                          className="py-4 text-center text-gray-500"
+                        >
+                          <Loader className="text-center" />
+                        </td>
+                      </tr>
+                    ) : currentServices.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-4 text-center text-red-500">
+                          {responseError && responseError !== ""
+                            ? responseError
+                            : "No data available in table"}
+                        </td>
+                      </tr>
+                    ) : (
+                      <>
+                        {currentServices.map((service, index) => (
+                          <tr key={service.id} className="text-center">
+                            <td className="border border-black  px-4 py-2">
+                              {index + 1 + (currentPage - 1) * servicesPerPage}
+                            </td>
+                            <td className="border border-black px-4 py-2 text-left">
+                              {service.group_name}{" "}
+                              {service.group_symbol &&
+                                `(${service.group_symbol})`}
+                            </td>
+                            <td className="border border-black  px-4 py-2">
+                              {service.service_code}
+                            </td>
+                            <td className="border border-black  px-4 py-2 text-left">
+                              {service.title}
+                            </td>
+                            <td className="border border-black  px-4 py-2 text-left">
+                              {service.description}
+                            </td>
+                            <td className="border border-black  px-4 py-2">
+                              {service.hsn_code}
+                            </td>
+                            <td className="border border-black  px-4 py-2">
+                              <button
+                                onClick={() => handleEdit(service)}
+                                className="bg-green-500 hover:scale-105 hover:bg-green-600 text-white px-4 py-2 rounded-md mr-2"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                disabled={deletingId === service.id}
+                                onClick={() => handleDelete(service.id)}
+                                className={`bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md  ${deletingId === service.id ? "opacity-50 cursor-not-allowed" : " hover:scale-105"} `}
+                              >
+                                {deletingId === service.id ? "Deleting..." : "Delete"}
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             {/* Pagination */}

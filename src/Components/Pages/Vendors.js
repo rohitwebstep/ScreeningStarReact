@@ -16,7 +16,18 @@ const Vendors = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalServices, setModalServices] = useState([]);
     const [selectedServices, setSelectedServices] = useState([]);
+    const tableScrollRef = useRef(null);
+    const topScrollRef = useRef(null);
+    const [scrollWidth, setScrollWidth] = useState("100%");
 
+    // 🔹 Sync scroll positions
+    const syncScroll = (e) => {
+        if (e.target === topScrollRef.current) {
+            tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+        } else {
+            topScrollRef.current.scrollLeft = e.target.scrollLeft;
+        }
+    };
     const handleViewMore = (services) => {
         setModalServices(services);
         setIsModalOpen(true);
@@ -130,12 +141,12 @@ const Vendors = () => {
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
         const normalizedValue = name === 'scope_of_services' ? Number(value) : value;
-    
+
         if (type === "checkbox") {
             if (name === 'scope_of_services') {
                 setSelectedServices((prevData) => {
                     const existing = prevData[name] || [];
-    
+
                     if (checked) {
                         if (!existing.includes(normalizedValue)) {
                             return {
@@ -154,7 +165,7 @@ const Vendors = () => {
             } else {
                 setFormData((prevData) => {
                     const existing = prevData[name] || [];
-    
+
                     if (checked) {
                         if (!existing.includes(value)) {
                             return {
@@ -178,7 +189,7 @@ const Vendors = () => {
             }));
         }
     };
-    
+
 
 
     const handleSubmit = async (e) => {
@@ -384,7 +395,12 @@ const Vendors = () => {
         setIsEditing(false);
         setCurrentSpocId(null);
     };
-    console.log('SelectedServices', selectedServices)
+    console.log('SelectedServices', selectedServices);
+          useEffect(() => {
+    if (tableScrollRef.current) {
+      setScrollWidth(tableScrollRef.current.scrollWidth + "px");
+    }
+  }, [currentSpocs, loading]); 
     return (
 
         <div className=" ">
@@ -447,7 +463,7 @@ const Vendors = () => {
                                 </div>
                             ))}
 
-<div className={"flex gap-2 justify-center"}>
+                            <div className={"flex gap-2 justify-center"}>
                                 <div>
                                     <button
                                         type="submit"
@@ -502,114 +518,123 @@ const Vendors = () => {
                                 onChange={handleSearch}
                             />
                         </div>
-                        <div className="overflow-auto">
-                            <table className="min-w-full border-collapse border border-black rounded-lg">
-                                <thead className="rounded-lg border border-black">
-                                    <tr className="bg-[#c1dff2] text-[#4d606b] text-left rounded-lg whitespace-nowrap">
-                                        <th className="uppercase border border-black px-4 py-2">Sl No.</th>
-                                        <th className="uppercase border border-black px-4 py-2 text-left">Vendor Name</th>
-                                        <th className="uppercase border border-black px-4 py-2 text-left">Registered Address</th>
-                                        <th className="uppercase border border-black px-4 py-2 text-left">Authorized Person Name</th>
-                                        <th className="uppercase border border-black px-4 py-2 text-left">Authorized Person Designation</th>
-                                        <th className="uppercase border border-black px-4 py-2 text-left">Mobile Number</th>
-                                        <th className="uppercase border border-black px-4 py-2 text-left">Email ID</th>
-                                        <th className="uppercase border border-black px-4 py-2 text-left">SPOC Name</th>
-                                        <th className="uppercase border border-black px-4 py-2 text-left">SPOC Designation</th>
-                                        <th className="uppercase border border-black px-4 py-2 text-left">Service Presence</th>
-                                        <th className="uppercase border border-black px-4 py-2 text-left">Scope of Services</th>
-                                        <th className="uppercase border border-black px-4 py-2 text-left">Pricing</th>
-                                        <th className="uppercase border border-black px-4 py-2 text-left">Turnaround Time</th>
-                                        <th className="uppercase border border-black px-4 py-2 text-left">Standard Process</th>
-                                        <th className="uppercase border border-black px-4 py-2 text-left">Vendor Status</th>
-                                        <th className="uppercase border border-black px-4 py-2 text-left">Remarks</th>
-                                        <th className="py-2 px-4 border border-black text-center uppercase">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {loading ? (
-                                        <tr>
-                                            <td colSpan={17} className="py-4 text-center text-gray-500">
-                                                <Loader className="text-center" />
-                                            </td>
-                                        </tr>
-                                    ) : (
-                                        <>
-                                            {currentSpocs.length === 0 ? (
-                                                <tr>
-                                                    <td colSpan={17} className="py-4 text-center text-red-500">
-                                                        {responseError && responseError !== "" ? responseError : "No data available in table"}
-                                                    </td>
-                                                </tr>
-                                            ) : (
-                                                currentSpocs.map((spoc, index) => (
-                                                    <tr key={spoc.id} className="hover:bg-gray-200">
-                                                        <td className="py-2 px-4 border border-black">{index + indexOfFirstItem + 1}</td>
-                                                        <td className="border border-black px-4 py-2 text-left">{spoc.vendor_name}</td>
-                                                        <td className="border border-black px-4 py-2 text-left">{spoc.registered_address}</td>
-                                                        <td className="border border-black px-4 py-2 text-left">{spoc.authorized_person_name}</td>
-                                                        <td className="border border-black px-4 py-2 text-left">{spoc.authorized_person_designation}</td>
-                                                        <td className="border border-black px-4 py-2 text-left">{spoc.mobile_number}</td>
-                                                        <td className="border border-black px-4 py-2 text-left">{spoc.email_id}</td>
-                                                        <td className="border border-black px-4 py-2 text-left">{spoc.spoc_name}</td>
-                                                        <td className="border border-black px-4 py-2 text-left">{spoc.spoc_designation}</td>
-                                                        <td className="border border-black px-4 py-2 text-left">{spoc.service_presence}</td>
-                                                        <td className="border border-black px-4 py-2 text-center">
-                                                            <div className="flex items-center">
-                                                                {spoc.scope_of_services ? (() => {
-                                                                    const selectedIds = spoc.scope_of_services.split(',').map(id => parseInt(id.trim()));
-                                                                    const matchedServices = services
-                                                                        .filter(service => selectedIds.includes(service.value))
-                                                                        .map(s => ({ serviceTitle: s.label }));
+                        <div className="table-container rounded-lg">
+                            {/* Top Scroll */}
+                            <div className="top-scroll" ref={topScrollRef} onScroll={syncScroll}>
+                                <div className="top-scroll-inner" style={{ width: scrollWidth }} />
+                            </div>
 
-                                                                    return matchedServices.length > 0 ? (
-                                                                        <>
-                                                                            <span className="px-4 py-2 bg-blue-100 whitespace-nowrap border border-blue-500 rounded-lg text-sm">
-                                                                                {matchedServices[0].serviceTitle}
+                            {/* Actual Table Scroll */}
+                            <div className="table-scroll rounded-lg" ref={tableScrollRef} onScroll={syncScroll}>
+
+                                <table className="min-w-full border-collapse border border-black rounded-lg">
+                                    <thead className="rounded-lg border border-black">
+                                        <tr className="bg-[#c1dff2] text-[#4d606b] text-left rounded-lg whitespace-nowrap">
+                                            <th className="uppercase border border-black px-4 py-2">Sl No.</th>
+                                            <th className="uppercase border border-black px-4 py-2 text-left">Vendor Name</th>
+                                            <th className="uppercase border border-black px-4 py-2 text-left">Registered Address</th>
+                                            <th className="uppercase border border-black px-4 py-2 text-left">Authorized Person Name</th>
+                                            <th className="uppercase border border-black px-4 py-2 text-left">Authorized Person Designation</th>
+                                            <th className="uppercase border border-black px-4 py-2 text-left">Mobile Number</th>
+                                            <th className="uppercase border border-black px-4 py-2 text-left">Email ID</th>
+                                            <th className="uppercase border border-black px-4 py-2 text-left">SPOC Name</th>
+                                            <th className="uppercase border border-black px-4 py-2 text-left">SPOC Designation</th>
+                                            <th className="uppercase border border-black px-4 py-2 text-left">Service Presence</th>
+                                            <th className="uppercase border border-black px-4 py-2 text-left">Scope of Services</th>
+                                            <th className="uppercase border border-black px-4 py-2 text-left">Pricing</th>
+                                            <th className="uppercase border border-black px-4 py-2 text-left">Turnaround Time</th>
+                                            <th className="uppercase border border-black px-4 py-2 text-left">Standard Process</th>
+                                            <th className="uppercase border border-black px-4 py-2 text-left">Vendor Status</th>
+                                            <th className="uppercase border border-black px-4 py-2 text-left">Remarks</th>
+                                            <th className="py-2 px-4 border border-black text-center uppercase">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {loading ? (
+                                            <tr>
+                                                <td colSpan={17} className="py-4 text-center text-gray-500">
+                                                    <Loader className="text-center" />
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            <>
+                                                {currentSpocs.length === 0 ? (
+                                                    <tr>
+                                                        <td colSpan={17} className="py-4 text-center text-red-500">
+                                                            {responseError && responseError !== "" ? responseError : "No data available in table"}
+                                                        </td>
+                                                    </tr>
+                                                ) : (
+                                                    currentSpocs.map((spoc, index) => (
+                                                        <tr key={spoc.id} className="hover:bg-gray-200">
+                                                            <td className="py-2 px-4 border border-black">{index + indexOfFirstItem + 1}</td>
+                                                            <td className="border border-black px-4 py-2 text-left">{spoc.vendor_name}</td>
+                                                            <td className="border border-black px-4 py-2 text-left">{spoc.registered_address}</td>
+                                                            <td className="border border-black px-4 py-2 text-left">{spoc.authorized_person_name}</td>
+                                                            <td className="border border-black px-4 py-2 text-left">{spoc.authorized_person_designation}</td>
+                                                            <td className="border border-black px-4 py-2 text-left">{spoc.mobile_number}</td>
+                                                            <td className="border border-black px-4 py-2 text-left">{spoc.email_id}</td>
+                                                            <td className="border border-black px-4 py-2 text-left">{spoc.spoc_name}</td>
+                                                            <td className="border border-black px-4 py-2 text-left">{spoc.spoc_designation}</td>
+                                                            <td className="border border-black px-4 py-2 text-left">{spoc.service_presence}</td>
+                                                            <td className="border border-black px-4 py-2 text-center">
+                                                                <div className="flex items-center">
+                                                                    {spoc.scope_of_services ? (() => {
+                                                                        const selectedIds = spoc.scope_of_services.split(',').map(id => parseInt(id.trim()));
+                                                                        const matchedServices = services
+                                                                            .filter(service => selectedIds.includes(service.value))
+                                                                            .map(s => ({ serviceTitle: s.label }));
+
+                                                                        return matchedServices.length > 0 ? (
+                                                                            <>
+                                                                                <span className="px-4 py-2 bg-blue-100 whitespace-nowrap border border-blue-500 rounded-lg text-sm">
+                                                                                    {matchedServices[0].serviceTitle}
+                                                                                </span>
+                                                                                {matchedServices.length > 1 && (
+                                                                                    <button
+                                                                                        className="text-blue-500 whitespace-nowrap ml-2"
+                                                                                        onClick={() => handleViewMore(matchedServices)}
+                                                                                    >
+                                                                                        View More
+                                                                                    </button>
+                                                                                )}
+                                                                            </>
+                                                                        ) : (
+                                                                            <span className="px-4 py-2 bg-red-100 border border-red-500 rounded-lg">
+                                                                                No Services Available
                                                                             </span>
-                                                                            {matchedServices.length > 1 && (
-                                                                                <button
-                                                                                    className="text-blue-500 whitespace-nowrap ml-2"
-                                                                                    onClick={() => handleViewMore(matchedServices)}
-                                                                                >
-                                                                                    View More
-                                                                                </button>
-                                                                            )}
-                                                                        </>
-                                                                    ) : (
+                                                                        );
+                                                                    })() : (
                                                                         <span className="px-4 py-2 bg-red-100 border border-red-500 rounded-lg">
                                                                             No Services Available
                                                                         </span>
-                                                                    );
-                                                                })() : (
-                                                                    <span className="px-4 py-2 bg-red-100 border border-red-500 rounded-lg">
-                                                                        No Services Available
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        </td>
+                                                                    )}
+                                                                </div>
+                                                            </td>
 
-                                                        <td className="border border-black px-4 py-2 text-left">{spoc.pricing}</td>
-                                                        <td className="border border-black px-4 py-2 text-left">{spoc.turnaround_time}</td>
-                                                        <td className="border border-black px-4 py-2 text-left">{spoc.standard_process}</td>
-                                                        <td className="border border-black px-4 py-2 text-left">{spoc.vendor_status}</td>
-                                                        <td className="border border-black px-4 py-2 text-left">{spoc.remarks}</td>
-                                                        <td className="py-2 px-4 border border-black whitespace-nowrap">
-                                                            <button className="bg-green-500 hover:scale-105 hover:bg-green-600 text-white px-4 py-2 rounded mr-2" onClick={() => handleEdit(spoc)}>Edit</button>
-                                                            <button
-                                                                disabled={deletingId === spoc.id}
-                                                                className={`bg-red-500 hover:scale-105 hover:bg-red-600 text-white px-4 py-2 rounded ${deletingId === spoc.id ? "opacity-50 cursor-not-allowed" : ""} `}
-                                                                onClick={() => handleDelete(spoc.id)}>
-                                                                {deletingId === spoc.id ? "Deleting..." : "Delete"}
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                ))
-                                            )}
-                                        </>
-                                    )}
-                                </tbody>
-                            </table>
+                                                            <td className="border border-black px-4 py-2 text-left">{spoc.pricing}</td>
+                                                            <td className="border border-black px-4 py-2 text-left">{spoc.turnaround_time}</td>
+                                                            <td className="border border-black px-4 py-2 text-left">{spoc.standard_process}</td>
+                                                            <td className="border border-black px-4 py-2 text-left">{spoc.vendor_status}</td>
+                                                            <td className="border border-black px-4 py-2 text-left">{spoc.remarks}</td>
+                                                            <td className="py-2 px-4 border border-black whitespace-nowrap">
+                                                                <button className="bg-green-500 hover:scale-105 hover:bg-green-600 text-white px-4 py-2 rounded mr-2" onClick={() => handleEdit(spoc)}>Edit</button>
+                                                                <button
+                                                                    disabled={deletingId === spoc.id}
+                                                                    className={`bg-red-500 hover:scale-105 hover:bg-red-600 text-white px-4 py-2 rounded ${deletingId === spoc.id ? "opacity-50 cursor-not-allowed" : ""} `}
+                                                                    onClick={() => handleDelete(spoc.id)}>
+                                                                    {deletingId === spoc.id ? "Deleting..." : "Delete"}
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))
+                                                )}
+                                            </>
+                                        )}
+                                    </tbody>
+                                </table>
 
+                            </div>
                         </div>
                         <div className="flex justify-center mt-4">
                             {Array.from({ length: totalPages }, (_, index) => (

@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import { useNavigate } from 'react-router-dom';
 import { useApiLoading } from '../ApiLoadingContext';
@@ -20,6 +20,18 @@ const TATReminder = () => {
   const [activeId, setActiveId] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
 
+  const tableScrollRef = useRef(null);
+  const topScrollRef = useRef(null);
+  const [scrollWidth, setScrollWidth] = useState("100%");
+
+  // 🔹 Sync scroll positions
+  const syncScroll = (e) => {
+    if (e.target === topScrollRef.current) {
+      tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+    } else {
+      topScrollRef.current.scrollLeft = e.target.scrollLeft;
+    }
+  };
 
   const admin_id = JSON.parse(localStorage.getItem("admin"))?.id;
   const storedToken = localStorage.getItem("_token");
@@ -71,52 +83,52 @@ const TATReminder = () => {
     }
   }, [storedToken, admin_id]);
 
-const handleDelete = (app_id) => {
-  Swal.fire({
-    title: "Are you sure?",
-    text: "Tat Reminder will be deleted for this application.",
-    icon: "warning",
-    showCancelButton: true,
-    confirmButtonColor: "#3085d6",
-    cancelButtonColor: "#d33",
-    confirmButtonText: "Yes, delete it!",
-  }).then(async (swalResult) => {
-    if (swalResult.isConfirmed) {
-      const admin_id = JSON.parse(localStorage.getItem("admin"))?.id;
-      const storedToken = localStorage.getItem("_token");
+  const handleDelete = (app_id) => {
+    Swal.fire({
+      title: "Are you sure?",
+      text: "Tat Reminder will be deleted for this application.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Yes, delete it!",
+    }).then(async (swalResult) => {
+      if (swalResult.isConfirmed) {
+        const admin_id = JSON.parse(localStorage.getItem("admin"))?.id;
+        const storedToken = localStorage.getItem("_token");
 
-      try {
-        const response = await axios.delete(
-          `https://api.screeningstar.co.in/tat-delay/delete`,
-          {
-            params: {
-              client_application_id: app_id,
-              admin_id: admin_id,
-              _token: storedToken,
-            },
+        try {
+          const response = await axios.delete(
+            `https://api.screeningstar.co.in/tat-delay/delete`,
+            {
+              params: {
+                client_application_id: app_id,
+                admin_id: admin_id,
+                _token: storedToken,
+              },
+            }
+          );
+
+          // Check and store a new token if provided in the API response
+          const newToken =
+            response.data?.token || response.data?._token || storedToken;
+          if (newToken) {
+            localStorage.setItem("_token", newToken);
           }
-        );
 
-        // Check and store a new token if provided in the API response
-        const newToken =
-          response.data?.token || response.data?._token || storedToken;
-        if (newToken) {
-          localStorage.setItem("_token", newToken);
+          Swal.fire("Deleted!", "Deleted successfully.", "success");
+          fetchData();
+        } catch (error) {
+          console.error("Error deleting package:", error);
+          Swal.fire(
+            "Error!",
+            "Something went wrong while deleting.",
+            "error"
+          );
         }
-
-        Swal.fire("Deleted!", "Deleted successfully.", "success");
-        fetchData();
-      } catch (error) {
-        console.error("Error deleting package:", error);
-        Swal.fire(
-          "Error!",
-          "Something went wrong while deleting.",
-          "error"
-        );
       }
-    }
-  });
-};
+    });
+  };
 
   // Initialize component
   useEffect(() => {
@@ -179,7 +191,7 @@ const handleDelete = (app_id) => {
 
 
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  const optionsPerPage = [10, 50, 100, 200,500,1000];
+  const optionsPerPage = [10, 50, 100, 200, 500, 1000];
   const totalPages = Math.ceil(filteredData.length / rowsPerPage);
 
   const paginatedData = filteredData.slice(
@@ -290,12 +302,16 @@ const handleDelete = (app_id) => {
       ? formatted.toUpperCase()
       : formatted.replace(/\b\w/g, (char) => char.toUpperCase());
   }
+  useEffect(() => {
+    if (tableScrollRef.current) {
+      setScrollWidth(tableScrollRef.current.scrollWidth + "px");
+    }
+  }, [paginatedData, loading]);
 
-
-   const handleSearch = (e) => {
-        setSearchTerm(e.target.value);
-        setCurrentPage(1)
-    };
+  const handleSearch = (e) => {
+    setSearchTerm(e.target.value);
+    setCurrentPage(1)
+  };
   return (
 
     <div className="bg-[#c1dff2]">
@@ -332,73 +348,80 @@ const handleDelete = (app_id) => {
             type="text"
             placeholder="Search.."
             value={searchTerm}
-                                        onChange={handleSearch}
+            onChange={handleSearch}
 
-          
+
             className="border p-2 rounded md:w-1/3 w-full"
           />
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="min-w-full border-collapse border border-black rounded-lg overflow-scroll whitespace-nowrap">
-            <thead className="rounded-lg">
-              <tr className="bg-[#c1dff2] text-[#4d606b] rounded-lg uppercase">
-                <th className="border border-black px-4 py-2">SL</th>
-                <th className="border border-black px-4 py-2">TAT Days</th>
-                <th className="border border-black px-4 py-2">Initiation Date</th>
-                <th className="border border-black px-4 py-2">Reference Id</th>
-                <th className="border border-black px-4 py-2">Name of the Employee</th>
-                <th className="border border-black px-4 py-2">Exceeded Days</th>
-                <th className="border border-black px-4 py-2 ">First Level Insufficiency Remarks</th>
-                <th className="border border-black px-4 py-2">First Insuff Date</th>
-                <th className="border border-black px-4 py-2">First Insuff Cleared</th>
-                <th className="border border-black px-4 py-2 ">Second Level Insufficiency Remarks</th>
-                <th className="border border-black px-4 py-2">Second Insuff Date</th>
-                <th className="border border-black px-4 py-2">Second Insuff Cleared</th>
-                <th className="border border-black px-4 py-2 ">Third Level Insufficiency Remarks</th>
-                <th className="border border-black px-4 py-2">Third Insuff Date</th>
-                <th className="border border-black px-4 py-2">Third Insuff Cleared</th>
-                <th className="border border-black px-4 py-2  ">Remarks & Reason for Delay</th>
-                <th className="border border-black px-4 py-2  ">Action</th>
+        <div className="table-container rounded-lg">
+          {/* Top Scroll */}
+          <div className="top-scroll" ref={topScrollRef} onScroll={syncScroll}>
+            <div className="top-scroll-inner" style={{ width: scrollWidth }} />
+          </div>
 
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan={20} className="py-4 text-center text-gray-500">
-                    <Loader />
-                  </td>
+          {/* Actual Table Scroll */}
+          <div className="table-scroll rounded-lg" ref={tableScrollRef} onScroll={syncScroll}>
+            <table className="min-w-full border-collapse border border-black rounded-lg overflow-scroll whitespace-nowrap">
+              <thead className="rounded-lg">
+                <tr className="bg-[#c1dff2] text-[#4d606b] rounded-lg uppercase">
+                  <th className="border border-black px-4 py-2">SL</th>
+                  <th className="border border-black px-4 py-2">TAT Days</th>
+                  <th className="border border-black px-4 py-2">Initiation Date</th>
+                  <th className="border border-black px-4 py-2">Reference Id</th>
+                  <th className="border border-black px-4 py-2">Name of the Employee</th>
+                  <th className="border border-black px-4 py-2">Exceeded Days</th>
+                  <th className="border border-black px-4 py-2 ">First Level Insufficiency Remarks</th>
+                  <th className="border border-black px-4 py-2">First Insuff Date</th>
+                  <th className="border border-black px-4 py-2">First Insuff Cleared</th>
+                  <th className="border border-black px-4 py-2 ">Second Level Insufficiency Remarks</th>
+                  <th className="border border-black px-4 py-2">Second Insuff Date</th>
+                  <th className="border border-black px-4 py-2">Second Insuff Cleared</th>
+                  <th className="border border-black px-4 py-2 ">Third Level Insufficiency Remarks</th>
+                  <th className="border border-black px-4 py-2">Third Insuff Date</th>
+                  <th className="border border-black px-4 py-2">Third Insuff Cleared</th>
+                  <th className="border border-black px-4 py-2  ">Remarks & Reason for Delay</th>
+                  <th className="border border-black px-4 py-2  ">Action</th>
+
                 </tr>
-              ) : paginatedData.length > 0 ? (
-                paginatedData.map((application, index) => (
-                  <tr key={`${application.client_application_id}-${index}`} >
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={20} className="py-4 text-center text-gray-500">
+                      <Loader />
+                    </td>
+                  </tr>
+                ) : paginatedData.length > 0 ? (
+                  paginatedData.map((application, index) => (
+                    <tr key={`${application.client_application_id}-${index}`} >
 
-                    <td className="border border-black px-4 py-2 text-center">{(currentPage - 1) * rowsPerPage + index + 1}</td>
-                    <td className="border border-black px-4 py-2 text-center">{application.tat_days}</td>
-                    <td className="border border-black px-4 py-2 text-center">
-                      {application.application_created_at
-                        ? new Date(application.application_created_at).toLocaleDateString('en-GB').replace(/\//g, '-')
-                        : 'NIL'}
-                    </td>
-                    <td className="border border-black px-4 py-2">{application.application_id}</td>
-                    <td className="border border-black px-4 py-2">{application.application_name}</td>
-                    <td className="border border-black px-4 py-2 text-center">
-                      {application.days_out_of_tat
-                        ? application.days_out_of_tat
-                        : 'NIL'}
-                    </td>
-                    <td className="border border-black px-4 py-2 ">{formatStatus(application.first_insufficiency_marks) || 'NIL'}</td>
-                    <td className="border border-black px-4 py-2">{formatDate(application.first_insuff_date) || 'NIL'}</td>
-                    <td className="border border-black px-4 py-2">{formatDate(application.first_insuff_reopened_date) || 'NIL'}</td>
-                    <td className="border border-black px-4 py-2 ">{formatStatus(application.second_insufficiency_marks) || 'NIL'}</td>
-                    <td className="border border-black px-4 py-2">{formatDate(application.second_insuff_date) || 'NIL'}</td>
-                    <td className="border border-black px-4 py-2">{formatDate(application.second_insuff_reopened_date) || 'NIL'}</td>
-                    <td className="border border-black px-4 py-2 ">{formatStatus(application.third_insufficiency_marks) || 'NIL'}</td>
-                    <td className="border border-black px-4 py-2">{formatDate(application.third_insuff_date) || 'NIL'}</td>
-                    <td className="border border-black px-4 py-2 ">{formatDate(application.third_insuff_reopened_date) || 'NIL'}</td>
-                    <td className="border border-black px-4 py-2 ">{formatStatus(application.delay_reason) || 'NIL'}</td>
-                    {/* <td className="border border-black px-4 py-2">
+                      <td className="border border-black px-4 py-2 text-center">{(currentPage - 1) * rowsPerPage + index + 1}</td>
+                      <td className="border border-black px-4 py-2 text-center">{application.tat_days}</td>
+                      <td className="border border-black px-4 py-2 text-center">
+                        {application.application_created_at
+                          ? new Date(application.application_created_at).toLocaleDateString('en-GB').replace(/\//g, '-')
+                          : 'NIL'}
+                      </td>
+                      <td className="border border-black px-4 py-2">{application.application_id}</td>
+                      <td className="border border-black px-4 py-2">{application.application_name}</td>
+                      <td className="border border-black px-4 py-2 text-center">
+                        {application.days_out_of_tat
+                          ? application.days_out_of_tat
+                          : 'NIL'}
+                      </td>
+                      <td className="border border-black px-4 py-2 ">{formatStatus(application.first_insufficiency_marks) || 'NIL'}</td>
+                      <td className="border border-black px-4 py-2">{formatDate(application.first_insuff_date) || 'NIL'}</td>
+                      <td className="border border-black px-4 py-2">{formatDate(application.first_insuff_reopened_date) || 'NIL'}</td>
+                      <td className="border border-black px-4 py-2 ">{formatStatus(application.second_insufficiency_marks) || 'NIL'}</td>
+                      <td className="border border-black px-4 py-2">{formatDate(application.second_insuff_date) || 'NIL'}</td>
+                      <td className="border border-black px-4 py-2">{formatDate(application.second_insuff_reopened_date) || 'NIL'}</td>
+                      <td className="border border-black px-4 py-2 ">{formatStatus(application.third_insufficiency_marks) || 'NIL'}</td>
+                      <td className="border border-black px-4 py-2">{formatDate(application.third_insuff_date) || 'NIL'}</td>
+                      <td className="border border-black px-4 py-2 ">{formatDate(application.third_insuff_reopened_date) || 'NIL'}</td>
+                      <td className="border border-black px-4 py-2 ">{formatStatus(application.delay_reason) || 'NIL'}</td>
+                      {/* <td className="border border-black px-4 py-2">
                           <button
                             className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md hover:scale-105"
                             onClick={() =>
@@ -408,7 +431,7 @@ const handleDelete = (app_id) => {
                             Master Tracker
                           </button>
                         </td> */}
-                    {/* <td className="border border-black px-4 py-2">
+                      {/* <td className="border border-black px-4 py-2">
                           <button
                             className={`bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md ${deleteLoading && activeId === application.client_application_id
                               ? "opacity-50 cursor-not-allowed"
@@ -424,28 +447,29 @@ const handleDelete = (app_id) => {
                             {deleteLoading && activeId === application.client_application_id ? "Deleting..." : "Delete"}
                           </button>
                         </td> */}
-                        <td className="border border-black px-4 py-2">
-                          <button
-                            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md hover:scale-105"
-                            onClick={() =>
-                              handleDelete(application.client_application_id)
-                            }
-                          >
-                           Delete From Reminder
-                          </button>
-                        </td> 
+                      <td className="border border-black px-4 py-2">
+                        <button
+                          className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md hover:scale-105"
+                          onClick={() =>
+                            handleDelete(application.client_application_id)
+                          }
+                        >
+                          Delete From Reminder
+                        </button>
+                      </td>
+                    </tr>
+                  ))) : (
+                  <tr>
+                    <td colSpan="10" className="text-center text-red-500 p-4">
+                      {responseError && responseError !== "" ? responseError : "No data available in table"}
+                    </td>
                   </tr>
-                ))) : (
-                <tr>
-                  <td colSpan="10" className="text-center text-red-500 p-4">
-                    {responseError && responseError !== "" ? responseError : "No data available in table"}
-                  </td>
-                </tr>
-              )}
-            </tbody>
+                )}
+              </tbody>
 
-          </table>
+            </table>
 
+          </div>
         </div>
         <div className="flex justify-between items-center mt-4">
           <button

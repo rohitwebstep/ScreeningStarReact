@@ -12,15 +12,19 @@ Modal.setAppElement('#root'); // Make sure to set the app element for accessibil
 const ActiveAccounts = () => {
   const { validateAdminLogin, setApiLoading, apiLoading } = useApiLoading();
   const [responseError, setResponseError] = useState(null);
-  const tableScrollRef = useRef(null);
-  const topScrollRef = useRef(null);
+     const tableScrollRef = useRef(null);
+    const topScrollRef = useRef(null);
+    const [scrollWidth, setScrollWidth] = useState("100%");
 
-  const syncScroll = () => {
-    if (tableScrollRef.current && topScrollRef.current) {
-      topScrollRef.current.scrollLeft = tableScrollRef.current.scrollLeft;
-      tableScrollRef.current.scrollLeft = topScrollRef.current.scrollLeft;
-    }
-  };
+    // 🔹 Sync scroll positions
+    const syncScroll = (e) => {
+        if (e.target === topScrollRef.current) {
+            tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+        } else {
+            topScrollRef.current.scrollLeft = e.target.scrollLeft;
+        }
+    };
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalServices, setModalServices] = useState([]);
   const navigate = useNavigate();
@@ -538,6 +542,12 @@ const ActiveAccounts = () => {
     XLSX.utils.book_append_sheet(wb, ws, 'Clients');
     XLSX.writeFile(wb, 'clients_data.xlsx');
   };
+  useEffect(() => {
+    if (tableScrollRef.current) {
+      setScrollWidth(tableScrollRef.current.scrollWidth + "px");
+    }
+  }, [paginatedData, loading]); // recalc whenever data changes
+
 
   const handleUpdateBranch = () => {
     if (!currentBranch) return;
@@ -645,22 +655,14 @@ const ActiveAccounts = () => {
           </div>
         </div>
 
-<div className="table-container rounded-lg">
+ <div className="table-container rounded-lg">
       {/* Top Scroll */}
-      <div
-        className="top-scroll"
-        ref={topScrollRef}
-        onScroll={syncScroll}
-      >
-        <div className="top-scroll-inner" style={{ width: tableScrollRef.current?.scrollWidth || "100%" }} />
+      <div className="top-scroll" ref={topScrollRef} onScroll={syncScroll}>
+        <div className="top-scroll-inner" style={{ width: scrollWidth }} />
       </div>
 
       {/* Actual Table Scroll */}
-      <div
-        className="table-scroll rounded-lg"
-        ref={tableScrollRef}
-        onScroll={syncScroll}
-      >
+      <div className="table-scroll rounded-lg" ref={tableScrollRef} onScroll={syncScroll}>
           <table className="min-w-full border-collapse border border-black rounded-lg">
             <thead className="rounded-lg border border-black">
               <tr className="bg-[#c1dff2] text-[#4d606b] whitespace-nowrap text-left">

@@ -45,6 +45,18 @@ const ExEmploymentBulk = () => {
         groupSymbol: service.group_symbol || service.group_name,
         index,
     }));
+    const tableScrollRef = useRef(null);
+    const topScrollRef = useRef(null);
+    const [scrollWidth, setScrollWidth] = useState("100%");
+
+    // 🔹 Sync scroll positions
+    const syncScroll = (e) => {
+        if (e.target === topScrollRef.current) {
+            tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+        } else {
+            topScrollRef.current.scrollLeft = e.target.scrollLeft;
+        }
+    };
 
     // Calculate total pages
     const totalEntries = allServices.length;
@@ -535,45 +547,54 @@ SkyHigh Solutions,Delhi,Amit Roy,Team Lead,9988776655,amit.roy@skyhigh.com,team@
                                 />
 
                             </div>
-                            <div className='p-2.5 overflow-x-auto   '>
-                                <table className="m-auto w-full border-collapse border border-black rounded-lg">
-                                    <thead>
-                                        <tr className="bg-[#c1dff2] whitespace-nowrap text-[#4d606b]">
-                                            <th className=" uppercase border border-black px-4 py-2">SERVICE</th>
-                                            <th className=" uppercase border border-black px-4 py-2">SERVICE NAMES</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {loading ? (
+                            <div className="table-container rounded-lg">
+                                {/* Top Scroll */}
+                                <div className="top-scroll" ref={topScrollRef} onScroll={syncScroll}>
+                                    <div className="top-scroll-inner" style={{ width: scrollWidth }} />
+                                </div>
 
-                                            <tr>
-                                                <td colSpan={6} className="py-4 text-center text-gray-500">
-                                                    <Loader className="text-center" />
-                                                </td>
+                                {/* Actual Table Scroll */}
+                                <div className="table-scroll rounded-lg" ref={tableScrollRef} onScroll={syncScroll}>
+
+                                    <table className="m-auto w-full border-collapse border border-black rounded-lg">
+                                        <thead>
+                                            <tr className="bg-[#c1dff2] whitespace-nowrap text-[#4d606b]">
+                                                <th className=" uppercase border border-black px-4 py-2">SERVICE</th>
+                                                <th className=" uppercase border border-black px-4 py-2">SERVICE NAMES</th>
                                             </tr>
-                                        ) : (
-                                            <>
-                                                {currentServices.map((service, index) => (
-                                                    <tr className="text-center" key={service.id}>
-                                                        <td className="border border-black px-4 py-2">
-                                                            <input
-                                                                type="checkbox"
-                                                                className='w-6 h-6'
-                                                                checked={service.isSelected || false}
-                                                                name="services[]"
-                                                                onChange={() =>
-                                                                    handleCheckboxChange(service.index)
-                                                                }
-                                                            />
-                                                        </td>
+                                        </thead>
+                                        <tbody>
+                                            {loading ? (
 
-                                                        <td className="border border-black px-4 text-left py-2 whitespace-nowrap">{service.title}</td>
-                                                    </tr>
-                                                ))}
-                                            </>
-                                        )}
-                                    </tbody>
-                                </table>
+                                                <tr>
+                                                    <td colSpan={6} className="py-4 text-center text-gray-500">
+                                                        <Loader className="text-center" />
+                                                    </td>
+                                                </tr>
+                                            ) : (
+                                                <>
+                                                    {currentServices.map((service, index) => (
+                                                        <tr className="text-center" key={service.id}>
+                                                            <td className="border border-black px-4 py-2">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    className='w-6 h-6'
+                                                                    checked={service.isSelected || false}
+                                                                    name="services[]"
+                                                                    onChange={() =>
+                                                                        handleCheckboxChange(service.index)
+                                                                    }
+                                                                />
+                                                            </td>
+
+                                                            <td className="border border-black px-4 text-left py-2 whitespace-nowrap">{service.title}</td>
+                                                        </tr>
+                                                    ))}
+                                                </>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
 
                             <div className="flex justify-center mt-4 space-x-2">

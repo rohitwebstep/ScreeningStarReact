@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from "react-router-dom";
 import { useApiLoadingBranch } from '../BranchApiLoadingContext';
 
@@ -21,7 +21,18 @@ const CustomDot = (props) => {
 
 const MasterDashboard = () => {
   const { validateBranchLogin, setApiLoadingBranch, apiLoadingBranch } = useApiLoadingBranch();
+  const tableScrollRef = useRef(null);
+  const topScrollRef = useRef(null);
+  const [scrollWidth, setScrollWidth] = useState("100%");
 
+  // 🔹 Sync scroll positions
+  const syncScroll = (e) => {
+    if (e.target === topScrollRef.current) {
+      tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+    } else {
+      topScrollRef.current.scrollLeft = e.target.scrollLeft;
+    }
+  };
   const [loading, setLoading] = useState(true);
   const [branchData, setBranchData] = useState({});
   const [searchTerms, setSearchTerms] = useState({});
@@ -158,6 +169,8 @@ const MasterDashboard = () => {
     });
   };
 
+
+
   const renderTable = (category, applications) => {
     const searchTerm = searchTerms[category] || '';
     const filteredApplications = applications.filter(application =>
@@ -187,25 +200,35 @@ const MasterDashboard = () => {
         <h2 className="text-lg sm:text-xl font-bold mb-2">{category.toUpperCase()}</h2>
 
         {/* Make table responsive */}
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-max border-collapse border rounded-lg">
-            <thead>
-              <tr className="bg-[#c1dff2] text-[#4d606b] text-sm sm:text-base">
-                <th className="border px-2 sm:px-4 py-2">NO</th>
-                <th className="border px-2 sm:px-4 py-2">REFERENCE ID</th>
-                <th className="border px-2 sm:px-4 py-2">APPLICATION NAME</th>
-              </tr>
-            </thead>
-            <tbody>
-              {currentEntries.map((application, index) => (
-                <tr key={index} className="text-sm sm:text-base">
-                  <td className="border px-2 sm:px-4 py-2">{index + 1}</td>
-                  <td className="border px-2 sm:px-4 py-2">{application.application_id}</td>
-                  <td className="border px-2 sm:px-4 py-2">{application.application_name}</td>
+        <div className="table-container rounded-lg">
+          {/* Top Scroll */}
+          <div className="top-scroll" ref={topScrollRef} onScroll={syncScroll}>
+            <div className="top-scroll-inner" style={{ width: scrollWidth }} />
+          </div>
+
+          {/* Actual Table Scroll */}
+          <div className="table-scroll rounded-lg" ref={tableScrollRef} onScroll={syncScroll}>
+
+
+            <table className="w-full min-w-max border-collapse border rounded-lg">
+              <thead>
+                <tr className="bg-[#c1dff2] text-[#4d606b] text-sm sm:text-base">
+                  <th className="border px-2 sm:px-4 py-2">NO</th>
+                  <th className="border px-2 sm:px-4 py-2">REFERENCE ID</th>
+                  <th className="border px-2 sm:px-4 py-2">APPLICATION NAME</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {currentEntries.map((application, index) => (
+                  <tr key={index} className="text-sm sm:text-base">
+                    <td className="border px-2 sm:px-4 py-2">{index + 1}</td>
+                    <td className="border px-2 sm:px-4 py-2">{application.application_id}</td>
+                    <td className="border px-2 sm:px-4 py-2">{application.application_name}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         {/* Pagination */}
@@ -242,6 +265,12 @@ const MasterDashboard = () => {
       };
     });
   };
+
+    useEffect(() => {
+    if (tableScrollRef.current) {
+      setScrollWidth(tableScrollRef.current.scrollWidth + "px");
+    }
+  }, [loading]);
 
   return (
     <div className={`border border-black bg-white}`}>

@@ -31,13 +31,26 @@ const BulkApplication = () => {
     remarks: "",
     files: [],
   });
+  const tableScrollRef = useRef(null);
+  const topScrollRef = useRef(null);
+  const [scrollWidth, setScrollWidth] = useState("100%");
+
+  // 🔹 Sync scroll positions
+  const syncScroll = (e) => {
+    if (e.target === topScrollRef.current) {
+      tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+    } else {
+      topScrollRef.current.scrollLeft = e.target.scrollLeft;
+    }
+  };
+
 
   const [tableData, setTableData] = useState([]);
   const [errors, setErrors] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const optionsPerPage = [10, 50, 100, 200,500,1000]; const [filteredData, setFilteredData] = useState(tableData);
+  const optionsPerPage = [10, 50, 100, 200, 500, 1000]; const [filteredData, setFilteredData] = useState(tableData);
 
   useEffect(() => {
     if (searchTerm) {
@@ -132,19 +145,19 @@ const BulkApplication = () => {
 
   const handleChange = (e) => {
     const { name, value, files, type } = e.target;
-  
+
     setFormData((prevData) => ({
       ...prevData,
       [name]: type === "file" ? Array.from(files) : value, // Ensure files are stored as an array
     }));
-  
+
     setErrors((prevErrors) => ({
       ...prevErrors,
       [name]: "", // Clear errors for this field
     }));
   };
-  
-  
+
+
 
   const handleDelete = async (id) => {
     const branch_id = JSON.parse(localStorage.getItem("branch") ?? '{}').branch_id;
@@ -298,7 +311,12 @@ const BulkApplication = () => {
       }
     }
   };
-
+  const displayedData = filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  useEffect(() => {
+    if (tableScrollRef.current) {
+      setScrollWidth(tableScrollRef.current.scrollWidth + "px");
+    }
+  }, [displayedData, loading]);
 
 
 
@@ -314,7 +332,6 @@ const BulkApplication = () => {
   );
 
   // Calculate the displayed data for the current page
-  const displayedData = filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
   return (
     <div className="bg-[#c1dff2] border border-black">
       <div className="bg-white md:p-12 p-6 w-full mx-auto">
@@ -358,9 +375,9 @@ const BulkApplication = () => {
                   className={`w-full m-auto p-3 mb-[20px] border ${errors.client_spoc_name ? "border-red-500" : "border-gray-300"} rounded-md`}
                 >
                   <option value="" >Select SPOC Name</option>
-                      <option key={customer.client_spoc_name} value={customer.client_spoc_name}>
-                        {customer.client_spoc_name}
-                      </option>
+                  <option key={customer.client_spoc_name} value={customer.client_spoc_name}>
+                    {customer.client_spoc_name}
+                  </option>
                 </select>
 
                 {errors.client_spoc_name && (
@@ -445,82 +462,91 @@ const BulkApplication = () => {
                   ))}
                 </select>
               </div>
-              <div className="overflow-scroll">
-                <table className="m-auto w-full border-collapse border border-black rounded-lg">
-                  <thead>
-                    <tr className="bg-[#c1dff2] text-[#4d606b] whitespace-nowrap">
-                      <th className="border border-black uppercase px-4 py-2">Sl No.</th>
-                      <th className="border border-black uppercase px-4 py-2">SPOC Name</th>
-                      <th className="border border-black uppercase px-4 py-2">Date</th>
-                      <th className="border border-black uppercase px-4 py-2">Folder</th>
-                      <th className="border border-black uppercase px-4 py-2">Remarks</th>
-                      <th className="uppercase border border-black px-4 py-2 text-center" >ACTION</th>
+              <div className="table-container rounded-lg">
+                {/* Top Scroll */}
+                <div className="top-scroll" ref={topScrollRef} onScroll={syncScroll}>
+                  <div className="top-scroll-inner" style={{ width: scrollWidth }} />
+                </div>
 
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {loading ? (
-                      <tr>
-                        <td colSpan={6} className="py-4 text-center text-gray-500">
-                          {/* Replace with your Loader component */}
-                          < Loader />
-                        </td>
+                {/* Actual Table Scroll */}
+                <div className="table-scroll rounded-lg" ref={tableScrollRef} onScroll={syncScroll}>
+
+                  <table className="m-auto w-full border-collapse border border-black rounded-lg">
+                    <thead>
+                      <tr className="bg-[#c1dff2] text-[#4d606b] whitespace-nowrap">
+                        <th className="border border-black uppercase px-4 py-2">Sl No.</th>
+                        <th className="border border-black uppercase px-4 py-2">SPOC Name</th>
+                        <th className="border border-black uppercase px-4 py-2">Date</th>
+                        <th className="border border-black uppercase px-4 py-2">Folder</th>
+                        <th className="border border-black uppercase px-4 py-2">Remarks</th>
+                        <th className="uppercase border border-black px-4 py-2 text-center" >ACTION</th>
+
                       </tr>
-                    ) : displayedData.length === 0 ? (
-                      <tr>
-                        <td colSpan={17} className="py-4 text-center text-gray-500">
-                          No data available in table
-                        </td>
-                      </tr>
-                    ) : (
-                      displayedData.map((entry, index) => (
-                        <tr key={entry.id} className="text-center">
-                          <td className="border border-black px-4 py-2">{(currentPage - 1) * itemsPerPage + index + 1}</td>
-                          <td className="border border-black px-4 py-2">
-                            {
-                              entry.client_spoc_name
-                            }
-                          </td>
-
-
-                          <td className="border border-black px-4 py-2">{new Date(entry.created_at).toLocaleDateString().replace(/\//g, '-')}</td>
-                          <td className="border border-black px-4 py-2">
-                            <button
-                              type="button"
-                              className="bg-none text-black p-3 px-2 rounded-md text-2xl whitespace-nowrap"
-                              onClick={() => {
-                                if (entry.zip) {
-                                  const url = new URL(entry.zip); // Parse the URL
-                                  const baseFileName = url.pathname.substring(url.pathname.lastIndexOf('/') + 1); // Extract basename
-                                  const link = document.createElement('a');
-                                  link.href = entry.zip;
-                                  link.download = baseFileName; // Use the extracted base file name
-                                  link.click();
-                                } else {
-                                  alert('No ZIP file URL available.');
-                                }
-                              }}
-                            >
-                              <FaFolderOpen />
-                            </button>
-                          </td>
-                          <td className="border border-black px-4 py-2">{entry.remarks}</td>
-                          <td className='border border-black  px-4 py-2'>
-                            <button
-                              type="button"
-                              disabled={deletingId === entry.id}
-                              onClick={() => handleDelete(entry.id)}
-                              className={`bg-red-500 hover:scale-105 hover:bg-red-600  text-white px-4 py-2 rounded ${deletingId === entry.id ? "opacity-50 cursor-not-allowed" : ""} `}
-                            >
-                              {deletingId === entry.id ? "Deleting..." : "Delete"}
-                            </button>
-
+                    </thead>
+                    <tbody>
+                      {loading ? (
+                        <tr>
+                          <td colSpan={6} className="py-4 text-center text-gray-500">
+                            {/* Replace with your Loader component */}
+                            < Loader />
                           </td>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+                      ) : displayedData.length === 0 ? (
+                        <tr>
+                          <td colSpan={17} className="py-4 text-center text-gray-500">
+                            No data available in table
+                          </td>
+                        </tr>
+                      ) : (
+                        displayedData.map((entry, index) => (
+                          <tr key={entry.id} className="text-center">
+                            <td className="border border-black px-4 py-2">{(currentPage - 1) * itemsPerPage + index + 1}</td>
+                            <td className="border border-black px-4 py-2">
+                              {
+                                entry.client_spoc_name
+                              }
+                            </td>
+
+
+                            <td className="border border-black px-4 py-2">{new Date(entry.created_at).toLocaleDateString().replace(/\//g, '-')}</td>
+                            <td className="border border-black px-4 py-2">
+                              <button
+                                type="button"
+                                className="bg-none text-black p-3 px-2 rounded-md text-2xl whitespace-nowrap"
+                                onClick={() => {
+                                  if (entry.zip) {
+                                    const url = new URL(entry.zip); // Parse the URL
+                                    const baseFileName = url.pathname.substring(url.pathname.lastIndexOf('/') + 1); // Extract basename
+                                    const link = document.createElement('a');
+                                    link.href = entry.zip;
+                                    link.download = baseFileName; // Use the extracted base file name
+                                    link.click();
+                                  } else {
+                                    alert('No ZIP file URL available.');
+                                  }
+                                }}
+                              >
+                                <FaFolderOpen />
+                              </button>
+                            </td>
+                            <td className="border border-black px-4 py-2">{entry.remarks}</td>
+                            <td className='border border-black  px-4 py-2'>
+                              <button
+                                type="button"
+                                disabled={deletingId === entry.id}
+                                onClick={() => handleDelete(entry.id)}
+                                className={`bg-red-500 hover:scale-105 hover:bg-red-600  text-white px-4 py-2 rounded ${deletingId === entry.id ? "opacity-50 cursor-not-allowed" : ""} `}
+                              >
+                                {deletingId === entry.id ? "Deleting..." : "Delete"}
+                              </button>
+
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
               {/* Pagination Controls */}

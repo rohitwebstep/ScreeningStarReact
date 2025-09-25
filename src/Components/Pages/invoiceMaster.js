@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Swal from "sweetalert2";
 import * as XLSX from "xlsx";
 import DatePicker from 'react-datepicker';
@@ -8,8 +8,20 @@ const InvoiceMaster = () => {
     const [invoices, setInvoices] = useState([]);
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
-    const optionsPerPage = [10, 50, 100, 200,500,1000];
+    const optionsPerPage = [10, 50, 100, 200, 500, 1000];
     const [responseError, setResponseError] = useState(null);
+    const tableScrollRef = useRef(null);
+    const topScrollRef = useRef(null);
+    const [scrollWidth, setScrollWidth] = useState("100%");
+
+    // 🔹 Sync scroll positions
+    const syncScroll = (e) => {
+        if (e.target === topScrollRef.current) {
+            tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+        } else {
+            topScrollRef.current.scrollLeft = e.target.scrollLeft;
+        }
+    };
     const formatDate = (dateString) => {
         if (!dateString || isNaN(new Date(dateString).getTime())) {
             return "N/A";
@@ -290,6 +302,11 @@ const InvoiceMaster = () => {
         // Write the workbook to a file and download it
         XLSX.writeFile(workbook, "Invoices.xlsx");
     };
+    useEffect(() => {
+        if (tableScrollRef.current) {
+            setScrollWidth(tableScrollRef.current.scrollWidth + "px");
+        }
+    }, [paginatedInvoices, loading]);
     const handleExportToExcel = () => {
         const tableHeaders = [
             "S.No",
@@ -449,118 +466,126 @@ const InvoiceMaster = () => {
                         </option>
                     ))}
                 </select>
-                <div className="overflow-scroll">
-                    <table className="min-w-full border-collapse border border-black">
-                        <thead className="bg-[#c1dff2]">
-                            <tr className="whitespace-nowrap text-[#4d606b]">
-                                <th className="border border-black uppercase px-4 py-2">S.No</th>
-                                <th className="border border-black uppercase px-4 py-2">MONTH</th>
-                                <th className="border border-black uppercase px-4 py-2 ">Organization Name</th>
-                                <th className="border border-black uppercase px-4 py-2">GST Number</th>
-                                <th className="border border-black uppercase px-4 py-2">STATE</th>
-                                <th className="border border-black uppercase px-4 py-2">STATE CODE</th>
-                                <th className="border border-black uppercase px-4 py-2">Invoice Date</th>
-                                <th className="border border-black uppercase px-4 py-2">Invoice Number</th>
-                                <th className="border border-black uppercase px-4 py-2">Taxable Value</th>
-                                <th className="border border-black uppercase px-4 py-2">CGST</th>
-                                <th className="border border-black uppercase px-4 py-2">SGST</th>
-                                <th className="border border-black uppercase px-4 py-2">IGST</th>
-                                <th className="border border-black uppercase px-4 py-2">Total GST</th>
-                                <th className="border border-black uppercase px-4 py-2">Invoice Subtotal</th>
-                                <th className="border border-black uppercase px-4 py-2">Due Date</th>
-                                <th className="border border-black uppercase px-4 py-2">Payment Status</th>
-                                <th className="border border-black uppercase px-4 py-2">Received Date</th>
-                                <th className="border border-black uppercase px-4 py-2">TDS Percentage</th>
-                                <th className="border border-black uppercase px-4 py-2">TDS Deducted</th>
-                                <th className="border border-black uppercase px-4 py-2">Amount Received</th>
-                                <th className="border border-black uppercase px-4 py-2">Balance Payment</th>
-                                <th className="border border-black uppercase px-4 py-2">Payment Remarks</th>
-                                <th className="border border-black uppercase px-4 py-2">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {loading ? (
-                                <tr>
-                                    <td colSpan="15" className="text-center py-6">
-                                        <div className="flex w-full justify-center items-center">
-                                            <div className="loader border-t-4 border-[#2c81ba] rounded-full w-10 h-10 animate-spin"></div>
-                                        </div>
-                                    </td>
+                <div className="table-container rounded-lg">
+                    {/* Top Scroll */}
+                    <div className="top-scroll" ref={topScrollRef} onScroll={syncScroll}>
+                        <div className="top-scroll-inner" style={{ width: scrollWidth }} />
+                    </div>
+
+                    {/* Actual Table Scroll */}
+                    <div className="table-scroll rounded-lg" ref={tableScrollRef} onScroll={syncScroll}>
+                        <table className="min-w-full border-collapse border border-black">
+                            <thead className="bg-[#c1dff2]">
+                                <tr className="whitespace-nowrap text-[#4d606b]">
+                                    <th className="border border-black uppercase px-4 py-2">S.No</th>
+                                    <th className="border border-black uppercase px-4 py-2">MONTH</th>
+                                    <th className="border border-black uppercase px-4 py-2 ">Organization Name</th>
+                                    <th className="border border-black uppercase px-4 py-2">GST Number</th>
+                                    <th className="border border-black uppercase px-4 py-2">STATE</th>
+                                    <th className="border border-black uppercase px-4 py-2">STATE CODE</th>
+                                    <th className="border border-black uppercase px-4 py-2">Invoice Date</th>
+                                    <th className="border border-black uppercase px-4 py-2">Invoice Number</th>
+                                    <th className="border border-black uppercase px-4 py-2">Taxable Value</th>
+                                    <th className="border border-black uppercase px-4 py-2">CGST</th>
+                                    <th className="border border-black uppercase px-4 py-2">SGST</th>
+                                    <th className="border border-black uppercase px-4 py-2">IGST</th>
+                                    <th className="border border-black uppercase px-4 py-2">Total GST</th>
+                                    <th className="border border-black uppercase px-4 py-2">Invoice Subtotal</th>
+                                    <th className="border border-black uppercase px-4 py-2">Due Date</th>
+                                    <th className="border border-black uppercase px-4 py-2">Payment Status</th>
+                                    <th className="border border-black uppercase px-4 py-2">Received Date</th>
+                                    <th className="border border-black uppercase px-4 py-2">TDS Percentage</th>
+                                    <th className="border border-black uppercase px-4 py-2">TDS Deducted</th>
+                                    <th className="border border-black uppercase px-4 py-2">Amount Received</th>
+                                    <th className="border border-black uppercase px-4 py-2">Balance Payment</th>
+                                    <th className="border border-black uppercase px-4 py-2">Payment Remarks</th>
+                                    <th className="border border-black uppercase px-4 py-2">Action</th>
                                 </tr>
-                            ) : paginatedInvoices.length > 0 ? (
-                                paginatedInvoices.map((invoice, index) => (
-                                    <tr key={index} className="even:bg-gray-100">
-                                        <td className="border border-black text-center px-4 py-2">{index + 1}</td>
-                                        <td className="border border-black px-4 py-2">
-                                            {(() => {
-                                                const monthNames = {
-                                                    "1": "January",
-                                                    "2": "February",
-                                                    "3": "March",
-                                                    "4": "April",
-                                                    "5": "May",
-                                                    "6": "June",
-                                                    "7": "July",
-                                                    "8": "August",
-                                                    "9": "September",
-                                                    "10": "October",
-                                                    "11": "November",
-                                                    "12": "December"
-                                                };
-                                                return monthNames[invoice.month] || invoice.month; // Fallback to original value if no match
-                                            })()}
-                                        </td>
-
-                                        <td className="border border-black px-4 py-2 whitespace-nowrap">{invoice.customer_name}</td>
-                                        <td className="border border-black px-4 py-2 whitespace-nowrap">{invoice.gst_number}</td>
-                                        <td className="border border-black px-4 py-2 whitespace-nowrap">{invoice.state}</td>
-                                        <td className="border border-black px-4 py-2 whitespace-nowrap">{invoice.state_code}</td>
-                                        <td className="border border-black px-4 py-2">{formatDate(invoice.invoice_date)}</td>
-                                        <td className="border border-black px-4 py-2">{invoice.invoice_number}</td>
-                                        <td className="border border-black px-4 py-2">{invoice.taxable_value}</td>
-                                        <td className="border border-black px-4 py-2">{invoice.cgst}</td>
-                                        <td className="border border-black px-4 py-2">{invoice.sgst}</td>
-                                        <td className="border border-black px-4 py-2">{invoice.igst}</td>
-                                        <td className="border border-black px-4 py-2">{invoice.total_gst}</td>
-                                        <td className="border border-black px-4 py-2">{invoice.invoice_subtotal}</td>
-                                        <td className="border border-black px-4 py-2">{formatDate(invoice.due_date)}</td>
-                                        <td className="border border-black px-4 py-2">{invoice.payment_status}</td>
-                                        <td className="border border-black px-4 py-2">{formatDate(invoice.received_date)}</td>
-                                        <td className="border border-black px-4 py-2">{invoice.tds_percentage}</td>
-                                        <td className="border border-black px-4 py-2">{invoice.tds_deducted}</td>
-                                        <td className="border border-black px-4 py-2">{invoice.ammount_received}</td>
-                                        <td className="border border-black px-4 py-2">{invoice.balance_payment}</td>
-                                        <td className="border border-black px-4 py-2">{invoice.payment_remarks}</td>
-                                        <td className="border border-black px-4 py-2 text-center">
-                                            <div className="flex justify-center gap-3">
-                                                <button
-                                                    className="px-5 py-2 bg-green-500 hover:bg-green-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition duration-200"
-                                                    onClick={() => handleUpdateClick(invoice)}
-                                                >
-                                                    Update
-                                                </button>
-
-                                                <button
-                                                    className="px-5 py-2 bg-red-500 hover:bg-red-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition duration-200"
-                                                    onClick={() => handleDeleteClick(invoice)}
-                                                >
-                                                    Delete
-                                                </button>
+                            </thead>
+                            <tbody>
+                                {loading ? (
+                                    <tr>
+                                        <td colSpan="15" className="text-center py-6">
+                                            <div className="flex w-full justify-center items-center">
+                                                <div className="loader border-t-4 border-[#2c81ba] rounded-full w-10 h-10 animate-spin"></div>
                                             </div>
                                         </td>
                                     </tr>
-                                ))
-                            ) : (
-                                <tr>
-                                    <td colSpan="15" className="text-center text-red-500 py-6">
+                                ) : paginatedInvoices.length > 0 ? (
+                                    paginatedInvoices.map((invoice, index) => (
+                                        <tr key={index} className="even:bg-gray-100">
+                                            <td className="border border-black text-center px-4 py-2">{index + 1}</td>
+                                            <td className="border border-black px-4 py-2">
+                                                {(() => {
+                                                    const monthNames = {
+                                                        "1": "January",
+                                                        "2": "February",
+                                                        "3": "March",
+                                                        "4": "April",
+                                                        "5": "May",
+                                                        "6": "June",
+                                                        "7": "July",
+                                                        "8": "August",
+                                                        "9": "September",
+                                                        "10": "October",
+                                                        "11": "November",
+                                                        "12": "December"
+                                                    };
+                                                    return monthNames[invoice.month] || invoice.month; // Fallback to original value if no match
+                                                })()}
+                                            </td>
 
-                                        {responseError && responseError !== "" ? responseError : "No invoices available."}
+                                            <td className="border border-black px-4 py-2 whitespace-nowrap">{invoice.customer_name}</td>
+                                            <td className="border border-black px-4 py-2 whitespace-nowrap">{invoice.gst_number}</td>
+                                            <td className="border border-black px-4 py-2 whitespace-nowrap">{invoice.state}</td>
+                                            <td className="border border-black px-4 py-2 whitespace-nowrap">{invoice.state_code}</td>
+                                            <td className="border border-black px-4 py-2">{formatDate(invoice.invoice_date)}</td>
+                                            <td className="border border-black px-4 py-2">{invoice.invoice_number}</td>
+                                            <td className="border border-black px-4 py-2">{invoice.taxable_value}</td>
+                                            <td className="border border-black px-4 py-2">{invoice.cgst}</td>
+                                            <td className="border border-black px-4 py-2">{invoice.sgst}</td>
+                                            <td className="border border-black px-4 py-2">{invoice.igst}</td>
+                                            <td className="border border-black px-4 py-2">{invoice.total_gst}</td>
+                                            <td className="border border-black px-4 py-2">{invoice.invoice_subtotal}</td>
+                                            <td className="border border-black px-4 py-2">{formatDate(invoice.due_date)}</td>
+                                            <td className="border border-black px-4 py-2">{invoice.payment_status}</td>
+                                            <td className="border border-black px-4 py-2">{formatDate(invoice.received_date)}</td>
+                                            <td className="border border-black px-4 py-2">{invoice.tds_percentage}</td>
+                                            <td className="border border-black px-4 py-2">{invoice.tds_deducted}</td>
+                                            <td className="border border-black px-4 py-2">{invoice.ammount_received}</td>
+                                            <td className="border border-black px-4 py-2">{invoice.balance_payment}</td>
+                                            <td className="border border-black px-4 py-2">{invoice.payment_remarks}</td>
+                                            <td className="border border-black px-4 py-2 text-center">
+                                                <div className="flex justify-center gap-3">
+                                                    <button
+                                                        className="px-5 py-2 bg-green-500 hover:bg-green-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition duration-200"
+                                                        onClick={() => handleUpdateClick(invoice)}
+                                                    >
+                                                        Update
+                                                    </button>
 
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
+                                                    <button
+                                                        className="px-5 py-2 bg-red-500 hover:bg-red-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition duration-200"
+                                                        onClick={() => handleDeleteClick(invoice)}
+                                                    >
+                                                        Delete
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan="15" className="text-center text-red-500 py-6">
+
+                                            {responseError && responseError !== "" ? responseError : "No invoices available."}
+
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
                 <div className="flex justify-between items-center mt-4">
                     <button

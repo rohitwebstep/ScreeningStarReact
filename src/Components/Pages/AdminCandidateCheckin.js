@@ -26,7 +26,18 @@ const AdminCandidateCheckin = () => {
     const location = useLocation();
     const [itemsPerPage, setItemPerPage] = useState(10)
     const [applicantName, setApplicantName] = useState({});
+    const tableScrollRef = useRef(null);
+    const topScrollRef = useRef(null);
+    const [scrollWidth, setScrollWidth] = useState("100%");
 
+    // 🔹 Sync scroll positions
+    const syncScroll = (e) => {
+        if (e.target === topScrollRef.current) {
+            tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+        } else {
+            topScrollRef.current.scrollLeft = e.target.scrollLeft;
+        }
+    };
     const [selectedStatus, setSelectedStatus] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
@@ -710,7 +721,7 @@ const AdminCandidateCheckin = () => {
             });
 
 
-              newYPosition =100; // Adjusting for space from the last table
+            newYPosition = 100; // Adjusting for space from the last table
 
 
 
@@ -721,7 +732,7 @@ const AdminCandidateCheckin = () => {
             const tableMargin = (newPageWidth - tableWidth) / 2; // Calculate the left margin to center the table
 
             doc.autoTable({
-                startY: newYPosition ,
+                startY: newYPosition,
                 margin: { left: tableMargin }, // Apply the margin to center the table
                 body: [
                     [
@@ -1117,7 +1128,12 @@ const AdminCandidateCheckin = () => {
             console.log("🏁 Finished handleDownloadAllFiles.");
         }
     };
-  
+      useEffect(() => {
+    if (tableScrollRef.current) {
+      setScrollWidth(tableScrollRef.current.scrollWidth + "px");
+    }
+  }, [currentItems, loading]); 
+
     const handleDownloadFile = async (url) => {
         try {
             console.log("Downloading file from:", url);
@@ -1204,8 +1220,14 @@ const AdminCandidateCheckin = () => {
                     </div>
 
                 </div>
-                <div ref={tableRef} className="overflow-x-auto rounded-md bg-white">
-                    <table className="min-w-full border-collapse border-black border overflow-scroll rounded-lg whitespace-nowrap">
+                <div className="table-container rounded-lg">
+                    {/* Top Scroll */}
+                    <div className="top-scroll" ref={topScrollRef} onScroll={syncScroll}>
+                        <div className="top-scroll-inner" style={{ width: scrollWidth }} />
+                    </div>
+
+                    {/* Actual Table Scroll */}
+                    <div className="table-scroll rounded-lg" ref={tableScrollRef} onScroll={syncScroll}>                    <table ref={tableRef} className="min-w-full border-collapse border-black border overflow-scroll rounded-lg whitespace-nowrap">
                         <thead className='rounded-lg'>
                             <tr className="bg-[#c1dff2] text-[#4d606b]">
                                 <th className="py-3 px-4 border-b border-black border-r-2 whitespace-nowrap uppercase">SL NO</th>
@@ -1412,6 +1434,7 @@ const AdminCandidateCheckin = () => {
                             )}
                         </tbody>
                     </table>
+                    </div>
                 </div>
 
                 <div className="flex items-center justify-between rounded-md bg-white px-4 sm:px-6  ">

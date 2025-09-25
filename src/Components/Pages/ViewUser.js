@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import Swal from "sweetalert2";
 import * as XLSX from "xlsx";
 import { useNavigate, useParams } from "react-router-dom";
@@ -27,6 +27,7 @@ const DataModal = ({ isOpen, data, onClose }) => {
             </div>
         );
     }
+
 
     const cleanValue = (val) => {
         try {
@@ -84,44 +85,44 @@ const DataModal = ({ isOpen, data, onClose }) => {
 
     const formatJson = (inputJson) => {
         let formattedJson = {};
-      
+
         Object.keys(inputJson).forEach((key) => {
-          let formattedValue = inputJson[key];
-      
-          if (typeof formattedValue === "string") {
-            formattedValue = formattedValue
-              .replace(/\\+/g, "") // Remove backslashes
-              .replace(/"+/g, "") // Remove double quotes
-              .replace(/_+/g, " ") // Replace underscores with spaces
-              .replace(/[^a-zA-Z0-9 ,:-]/g, "") // Remove special characters except letters, digits, spaces, commas, colons, and dashes
-              .trim(); // Trim leading and trailing spaces
-      
-            // Add extra spacing between the values if you want more space
-            if (key === "new") {
-              formattedValue = formattedValue.replace(/, /g, ",\n\n"); // Add two new lines after each comma
+            let formattedValue = inputJson[key];
+
+            if (typeof formattedValue === "string") {
+                formattedValue = formattedValue
+                    .replace(/\\+/g, "") // Remove backslashes
+                    .replace(/"+/g, "") // Remove double quotes
+                    .replace(/_+/g, " ") // Replace underscores with spaces
+                    .replace(/[^a-zA-Z0-9 ,:-]/g, "") // Remove special characters except letters, digits, spaces, commas, colons, and dashes
+                    .trim(); // Trim leading and trailing spaces
+
+                // Add extra spacing between the values if you want more space
+                if (key === "new") {
+                    formattedValue = formattedValue.replace(/, /g, ",\n\n"); // Add two new lines after each comma
+                }
             }
-          }
-      
-          formattedJson[key] = formattedValue;
+
+            formattedJson[key] = formattedValue;
         });
-      
+
         return formattedJson;
-      };
-      
-      
-      
-      // Example JSON object
-      const inputJson = {
+    };
+
+
+
+    // Example JSON object
+    const inputJson = {
         old: "2005-07-10T00:00:00000Z",
         new: "2005-07-10, address verified successfully"
-      };
-      
-      // Format the JSON
-      const formattedJson = formatJson(inputJson);
-      
-      // Convert to JSON string and log output
-      console.log(JSON.stringify(formattedJson, null, 2));
-      
+    };
+
+    // Format the JSON
+    const formattedJson = formatJson(inputJson);
+
+    // Convert to JSON string and log output
+    console.log(JSON.stringify(formattedJson, null, 2));
+
 
     // Example JSON object
 
@@ -163,7 +164,19 @@ const DataModal = ({ isOpen, data, onClose }) => {
 };
 
 const ViewUser = () => {
-    const {validateAdminLogin,setApiLoading,apiLoading} = useApiLoading();
+    const { validateAdminLogin, setApiLoading, apiLoading } = useApiLoading();
+    const tableScrollRef = useRef(null);
+    const topScrollRef = useRef(null);
+    const [scrollWidth, setScrollWidth] = useState("100%");
+
+    // 🔹 Sync scroll positions
+    const syncScroll = (e) => {
+        if (e.target === topScrollRef.current) {
+            tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+        } else {
+            topScrollRef.current.scrollLeft = e.target.scrollLeft;
+        }
+    };
 
 
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -234,8 +247,8 @@ const ViewUser = () => {
         const initialize = async () => {
             try {
                 if (apiLoading == false) {
-                await validateAdminLogin();
-                await fetchData();
+                    await validateAdminLogin();
+                    await fetchData();
                 }
             } catch (error) {
                 console.error(error.message);
@@ -262,6 +275,11 @@ const ViewUser = () => {
         XLSX.utils.book_append_sheet(wb, ws, "Acknowledgement");
         XLSX.writeFile(wb, "Acknowledgement.xlsx");
     };
+    useEffect(() => {
+        if (tableScrollRef.current) {
+            setScrollWidth(tableScrollRef.current.scrollWidth + "px");
+        }
+    }, [filteredData, loading]);
 
     const Loader = () => (
         <tr>
@@ -303,100 +321,109 @@ const ViewUser = () => {
                 </div> */}
 
                     <DataModal isOpen={isModalOpen} data={modalData} onClose={closeModal} />
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full border-collapse border border-black rounded-lg overflow-scroll whitespace-nowrap">
-                            <thead className="rounded-lg">
-                                <tr className="bg-[#c1dff2] text-[#4d606b] rounded-lg">
-                                    <th className="border border-black px-4 uppercase py-2">SL</th>
-                                    <th className="border border-black px-4 uppercase py-2">Action</th>
-                                    <th className="border border-black px-4 uppercase py-2">Result</th>
-                                    <th className="border border-black px-4 uppercase py-2">Error</th>
-                                    <th className="border border-black px-4 uppercase py-2">Ip Address</th>
-                                    <th className="border border-black px-4 uppercase py-2">Module</th>
-                                    <th className="border border-black px-4 uppercase py-2">Update</th>
-                                    <th className="border border-black px-4 uppercase py-2">Created At</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {loading ? (
-                                    <tr>
-                                        <td colSpan={7}>
-                                            <div className="flex justify-center items-center h-24">
-                                                <Loader />
-                                            </div>
-                                        </td>
+                    <div className="table-container rounded-lg">
+                        {/* Top Scroll */}
+                        <div className="top-scroll" ref={topScrollRef} onScroll={syncScroll}>
+                            <div className="top-scroll-inner" style={{ width: scrollWidth }} />
+                        </div>
+
+                        {/* Actual Table Scroll */}
+                        <div className="table-scroll rounded-lg" ref={tableScrollRef} onScroll={syncScroll}>
+
+                            <table className="min-w-full border-collapse border border-black rounded-lg overflow-scroll whitespace-nowrap">
+                                <thead className="rounded-lg">
+                                    <tr className="bg-[#c1dff2] text-[#4d606b] rounded-lg">
+                                        <th className="border border-black px-4 uppercase py-2">SL</th>
+                                        <th className="border border-black px-4 uppercase py-2">Action</th>
+                                        <th className="border border-black px-4 uppercase py-2">Result</th>
+                                        <th className="border border-black px-4 uppercase py-2">Error</th>
+                                        <th className="border border-black px-4 uppercase py-2">Ip Address</th>
+                                        <th className="border border-black px-4 uppercase py-2">Module</th>
+                                        <th className="border border-black px-4 uppercase py-2">Update</th>
+                                        <th className="border border-black px-4 uppercase py-2">Created At</th>
                                     </tr>
-                                ) : (
-                                    <>
-                                        {filteredData.length > 0 ? (
-                                            filteredData.map((row, index) => {
-                                                let updateData = null;
-                                                try {
-                                                    updateData = typeof row.update === 'string' ? JSON.parse(row.update) : row.update;
-                                                } catch (error) {
-                                                    updateData = row.update; // If parsing fails, keep the original value
-                                                }
-                                                const showButton = updateData && Object.keys(updateData).length > 1; // More than just an 'id'
+                                </thead>
+                                <tbody>
+                                    {loading ? (
+                                        <tr>
+                                            <td colSpan={7}>
+                                                <div className="flex justify-center items-center h-24">
+                                                    <Loader />
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        <>
+                                            {filteredData.length > 0 ? (
+                                                filteredData.map((row, index) => {
+                                                    let updateData = null;
+                                                    try {
+                                                        updateData = typeof row.update === 'string' ? JSON.parse(row.update) : row.update;
+                                                    } catch (error) {
+                                                        updateData = row.update; // If parsing fails, keep the original value
+                                                    }
+                                                    const showButton = updateData && Object.keys(updateData).length > 1; // More than just an 'id'
 
-                                                return (
-                                                    <tr className="text-center" key={index}>
-                                                        <td className="border border-black px-4 py-2">{index + 1}</td>
-                                                        <td className="border border-black capitalize px-4 py-2">
-                                                            {row.action ? row.action : "No Result"}
-                                                        </td>
-                                                        <td className="border border-black px-4 py-2">
-                                                            {row.result === '1' ? (
-                                                                <span className="text-green-500">Success</span>
-                                                            ) : (
-                                                                <span className="text-red-500">Failed</span>
-                                                            )}
-                                                        </td>
-                                                        <td className="border border-black capitalize px-4 py-2">
-                                                            {row.error !== null && row.error !== undefined ? row.error : "No Error"}
-                                                        </td>
-                                                        
-                                                        <td className="border border-black capitalize px-4 py-2">
-                                                            {row.client_ip !== null && row.client_ip !== undefined ? row.client_ip : "No Ip Found"}
-                                                        </td>
-                                                        <td className="border border-black capitalize px-4 py-2">
-                                                            {row.module !== null && row.module !== undefined ? row.module : "No Module"}
-                                                        </td>
-                                                        <td className="border border-black px-4 py-2">
-                                                            {updateData ? (
-                                                                typeof updateData === 'object' ? (
-                                                                    <button
-                                                                        onClick={() => openModal(updateData)}
-                                                                        className="bg-blue-500 text-white px-4 py-2 rounded"
-                                                                    >
-                                                                        View Update
-                                                                    </button>
+                                                    return (
+                                                        <tr className="text-center" key={index}>
+                                                            <td className="border border-black px-4 py-2">{index + 1}</td>
+                                                            <td className="border border-black capitalize px-4 py-2">
+                                                                {row.action ? row.action : "No Result"}
+                                                            </td>
+                                                            <td className="border border-black px-4 py-2">
+                                                                {row.result === '1' ? (
+                                                                    <span className="text-green-500">Success</span>
                                                                 ) : (
-                                                                    updateData
-                                                                )
-                                                            ) : (
-                                                                "No Update"
-                                                            )}
-                                                        </td>
-                                                        <td className="border border-black px-4 py-2">
-                                                            {new Date(row.created_at).toLocaleString().replace(/\//g, '-') || 'Undefined'}
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })
-                                        ) : (
-                                            <tr>
-                                                <td colSpan={7} className="border border-black px-4 py-2 text-center">
-                                                    No data available in table
-                                                </td>
-                                            </tr>
-                                        )}
+                                                                    <span className="text-red-500">Failed</span>
+                                                                )}
+                                                            </td>
+                                                            <td className="border border-black capitalize px-4 py-2">
+                                                                {row.error !== null && row.error !== undefined ? row.error : "No Error"}
+                                                            </td>
 
-                                    </>
-                                )}
-                            </tbody>
+                                                            <td className="border border-black capitalize px-4 py-2">
+                                                                {row.client_ip !== null && row.client_ip !== undefined ? row.client_ip : "No Ip Found"}
+                                                            </td>
+                                                            <td className="border border-black capitalize px-4 py-2">
+                                                                {row.module !== null && row.module !== undefined ? row.module : "No Module"}
+                                                            </td>
+                                                            <td className="border border-black px-4 py-2">
+                                                                {updateData ? (
+                                                                    typeof updateData === 'object' ? (
+                                                                        <button
+                                                                            onClick={() => openModal(updateData)}
+                                                                            className="bg-blue-500 text-white px-4 py-2 rounded"
+                                                                        >
+                                                                            View Update
+                                                                        </button>
+                                                                    ) : (
+                                                                        updateData
+                                                                    )
+                                                                ) : (
+                                                                    "No Update"
+                                                                )}
+                                                            </td>
+                                                            <td className="border border-black px-4 py-2">
+                                                                {new Date(row.created_at).toLocaleString().replace(/\//g, '-') || 'Undefined'}
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })
+                                            ) : (
+                                                <tr>
+                                                    <td colSpan={7} className="border border-black px-4 py-2 text-center">
+                                                        No data available in table
+                                                    </td>
+                                                </tr>
+                                            )}
 
-                        </table>
+                                        </>
+                                    )}
+                                </tbody>
 
+                            </table>
+
+                        </div>
                     </div>
                 </div>
             </div>

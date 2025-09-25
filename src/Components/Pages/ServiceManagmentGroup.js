@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
 import Swal from 'sweetalert2'; // Import SweetAlert2
@@ -10,7 +10,18 @@ const ServiceManagementGroup = () => {
     const { validateAdminLogin, setApiLoading, apiLoading } = useApiLoading();
     const [responseError, setResponseError] = useState(null);
 
+    const tableScrollRef = useRef(null);
+    const topScrollRef = useRef(null);
+    const [scrollWidth, setScrollWidth] = useState("100%");
 
+    // 🔹 Sync scroll positions
+    const syncScroll = (e) => {
+        if (e.target === topScrollRef.current) {
+            tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+        } else {
+            topScrollRef.current.scrollLeft = e.target.scrollLeft;
+        }
+    };
     const [symbol, setSymbol] = useState();
     const [title, setTitle] = useState();
     const [services, setServices] = useState([]);
@@ -18,7 +29,7 @@ const ServiceManagementGroup = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [loading, setLoading] = useState(true);
     const [servicesPerPage, setServicesPerPage] = useState(10);
-    const optionsPerPage = [10, 50, 100, 200,500,1000];
+    const optionsPerPage = [10, 50, 100, 200, 500, 1000];
     const [editingServiceId, setEditingServiceId] = useState(null);
     const storedToken = localStorage.getItem('token');
     const navigate = useNavigate();
@@ -235,17 +246,21 @@ const ServiceManagementGroup = () => {
     const currentServices = filteredServices.slice(indexOfFirstService, indexOfLastService);
 
     const paginate = (pageNumber) => setCurrentPage(pageNumber);
-
+    useEffect(() => {
+        if (tableScrollRef.current) {
+            setScrollWidth(tableScrollRef.current.scrollWidth + "px");
+        }
+    }, [currentServices, loading]);
 
     const Loader = () => (
         <div className="flex w-full justify-center items-center h-20">
             <div className="loader border-t-4 border-[#2c81ba] rounded-full w-10 h-10 animate-spin"></div>
         </div>
     );
-  const handleSearchChange = (e) => {
-    setSearchTerm(e.target.value);
-    setCurrentPage(1)
-  };
+    const handleSearchChange = (e) => {
+        setSearchTerm(e.target.value);
+        setCurrentPage(1)
+    };
     return (
         <div className="">
 
@@ -297,7 +312,7 @@ const ServiceManagementGroup = () => {
                                         type="text"
                                         placeholder="Search by Group Title"
                                         value={searchTerm}
-                                         onChange={handleSearchChange}
+                                        onChange={handleSearchChange}
                                         className="md:w-[450px] w-full rounded-md p-2.5 border border-gray-300 mb-4"
                                     />
                                 </div>
@@ -305,8 +320,8 @@ const ServiceManagementGroup = () => {
                                     value={servicesPerPage}
                                     onChange={(e) => {
                                         setServicesPerPage(Number(e.target.value));
-                                        setCurrentPage(1); 
-                                    }}                                    className="border rounded-lg px-3 py-1 text-gray-700 bg-white  shadow-sm focus:ring-2 focus:ring-blue-400"
+                                        setCurrentPage(1);
+                                    }} className="border rounded-lg px-3 py-1 text-gray-700 bg-white  shadow-sm focus:ring-2 focus:ring-blue-400"
                                 >
                                     {optionsPerPage.map((option) => (
                                         <option key={option} value={option}>
@@ -322,63 +337,72 @@ const ServiceManagementGroup = () => {
                                 Export to Excel
                             </button>
                         </div>
-                        <div className="overflow-auto">
-                            <table className="min-w-full border-collapse border border-black  rounded-lg overflow-scroll whitespace-nowrap">
-                                <thead className="rounded-lg">
-                                    <tr className="bg-[#c1dff2] text-[#4d606b]">
-                                        <th className="uppercase border border-black  px-4 py-2">SL</th>
-                                        <th className="uppercase border border-black  px-4 py-2">Group Symbol </th>
-                                        <th className="uppercase border border-black  px-4 py-2">Group Title</th>
-                                        <th className="uppercase border border-black  px-4 py-2">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {loading ? (
+                        <div className="table-container rounded-lg">
+                            {/* Top Scroll */}
+                            <div className="top-scroll" ref={topScrollRef} onScroll={syncScroll}>
+                                <div className="top-scroll-inner" style={{ width: scrollWidth }} />
+                            </div>
 
-                                        <tr>
-                                            <td colSpan={4} className="py-4 text-center text-gray-500">
-                                                <Loader className="text-center" />
-                                            </td>
-                                        </tr>
-                                    ) : currentServices.length === 0 ? (
-                                        <tr>
-                                            <td colSpan={6} className="py-4 text-center text-red-500">
-                                                {responseError && responseError !== ""
-                                                    ? responseError
-                                                    : "No data available in table"}
-                                            </td>
-                                        </tr>
-                                    ) : (
-                                        <>
-                                            {currentServices.map((service, index) => (
-                                                <tr key={service.id} className="text-center">
-                                                    <td className="border border-black  px-4 py-2">
-                                                        {index + 1 + (currentPage - 1) * servicesPerPage}
-                                                    </td>
-                                                    <td className="border border-black  px-4 py-2">{service.symbol}</td>
-                                                    <td className="border border-black  px-4 py-2">{service.title}</td>
+                            {/* Actual Table Scroll */}
+                            <div className="table-scroll rounded-lg" ref={tableScrollRef} onScroll={syncScroll}>
 
-                                                    <td className="border border-black  px-4 py-2">
-                                                        <button
-                                                            onClick={() => handleEdit(service)}
-                                                            className="bg-green-500 hover:scale-105 hover:bg-green-600 text-white px-4 py-2 rounded-md mr-2"
-                                                        >
-                                                            Edit
-                                                        </button>
-                                                        <button
-                                                            disabled={deletingId === service.id}
-                                                            onClick={() => handleDelete(service.id)}
-                                                            className={`bg-red-500 hover:scale-105 hover:bg-red-600 text-white px-4 py-2 rounded-md ${deletingId === service.id ? "opacity-50 cursor-not-allowed" : " hover:scale-105"} `}
-                                                        >
-                                                            {deletingId === service.id ? "Deleting..." : "Delete"}
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </>
-                                    )}
-                                </tbody>
-                            </table>
+                                <table className="min-w-full border-collapse border border-black  rounded-lg overflow-scroll whitespace-nowrap">
+                                    <thead className="rounded-lg">
+                                        <tr className="bg-[#c1dff2] text-[#4d606b]">
+                                            <th className="uppercase border border-black  px-4 py-2">SL</th>
+                                            <th className="uppercase border border-black  px-4 py-2">Group Symbol </th>
+                                            <th className="uppercase border border-black  px-4 py-2">Group Title</th>
+                                            <th className="uppercase border border-black  px-4 py-2">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {loading ? (
+
+                                            <tr>
+                                                <td colSpan={4} className="py-4 text-center text-gray-500">
+                                                    <Loader className="text-center" />
+                                                </td>
+                                            </tr>
+                                        ) : currentServices.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={6} className="py-4 text-center text-red-500">
+                                                    {responseError && responseError !== ""
+                                                        ? responseError
+                                                        : "No data available in table"}
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            <>
+                                                {currentServices.map((service, index) => (
+                                                    <tr key={service.id} className="text-center">
+                                                        <td className="border border-black  px-4 py-2">
+                                                            {index + 1 + (currentPage - 1) * servicesPerPage}
+                                                        </td>
+                                                        <td className="border border-black  px-4 py-2">{service.symbol}</td>
+                                                        <td className="border border-black  px-4 py-2">{service.title}</td>
+
+                                                        <td className="border border-black  px-4 py-2">
+                                                            <button
+                                                                onClick={() => handleEdit(service)}
+                                                                className="bg-green-500 hover:scale-105 hover:bg-green-600 text-white px-4 py-2 rounded-md mr-2"
+                                                            >
+                                                                Edit
+                                                            </button>
+                                                            <button
+                                                                disabled={deletingId === service.id}
+                                                                onClick={() => handleDelete(service.id)}
+                                                                className={`bg-red-500 hover:scale-105 hover:bg-red-600 text-white px-4 py-2 rounded-md ${deletingId === service.id ? "opacity-50 cursor-not-allowed" : " hover:scale-105"} `}
+                                                            >
+                                                                {deletingId === service.id ? "Deleting..." : "Delete"}
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                         <div className="mt-4 text-center">
                             {/* First Page */}

@@ -31,6 +31,19 @@ const Universities = () => {
         verification_link: "",
         remark: "",
     });
+
+    const tableScrollRef = useRef(null);
+    const topScrollRef = useRef(null);
+    const [scrollWidth, setScrollWidth] = useState("100%");
+
+    // 🔹 Sync scroll positions
+    const syncScroll = (e) => {
+        if (e.target === topScrollRef.current) {
+            tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+        } else {
+            topScrollRef.current.scrollLeft = e.target.scrollLeft;
+        }
+    };
     const [isEditing, setIsEditing] = useState(false);
     const [currentSpocId, setCurrentSpocId] = useState(null);
 
@@ -123,12 +136,12 @@ const Universities = () => {
         const { name, value, type, checked } = e.target;
         const normalizedValue =
             name === 'scope_of_services' && /^\d+$/.test(value) ? Number(value) : value;
-    
+
         if (type === "checkbox") {
             if (name === 'scope_of_services') {
                 setSelectedServices((prevData) => {
                     const existing = prevData[name] || [];
-    
+
                     if (checked) {
                         if (!existing.includes(normalizedValue)) {
                             return {
@@ -147,7 +160,7 @@ const Universities = () => {
             } else {
                 setFormData((prevData) => {
                     const existing = prevData[name] || [];
-    
+
                     if (checked) {
                         if (!existing.includes(value)) {
                             return {
@@ -171,7 +184,7 @@ const Universities = () => {
             }));
         }
     };
-    
+
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -187,7 +200,7 @@ const Universities = () => {
             admin_id,
             _token: storedToken,
         });
-        
+
 
         const requestOptions = {
             method: isEditing ? "PUT" : "POST",
@@ -346,6 +359,11 @@ const Universities = () => {
     const filteredSpocs = spocs.filter((spoc) =>
         spoc.university_name.toLowerCase().includes(searchTerm.toLowerCase())
     );
+    useEffect(() => {
+        if (tableScrollRef.current) {
+            setScrollWidth(tableScrollRef.current.scrollWidth + "px");
+        }
+    }, [currentSpocs, loading]);
     const handleCancel = () => {
         fetchData();
         setFormData({
@@ -453,19 +471,19 @@ const Universities = () => {
                                     Scope Of Services
                                 </label>
                                 <div className="flex grid grid-cols-2 flex-col gap-2">
-                                {services.map((service) => (
-                                    <label key={service.value} className="flex items-center space-x-2">
-                                        <input
-                                            type="checkbox"
-                                            name="scope_of_services"
-                                            value={service.value}
-                                            checked={selectedServices?.scope_of_services?.includes(Number(service.value)) || false}
-                                            onChange={handleChange}
-                                            className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                        />
-                                        <span className="text-sm">{service.label}</span>
-                                    </label>
-                                ))}
+                                    {services.map((service) => (
+                                        <label key={service.value} className="flex items-center space-x-2">
+                                            <input
+                                                type="checkbox"
+                                                name="scope_of_services"
+                                                value={service.value}
+                                                checked={selectedServices?.scope_of_services?.includes(Number(service.value)) || false}
+                                                onChange={handleChange}
+                                                className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                            />
+                                            <span className="text-sm">{service.label}</span>
+                                        </label>
+                                    ))}
                                 </div>
                             </div>
 
@@ -599,109 +617,117 @@ const Universities = () => {
                                 onChange={handleSearch}
                             />
                         </div>
-                        <div className="overflow-auto">
-                            <table className="min-w-full border-collapse border border-black rounded-lg">
-                                <thead className="rounded-lg border border-black">
-                                    <tr className="bg-[#c1dff2] text-[#4d606b] text-left rounded-lg whitespace-nowrap">
-                                        <th className="uppercase border border-black px-4 py-2">Sl No.</th>
-                                        <th className="uppercase border border-black px-4 py-2 text-left">University Name</th>
-                                        <th className="uppercase border border-black px-4 py-2 text-left">University Address</th>
-                                        <th className="uppercase border border-black px-4 py-2 text-left">Contact Name</th>
-                                        <th className="uppercase border border-black px-4 py-2 text-left">Designation</th>
-                                        <th className="uppercase border border-black px-4 py-2 text-left">Mobile Number</th>
-                                        <th className="uppercase border border-black px-4 py-2 text-left">Email ID</th>
-                                        <th className="uppercase border border-black px-4 py-2 text-left">Scope of Services</th>
-                                        <th className="uppercase border border-black px-4 py-2 text-left">Pricing</th>
-                                        <th className="uppercase border border-black px-4 py-2 text-left">Turnaround Time</th>
-                                        <th className="uppercase border border-black px-4 py-2 text-left">Standard Process</th>
-                                        <th className="uppercase border border-black px-4 py-2 text-left">Verification Link</th>
-                                        <th className="uppercase border border-black px-4 py-2 text-left">Remark</th>
+                        <div className="table-container rounded-lg">
+                            {/* Top Scroll */}
+                            <div className="top-scroll" ref={topScrollRef} onScroll={syncScroll}>
+                                <div className="top-scroll-inner" style={{ width: scrollWidth }} />
+                            </div>
 
-                                        <th className="py-2 px-4 border border-black text-center uppercase">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {loading ? (
-                                        <tr>
-                                            <td colSpan={6} className="py-4 text-center text-gray-500">
-                                                <Loader className="text-center" />
-                                            </td>
+                            {/* Actual Table Scroll */}
+                            <div className="table-scroll rounded-lg" ref={tableScrollRef} onScroll={syncScroll}>
+                                <table className="min-w-full border-collapse border border-black rounded-lg">
+                                    <thead className="rounded-lg border border-black">
+                                        <tr className="bg-[#c1dff2] text-[#4d606b] text-left rounded-lg whitespace-nowrap">
+                                            <th className="uppercase border border-black px-4 py-2">Sl No.</th>
+                                            <th className="uppercase border border-black px-4 py-2 text-left">University Name</th>
+                                            <th className="uppercase border border-black px-4 py-2 text-left">University Address</th>
+                                            <th className="uppercase border border-black px-4 py-2 text-left">Contact Name</th>
+                                            <th className="uppercase border border-black px-4 py-2 text-left">Designation</th>
+                                            <th className="uppercase border border-black px-4 py-2 text-left">Mobile Number</th>
+                                            <th className="uppercase border border-black px-4 py-2 text-left">Email ID</th>
+                                            <th className="uppercase border border-black px-4 py-2 text-left">Scope of Services</th>
+                                            <th className="uppercase border border-black px-4 py-2 text-left">Pricing</th>
+                                            <th className="uppercase border border-black px-4 py-2 text-left">Turnaround Time</th>
+                                            <th className="uppercase border border-black px-4 py-2 text-left">Standard Process</th>
+                                            <th className="uppercase border border-black px-4 py-2 text-left">Verification Link</th>
+                                            <th className="uppercase border border-black px-4 py-2 text-left">Remark</th>
+
+                                            <th className="py-2 px-4 border border-black text-center uppercase">Actions</th>
                                         </tr>
-                                    ) : (
-                                        <>
-                                            {currentSpocs.length === 0 ? (
-                                                <tr>
-                                                    <td colSpan={6} className="py-4 text-center text-red-500">
-                                                        {responseError && responseError !== "" ? responseError : "No data available in table"}
-                                                    </td>
-                                                </tr>
-                                            ) : (
-                                                currentSpocs.map((spoc, index) => (
-                                                    <tr key={spoc.id} className="hover:bg-gray-200">
-                                                        <td className="py-2 px-4 border border-black">{index + indexOfFirstItem + 1}</td>
-                                                        <td className="border border-black px-4 py-2 text-left">{spoc.university_name}</td>
-                                                        <td className="border border-black px-4 py-2 text-left">{spoc.university_address}</td>
-                                                        <td className="border border-black px-4 py-2 text-left">{spoc.contact_name}</td>
-                                                        <td className="border border-black px-4 py-2 text-left">{spoc.designation}</td>
-                                                        <td className="border border-black px-4 py-2 text-left">{spoc.mobile_number}</td>
-                                                        <td className="border border-black px-4 py-2 text-left">{spoc.email_id}</td>
-                                                        <td className="border border-black px-4 py-2 text-center">
-                                                            <div className="flex items-center">
-                                                                {spoc.scope_of_services ? (() => {
-                                                                    const selectedIds = spoc.scope_of_services.split(',').map(id => parseInt(id.trim()));
-                                                                    const matchedServices = services
-                                                                        .filter(service => selectedIds.includes(service.value))
-                                                                        .map(s => ({ serviceTitle: s.label }));
+                                    </thead>
+                                    <tbody>
+                                        {loading ? (
+                                            <tr>
+                                                <td colSpan={6} className="py-4 text-center text-gray-500">
+                                                    <Loader className="text-center" />
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            <>
+                                                {currentSpocs.length === 0 ? (
+                                                    <tr>
+                                                        <td colSpan={6} className="py-4 text-center text-red-500">
+                                                            {responseError && responseError !== "" ? responseError : "No data available in table"}
+                                                        </td>
+                                                    </tr>
+                                                ) : (
+                                                    currentSpocs.map((spoc, index) => (
+                                                        <tr key={spoc.id} className="hover:bg-gray-200">
+                                                            <td className="py-2 px-4 border border-black">{index + indexOfFirstItem + 1}</td>
+                                                            <td className="border border-black px-4 py-2 text-left">{spoc.university_name}</td>
+                                                            <td className="border border-black px-4 py-2 text-left">{spoc.university_address}</td>
+                                                            <td className="border border-black px-4 py-2 text-left">{spoc.contact_name}</td>
+                                                            <td className="border border-black px-4 py-2 text-left">{spoc.designation}</td>
+                                                            <td className="border border-black px-4 py-2 text-left">{spoc.mobile_number}</td>
+                                                            <td className="border border-black px-4 py-2 text-left">{spoc.email_id}</td>
+                                                            <td className="border border-black px-4 py-2 text-center">
+                                                                <div className="flex items-center">
+                                                                    {spoc.scope_of_services ? (() => {
+                                                                        const selectedIds = spoc.scope_of_services.split(',').map(id => parseInt(id.trim()));
+                                                                        const matchedServices = services
+                                                                            .filter(service => selectedIds.includes(service.value))
+                                                                            .map(s => ({ serviceTitle: s.label }));
 
-                                                                    return matchedServices.length > 0 ? (
-                                                                        <>
-                                                                            <span className="px-4 py-2 bg-blue-100 whitespace-nowrap border border-blue-500 rounded-lg text-sm">
-                                                                                {matchedServices[0].serviceTitle}
+                                                                        return matchedServices.length > 0 ? (
+                                                                            <>
+                                                                                <span className="px-4 py-2 bg-blue-100 whitespace-nowrap border border-blue-500 rounded-lg text-sm">
+                                                                                    {matchedServices[0].serviceTitle}
+                                                                                </span>
+                                                                                {matchedServices.length > 1 && (
+                                                                                    <button
+                                                                                        className="text-blue-500 whitespace-nowrap ml-2"
+                                                                                        onClick={() => handleViewMore(matchedServices)}
+                                                                                    >
+                                                                                        View More
+                                                                                    </button>
+                                                                                )}
+                                                                            </>
+                                                                        ) : (
+                                                                            <span className="px-4 py-2 bg-red-100 border border-red-500 rounded-lg">
+                                                                                No Services Available
                                                                             </span>
-                                                                            {matchedServices.length > 1 && (
-                                                                                <button
-                                                                                    className="text-blue-500 whitespace-nowrap ml-2"
-                                                                                    onClick={() => handleViewMore(matchedServices)}
-                                                                                >
-                                                                                    View More
-                                                                                </button>
-                                                                            )}
-                                                                        </>
-                                                                    ) : (
+                                                                        );
+                                                                    })() : (
                                                                         <span className="px-4 py-2 bg-red-100 border border-red-500 rounded-lg">
                                                                             No Services Available
                                                                         </span>
-                                                                    );
-                                                                })() : (
-                                                                    <span className="px-4 py-2 bg-red-100 border border-red-500 rounded-lg">
-                                                                        No Services Available
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        </td>                                                        <td className="border border-black px-4 py-2 text-left">{spoc.pricing}</td>
-                                                        <td className="border border-black px-4 py-2 text-left">{spoc.turnaround_time}</td>
-                                                        <td className="border border-black px-4 py-2 text-left">{spoc.standard_process}</td>
-                                                        <td className="border border-black px-4 py-2 text-left">
-                                                            {spoc.verification_link}
-                                                        </td>
-                                                        <td className="border border-black px-4 py-2 text-left">{spoc.remark}</td>
-                                                        <td className="py-2 px-4 border border-black whitespace-nowrap">
-                                                            <button className="bg-green-500 hover:scale-105 hover:bg-green-600 text-white px-4 py-2 rounded mr-2" onClick={() => handleEdit(spoc)}>Edit</button>
-                                                            <button
-                                                                disabled={deletingId === spoc.id}
-                                                                className={`bg-red-500 hover:scale-105 hover:bg-red-600  text-white px-4 py-2 rounded ${deletingId === spoc.id ? "opacity-50 cursor-not-allowed" : ""} `}
-                                                                onClick={() => handleDelete(spoc.id)}>
-                                                                {deletingId === spoc.id ? "Deleting..." : "Delete"}
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                ))
-                                            )}
-                                        </>
-                                    )}
-                                </tbody>
+                                                                    )}
+                                                                </div>
+                                                            </td>                                                        <td className="border border-black px-4 py-2 text-left">{spoc.pricing}</td>
+                                                            <td className="border border-black px-4 py-2 text-left">{spoc.turnaround_time}</td>
+                                                            <td className="border border-black px-4 py-2 text-left">{spoc.standard_process}</td>
+                                                            <td className="border border-black px-4 py-2 text-left">
+                                                                {spoc.verification_link}
+                                                            </td>
+                                                            <td className="border border-black px-4 py-2 text-left">{spoc.remark}</td>
+                                                            <td className="py-2 px-4 border border-black whitespace-nowrap">
+                                                                <button className="bg-green-500 hover:scale-105 hover:bg-green-600 text-white px-4 py-2 rounded mr-2" onClick={() => handleEdit(spoc)}>Edit</button>
+                                                                <button
+                                                                    disabled={deletingId === spoc.id}
+                                                                    className={`bg-red-500 hover:scale-105 hover:bg-red-600  text-white px-4 py-2 rounded ${deletingId === spoc.id ? "opacity-50 cursor-not-allowed" : ""} `}
+                                                                    onClick={() => handleDelete(spoc.id)}>
+                                                                    {deletingId === spoc.id ? "Deleting..." : "Delete"}
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))
+                                                )}
+                                            </>
+                                        )}
+                                    </tbody>
 
-                            </table>
+                                </table>
+                            </div>
                         </div>
                         <div className="flex justify-center mt-4">
                             {Array.from({ length: totalPages }, (_, index) => (
@@ -716,31 +742,31 @@ const Universities = () => {
                         </div>
                     </div>
                     {isModalOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-999">
-                    <div className="bg-white rounded-lg shadow-lg p-4 md:mx-0 mx-4 md:w-1/3">
-                        <div className="flex justify-between items-center">
-                            <h2 className="text-lg font-bold">Services</h2>
-                            <button className="text-red-500 text-2xl" onClick={handleCloseServiceModal}>
-                                &times;
-                            </button>
+                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-999">
+                            <div className="bg-white rounded-lg shadow-lg p-4 md:mx-0 mx-4 md:w-1/3">
+                                <div className="flex justify-between items-center">
+                                    <h2 className="text-lg font-bold">Services</h2>
+                                    <button className="text-red-500 text-2xl" onClick={handleCloseServiceModal}>
+                                        &times;
+                                    </button>
+                                </div>
+                                <div className="mt-4 flex flex-wrap gap-2 w-full max-h-96 overflow-y-auto">
+                                    {modalServices.length > 0 ? (
+                                        modalServices.map((service, idx) => (
+                                            <span
+                                                key={idx}
+                                                className="px-4 py-2 bg-blue-100 border border-blue-500 rounded-lg text-sm"
+                                            >
+                                                {service.serviceTitle}
+                                            </span>
+                                        ))
+                                    ) : (
+                                        <span className="text-gray-500">No service available</span>
+                                    )}
+                                </div>
+                            </div>
                         </div>
-                        <div className="mt-4 flex flex-wrap gap-2 w-full max-h-96 overflow-y-auto">
-                            {modalServices.length > 0 ? (
-                                modalServices.map((service, idx) => (
-                                    <span
-                                        key={idx}
-                                        className="px-4 py-2 bg-blue-100 border border-blue-500 rounded-lg text-sm"
-                                    >
-                                        {service.serviceTitle}
-                                    </span>
-                                ))
-                            ) : (
-                                <span className="text-gray-500">No service available</span>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
+                    )}
                 </div>
             </div>
         </div>

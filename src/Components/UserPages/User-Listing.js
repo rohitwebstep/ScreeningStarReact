@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import Swal from 'sweetalert2';
 import { useApiLoadingBranch } from '../BranchApiLoadingContext';
 import { useNavigate } from 'react-router-dom';
@@ -18,7 +18,7 @@ const UserListing = () => {
   const [selectedFields, setSelectedFields] = useState({}); // Store selected fields to edit
 
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  const optionsPerPage = [10, 50, 100, 200,500,1000];
+  const optionsPerPage = [10, 50, 100, 200, 500, 1000];
 
   useEffect(() => {
     const branchInfo = JSON.parse(localStorage.getItem('branch'));
@@ -27,7 +27,18 @@ const UserListing = () => {
     }
   }, []);
 
+  const tableScrollRef = useRef(null);
+  const topScrollRef = useRef(null);
+  const [scrollWidth, setScrollWidth] = useState("100%");
 
+  // 🔹 Sync scroll positions
+  const syncScroll = (e) => {
+    if (e.target === topScrollRef.current) {
+      tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+    } else {
+      topScrollRef.current.scrollLeft = e.target.scrollLeft;
+    }
+  };
 
   const fetchData = async () => {
     setApiLoadingBranch(true);
@@ -227,9 +238,13 @@ const UserListing = () => {
       }
     });
   };
+  useEffect(() => {
+    if (tableScrollRef.current) {
+      setScrollWidth(tableScrollRef.current.scrollWidth + "px");
+    }
+  }, [paginatedData, loading]);
 
-
-
+  
   return (
     <div className="w-full bg-[#c1dff2] overflow-hidden">
       <div className="border border-black space-y-4 py-[30px] md:px-[51px] px-6 bg-white">
@@ -290,62 +305,72 @@ const UserListing = () => {
               </div>
             </div>
 
-            <div className="overflow-scroll">
-              <table className="min-w-full border-collapse border border-black rounded-lg">
-                <thead className="rounded-lg border border-black">
-                  <tr className="bg-[#c1dff2] text-[#4d606b] whitespace-nowrap text-left">
-                    <th className="uppercase border border-black px-4 py-2 text-center">SL</th>
-                    <th className="uppercase border border-black px-4 py-2">Email</th>
-                    <th className="uppercase border border-black px-4 py-2 text-center" colSpan={2}>
-                      Action
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    <tr>
-                      <td colSpan="12" className="py-10 text-center">
-                        <div className="flex justify-center items-center w-full h-full">
-                          <div className="loader border-t-4 border-[#2c81ba] rounded-full w-10 h-10 animate-spin"></div>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : paginatedData.length === 0 ? (
-                    <tr>
-                      <td colSpan="21" className="text-center py-4 text-gray-500">
-                        No data available in table.
-                      </td>
-                    </tr>
-                  ) : (
-                    paginatedData.map((client, index) => (
-                      <tr key={client.clientId || index} className="border-b border-gray-300 text-left">
-                        <td className="border border-black px-4 py-2 text-center">
-                          {(currentPage - 1) * rowsPerPage + index + 1}
-                        </td>
-                        <td className="border border-black px-4 py-2 min-w-[200px]">{client.email}</td>
-                        <td className="px-4 py-2 gap-1 text-center border-black border items-center">
-                          <div className="flex gap-1 justify-center ">
-                            <button
-                              onClick={() => handleEdit(client)}
-                              className="bg-green-500 hover:scale-105  transition duration-200 hover:bg-green-600  text-white px-4 py-2 rounded mr-3"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              disabled={deletingId === client.id}
-                              onClick={() => handleDelete(client.id)}
-                              className={`bg-red-500 hover:scale-105  transition duration-200 hover:bg-red-600   text-white px-4 py-2 rounded ${deletingId === client.id ? "opacity-50 cursor-not-allowed" : ""} `}
-                            >
-                              {deletingId === client.id ? "Deleting..." : "Delete"}
-                            </button>
+            <div className="table-container rounded-lg">
+              {/* Top Scroll */}
+              <div className="top-scroll" ref={topScrollRef} onScroll={syncScroll}>
+                <div className="top-scroll-inner" style={{ width: scrollWidth }} />
+              </div>
 
+              {/* Actual Table Scroll */}
+              <div className="table-scroll rounded-lg" ref={tableScrollRef} onScroll={syncScroll}>
+
+
+                <table className="min-w-full border-collapse border border-black rounded-lg">
+                  <thead className="rounded-lg border border-black">
+                    <tr className="bg-[#c1dff2] text-[#4d606b] whitespace-nowrap text-left">
+                      <th className="uppercase border border-black px-4 py-2 text-center">SL</th>
+                      <th className="uppercase border border-black px-4 py-2">Email</th>
+                      <th className="uppercase border border-black px-4 py-2 text-center" colSpan={2}>
+                        Action
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <tr>
+                        <td colSpan="12" className="py-10 text-center">
+                          <div className="flex justify-center items-center w-full h-full">
+                            <div className="loader border-t-4 border-[#2c81ba] rounded-full w-10 h-10 animate-spin"></div>
                           </div>
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                    ) : paginatedData.length === 0 ? (
+                      <tr>
+                        <td colSpan="21" className="text-center py-4 text-gray-500">
+                          No data available in table.
+                        </td>
+                      </tr>
+                    ) : (
+                      paginatedData.map((client, index) => (
+                        <tr key={client.clientId || index} className="border-b border-gray-300 text-left">
+                          <td className="border border-black px-4 py-2 text-center">
+                            {(currentPage - 1) * rowsPerPage + index + 1}
+                          </td>
+                          <td className="border border-black px-4 py-2 min-w-[200px]">{client.email}</td>
+                          <td className="px-4 py-2 gap-1 text-center border-black border items-center">
+                            <div className="flex gap-1 justify-center ">
+                              <button
+                                onClick={() => handleEdit(client)}
+                                className="bg-green-500 hover:scale-105  transition duration-200 hover:bg-green-600  text-white px-4 py-2 rounded mr-3"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                disabled={deletingId === client.id}
+                                onClick={() => handleDelete(client.id)}
+                                className={`bg-red-500 hover:scale-105  transition duration-200 hover:bg-red-600   text-white px-4 py-2 rounded ${deletingId === client.id ? "opacity-50 cursor-not-allowed" : ""} `}
+                              >
+                                {deletingId === client.id ? "Deleting..." : "Delete"}
+                              </button>
+
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </>
         )}

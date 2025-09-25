@@ -26,6 +26,19 @@ const CLientTrashed = () => {
     const [files, setFiles] = useState({});
     const [formData, setFormData] = useState({
     });
+         const tableScrollRef = useRef(null);
+    const topScrollRef = useRef(null);
+    const [scrollWidth, setScrollWidth] = useState("100%");
+
+    // 🔹 Sync scroll positions
+    const syncScroll = (e) => {
+        if (e.target === topScrollRef.current) {
+            tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+        } else {
+            topScrollRef.current.scrollLeft = e.target.scrollLeft;
+        }
+    };
+
     const [isExist, setIsExist] = useState([])
     const [errors, setErrors] = useState({});
     const [submitMessage, setSubmitMessage] = useState('');
@@ -671,6 +684,12 @@ const CLientTrashed = () => {
             setTableCurrentPage(page);
         }
     };
+    
+              useEffect(() => {
+        if (tableScrollRef.current) {
+          setScrollWidth(tableScrollRef.current.scrollWidth + "px");
+        }
+      }, [paginatedData, loading]); 
 
     console.log('myipadress is', ipAddress);
     return (
@@ -703,8 +722,14 @@ const CLientTrashed = () => {
                             ))}
                         </select>
                     </div>
-                    <div className='overflow-scroll '>
+               <div className="table-container rounded-lg">
+                    {/* Top Scroll */}
+                    <div className="top-scroll" ref={topScrollRef} onScroll={syncScroll}>
+                        <div className="top-scroll-inner" style={{ width: scrollWidth }} />
+                    </div>
 
+                    {/* Actual Table Scroll */}
+                    <div className="table-scroll rounded-lg" ref={tableScrollRef} onScroll={syncScroll}>
 
                         <table className="m-auto w-full border-collapse border border-black rounded-lg">
                             <thead>
@@ -830,6 +855,7 @@ const CLientTrashed = () => {
                             </tbody>
                         </table>
 
+                    </div>
                     </div>
                     <div className="flex justify-between items-center mt-4">
                         <button

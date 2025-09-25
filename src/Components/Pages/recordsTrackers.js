@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
@@ -11,6 +11,19 @@ const RecordTrackers = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingIndex, setLoadingIndex] = useState(null); // Track which row is loading
   const [excelIndex, setExcelIndex] = useState(null);
+  const tableScrollRef = useRef(null);
+  const topScrollRef = useRef(null);
+  const [scrollWidth, setScrollWidth] = useState("100%");
+
+  // 🔹 Sync scroll positions
+  const syncScroll = (e) => {
+    if (e.target === topScrollRef.current) {
+      tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+    } else {
+      topScrollRef.current.scrollLeft = e.target.scrollLeft;
+    }
+  };
+
 
 
   const [allApplications, setAllApplications] = useState([]);
@@ -270,8 +283,11 @@ const RecordTrackers = () => {
       }
     }
   };
-
-
+  useEffect(() => {
+    if (tableScrollRef.current) {
+      setScrollWidth(tableScrollRef.current.scrollWidth + "px");
+    }
+  }, [tableData, loading]);
 
 
   const handleDownloadExcel = () => {
@@ -406,213 +422,221 @@ const RecordTrackers = () => {
 
 
 
-        <div className="overflow-scroll">
-          <table className="min-w-full border-collapse border border-black overflow-scroll" id="table_invoice">
-            <thead>
-              <tr className="bg-[#c1dff2] whitespace-nowrap text-[#4d606b]">
-                <th className="border border-black px-4 uppercase py-2">Sl</th>
-                <th className="border border-black px-4 uppercase py-2">Client Code</th>
-                <th className="border border-black px-4 text-left uppercase py-2">Client Company Name</th>
-                <th className="border border-black px-4 uppercase py-2">CHECK IN</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan="4" className="border border-black px-4 py-2 text-center">
-                    <div className="flex w-full justify-center items-center h-20">
-                      <div className="loader border-t-4 border-[#2c81ba] rounded-full w-10 h-10 animate-spin"></div>
-                    </div>
-                  </td>
+        <div className="table-container rounded-lg">
+          {/* Top Scroll */}
+          <div className="top-scroll" ref={topScrollRef} onScroll={syncScroll}>
+            <div className="top-scroll-inner" style={{ width: scrollWidth }} />
+          </div>
+
+          {/* Actual Table Scroll */}
+          <div className="table-scroll rounded-lg" ref={tableScrollRef} onScroll={syncScroll}>
+            <table className="min-w-full border-collapse border border-black overflow-scroll" id="table_invoice">
+              <thead>
+                <tr className="bg-[#c1dff2] whitespace-nowrap text-[#4d606b]">
+                  <th className="border border-black px-4 uppercase py-2">Sl</th>
+                  <th className="border border-black px-4 uppercase py-2">Client Code</th>
+                  <th className="border border-black px-4 text-left uppercase py-2">Client Company Name</th>
+                  <th className="border border-black px-4 uppercase py-2">CHECK IN</th>
                 </tr>
-              ) : tableData.length > 0 ? (
-                tableData.map((item, index) => (
-                  <React.Fragment key={index}>
-                    {/* Main Row */}
-                    <tr
-                      className={index % 2 === 0 ? "bg-gray-100" : "bg-white"}
-                      onClick={() => toggleRow(index)} // Toggle the row expansion
-                    >
-                      <td className="border border-black text-center px-4 py-2">{index + 1}</td>
-                      <td className="border border-black text-center px-4 py-2">{item.client_unique_id}</td>
-                      <td className="border border-black text-left px-4 py-2">{item.name}</td>
-                      <td className="border border-black text-center px-4 py-2">
-                        <div className='flex gap-5 items-center justify-center'>
-                          <button
-                            className={`p-6 py-3 font-bold whitespace-nowrap transition duration-200 text-white rounded-md
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan="4" className="border border-black px-4 py-2 text-center">
+                      <div className="flex w-full justify-center items-center h-20">
+                        <div className="loader border-t-4 border-[#2c81ba] rounded-full w-10 h-10 animate-spin"></div>
+                      </div>
+                    </td>
+                  </tr>
+                ) : tableData.length > 0 ? (
+                  tableData.map((item, index) => (
+                    <React.Fragment key={index}>
+                      {/* Main Row */}
+                      <tr
+                        className={index % 2 === 0 ? "bg-gray-100" : "bg-white"}
+                        onClick={() => toggleRow(index)} // Toggle the row expansion
+                      >
+                        <td className="border border-black text-center px-4 py-2">{index + 1}</td>
+                        <td className="border border-black text-center px-4 py-2">{item.client_unique_id}</td>
+                        <td className="border border-black text-left px-4 py-2">{item.name}</td>
+                        <td className="border border-black text-center px-4 py-2">
+                          <div className='flex gap-5 items-center justify-center'>
+                            <button
+                              className={`p-6 py-3 font-bold whitespace-nowrap transition duration-200 text-white rounded-md
      ${loadingIndex === index
-                                ? "bg-[#2c81ba] opacity-50 cursor-not-allowed"
-                                : expandedRow === index
-                                  ? "bg-red-600 hover:bg-red-700 hover:scale-105"
-                                  : "bg-[#2c81ba] hover:bg-[#0f5381] hover:scale-105"
-                              }`}
-                            onClick={() => handleCheckIn(item.main_id, index, 'no')}
-                            disabled={loadingIndex !== null} // Disable all when any is loading
-                          >
-                            {loadingIndex === index ? (
-                              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto"></div>
-                            ) : expandedRow === index ? (
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="w-5 h-5 mx-auto"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                                strokeWidth={2}
-                              >
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                              </svg>
-                            ) : (
-                              "CHECK IN"
-                            )}
-                          </button>
+                                  ? "bg-[#2c81ba] opacity-50 cursor-not-allowed"
+                                  : expandedRow === index
+                                    ? "bg-red-600 hover:bg-red-700 hover:scale-105"
+                                    : "bg-[#2c81ba] hover:bg-[#0f5381] hover:scale-105"
+                                }`}
+                              onClick={() => handleCheckIn(item.main_id, index, 'no')}
+                              disabled={loadingIndex !== null} // Disable all when any is loading
+                            >
+                              {loadingIndex === index ? (
+                                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto"></div>
+                              ) : expandedRow === index ? (
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className="w-5 h-5 mx-auto"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                  strokeWidth={2}
+                                >
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              ) : (
+                                "CHECK IN"
+                              )}
+                            </button>
 
 
-                          <button
-                            onClick={() => handleCheckIn(item.main_id, index, 'yes')}
-                            className={`p-6 py-3 font-bold whitespace-nowrap transition duration-200 text-white rounded-md
+                            <button
+                              onClick={() => handleCheckIn(item.main_id, index, 'yes')}
+                              className={`p-6 py-3 font-bold whitespace-nowrap transition duration-200 text-white rounded-md
                            ${excelIndex === index
-                                ? "bg-[#2c81ba] opacity-50 cursor-not-allowed"
-                                : "bg-green-500 hover:bg-green-600 hover:scale-105"
-                              }`
-                            }
-                          >
-                            {excelIndex === index ? (
-                              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto"></div>
-                            ) : (
-                              "Download Excel"
-                            )}
+                                  ? "bg-[#2c81ba] opacity-50 cursor-not-allowed"
+                                  : "bg-green-500 hover:bg-green-600 hover:scale-105"
+                                }`
+                              }
+                            >
+                              {excelIndex === index ? (
+                                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto"></div>
+                              ) : (
+                                "Download Excel"
+                              )}
 
-                          </button>
+                            </button>
 
-                        </div>
-                      </td>
-                    </tr>
-
-
-                    {expandedRow === index && serviceInfo.length > 0 && loadingIndex == null && (
-                      <tr>
-                        <td colSpan="3" className="border border-black px-4 py-2">
-                          {/* Nested Table */}
-                          <table className="min-w-full border-collapse border border-black">
-                            <thead>
-                              <tr className="bg-[#f0f0f0] text-[#4d606b]">
-                                <th className="border border-black px-4 py-2">SR No.</th>
-                                <th className="border border-black px-4 py-2">Application ID</th>
-                                <th className="border border-black px-4 py-2">Case Received</th>
-                                <th className="border border-black px-4 py-2">Candidate Full Name</th>
-                                {serviceInfo.map((service) => {
-                                  return (
-                                    <th className="border border-black px-4 py-2" key={service.serviceId}>
-                                      {service.shortCode}
-                                    </th>
-                                  );
-                                })}
-                                <th className="border border-black px-4 py-2">Pricing</th>
-                                <th className="border border-black px-4 py-2">Report Date</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {allApplications.map((branchData, branchIndex) => {
-                                const { applications } = branchData;
-
-                                return applications.map((application, appIndex) => {
-                                  const appServiceArr = application.services.split(',');
-                                  let applicationPricing = 0;
-
-                                  return (
-                                    <tr key={application.id}>
-                                      <td className="border border-black px-4 py-2">{appIndex + 1}</td>
-                                      <td className="border border-black px-4 py-2">{application.application_id}</td>
-                                      <td className="border border-black px-4 py-2">
-                                        {formatDate(application.created_at)}
-                                      </td>
-                                      <td className="border border-black px-4 py-2">{application.name}</td>
-
-                                      {/* Render service prices */}
-                                      {serviceInfo.map((service) => {
-                                        const matchingService = appServiceArr.find(
-                                          (serviceId) => serviceId === String(service.serviceId)
-                                        );
-
-                                        if (matchingService && service.price) {
-                                          applicationPricing += service.price;
-                                        }
-
-                                        const rawServicePriceForArr = {
-                                          serviceId: service.serviceId,
-                                          price: service.price,
-                                        };
-
-                                        const servicePricingArrIndex = servicePricingArr.findIndex(
-                                          (item) => item.serviceId === service.serviceId
-                                        );
-
-                                        // ✅ Fix: Add prices cumulatively for totals
-                                        if (servicePricingArrIndex !== -1) {
-                                          servicePricingArr[servicePricingArrIndex].price +=
-                                            matchingService ? service.price : 0;
-                                        } else {
-                                          servicePricingArr.push({
-                                            serviceId: service.serviceId,
-                                            price: matchingService ? service.price : 0,
-                                          });
-                                        }
-
-                                        return (
-                                          <td className="border border-black px-4 py-2" key={service.serviceId}>
-                                            {matchingService ? service.price : 'NIL'}
-                                          </td>
-                                        );
-                                      })}
-
-                                      <td className="border border-black px-4 py-2">{applicationPricing || 0}</td>
-
-                                      <td className="border border-black px-4 py-2">
-                                        {formatDate(application.report_date)}
-                                      </td>
-                                    </tr>
-                                  );
-                                });
-                              })}
-
-                              {/* TOTAL ROW */}
-                              <tr>
-                                <td className="border border-black px-4 py-2 font-bold" colSpan={4}>TOTAL</td>
-                                {serviceInfo.map((service) => {
-                                  const matchingService = servicePricingArr.find(
-                                    (servicePrice) => servicePrice.serviceId === service.serviceId
-                                  );
-                                  return (
-                                    <td className="border border-black px-4 py-2 font-bold" key={service.serviceId}>
-                                      {matchingService ? matchingService.price : '0'}
-                                    </td>
-                                  );
-                                })}
-                                <td className="border border-black px-4 py-2 font-bold">
-                                  {servicePricingArr.reduce((sum, service) => sum + service.price, 0)}
-                                </td>
-                                <td className="border border-black px-4 py-2 font-bold"></td>
-                              </tr>
-                            </tbody>
-
-                          </table>
+                          </div>
                         </td>
                       </tr>
-                    )}
-                  </React.Fragment>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="4" className="border border-black px-4 py-2 text-center text-red-600">
-                    {noValuesMatched
-                      ? "No results matched your search criteria."
-                      : "No data available."}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+
+
+                      {expandedRow === index && serviceInfo.length > 0 && loadingIndex == null && (
+                        <tr>
+                          <td colSpan="3" className="border border-black px-4 py-2">
+                            {/* Nested Table */}
+                            <table className="min-w-full border-collapse border border-black">
+                              <thead>
+                                <tr className="bg-[#f0f0f0] text-[#4d606b]">
+                                  <th className="border border-black px-4 py-2">SR No.</th>
+                                  <th className="border border-black px-4 py-2">Application ID</th>
+                                  <th className="border border-black px-4 py-2">Case Received</th>
+                                  <th className="border border-black px-4 py-2">Candidate Full Name</th>
+                                  {serviceInfo.map((service) => {
+                                    return (
+                                      <th className="border border-black px-4 py-2" key={service.serviceId}>
+                                        {service.shortCode}
+                                      </th>
+                                    );
+                                  })}
+                                  <th className="border border-black px-4 py-2">Pricing</th>
+                                  <th className="border border-black px-4 py-2">Report Date</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {allApplications.map((branchData, branchIndex) => {
+                                  const { applications } = branchData;
+
+                                  return applications.map((application, appIndex) => {
+                                    const appServiceArr = application.services.split(',');
+                                    let applicationPricing = 0;
+
+                                    return (
+                                      <tr key={application.id}>
+                                        <td className="border border-black px-4 py-2">{appIndex + 1}</td>
+                                        <td className="border border-black px-4 py-2">{application.application_id}</td>
+                                        <td className="border border-black px-4 py-2">
+                                          {formatDate(application.created_at)}
+                                        </td>
+                                        <td className="border border-black px-4 py-2">{application.name}</td>
+
+                                        {/* Render service prices */}
+                                        {serviceInfo.map((service) => {
+                                          const matchingService = appServiceArr.find(
+                                            (serviceId) => serviceId === String(service.serviceId)
+                                          );
+
+                                          if (matchingService && service.price) {
+                                            applicationPricing += service.price;
+                                          }
+
+                                          const rawServicePriceForArr = {
+                                            serviceId: service.serviceId,
+                                            price: service.price,
+                                          };
+
+                                          const servicePricingArrIndex = servicePricingArr.findIndex(
+                                            (item) => item.serviceId === service.serviceId
+                                          );
+
+                                          // ✅ Fix: Add prices cumulatively for totals
+                                          if (servicePricingArrIndex !== -1) {
+                                            servicePricingArr[servicePricingArrIndex].price +=
+                                              matchingService ? service.price : 0;
+                                          } else {
+                                            servicePricingArr.push({
+                                              serviceId: service.serviceId,
+                                              price: matchingService ? service.price : 0,
+                                            });
+                                          }
+
+                                          return (
+                                            <td className="border border-black px-4 py-2" key={service.serviceId}>
+                                              {matchingService ? service.price : 'NIL'}
+                                            </td>
+                                          );
+                                        })}
+
+                                        <td className="border border-black px-4 py-2">{applicationPricing || 0}</td>
+
+                                        <td className="border border-black px-4 py-2">
+                                          {formatDate(application.report_date)}
+                                        </td>
+                                      </tr>
+                                    );
+                                  });
+                                })}
+
+                                {/* TOTAL ROW */}
+                                <tr>
+                                  <td className="border border-black px-4 py-2 font-bold" colSpan={4}>TOTAL</td>
+                                  {serviceInfo.map((service) => {
+                                    const matchingService = servicePricingArr.find(
+                                      (servicePrice) => servicePrice.serviceId === service.serviceId
+                                    );
+                                    return (
+                                      <td className="border border-black px-4 py-2 font-bold" key={service.serviceId}>
+                                        {matchingService ? matchingService.price : '0'}
+                                      </td>
+                                    );
+                                  })}
+                                  <td className="border border-black px-4 py-2 font-bold">
+                                    {servicePricingArr.reduce((sum, service) => sum + service.price, 0)}
+                                  </td>
+                                  <td className="border border-black px-4 py-2 font-bold"></td>
+                                </tr>
+                              </tbody>
+
+                            </table>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="4" className="border border-black px-4 py-2 text-center text-red-600">
+                      {noValuesMatched
+                        ? "No results matched your search criteria."
+                        : "No data available."}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         {/* Display check-in data if available */}

@@ -16,7 +16,7 @@ const CaseAllocationList = () => {
   const navigate = useNavigate();
   const { validateAdminLogin, setApiLoading, apiLoading } = useApiLoading();
   const [entriesPerPage, setEntriesPerPage] = useState(10);
-  const optionsPerPage = [10, 50, 100, 200,500,1000];
+  const optionsPerPage = [10, 50, 100, 200, 500, 1000];
   const [scopeFilter, setScopeFilter] = useState('');
   const [vendorFilter, setVendorFilter] = useState('');
   const [monthFilter, setMonthFilter] = useState('');
@@ -24,6 +24,18 @@ const CaseAllocationList = () => {
   const [loading, setLoading] = useState(true);
   const [applications, setApplications] = useState([]);
   const [deletingId, setDeletingId] = useState(null);
+     const tableScrollRef = useRef(null);
+    const topScrollRef = useRef(null);
+    const [scrollWidth, setScrollWidth] = useState("100%");
+
+    // 🔹 Sync scroll positions
+    const syncScroll = (e) => {
+        if (e.target === topScrollRef.current) {
+            tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+        } else {
+            topScrollRef.current.scrollLeft = e.target.scrollLeft;
+        }
+    };
 
   const [data, setData] = useState([]);
   const [services, setServices] = useState([]);
@@ -92,7 +104,7 @@ const CaseAllocationList = () => {
       const result = await response.json();
 
       if (!response.ok) {
-       swal.fire("Error!", `${result.message}`, "error");
+        swal.fire("Error!", `${result.message}`, "error");
         setResponseError(result.message);
 
         // Update token if provided
@@ -458,15 +470,15 @@ const CaseAllocationList = () => {
   console.log('services---', servicesList)
   const formatDate = (dob) => {
     if (!dob) return null;
-  
+
     let year, month, day;
-  
+
     try {
       if (dob.includes('T')) {
         // Handle format like "08T00:00:00.000Z-08-2002"
         const parts = dob.split('-');
         if (parts.length !== 3) return null;
-  
+
         day = parts[0].split('T')[0];
         month = parts[1];
         year = parts[2];
@@ -474,18 +486,18 @@ const CaseAllocationList = () => {
         // Handle format like "2002-08-08"
         const parts = dob.split('-');
         if (parts.length !== 3) return null;
-  
+
         [year, month, day] = parts;
       }
-  
+
       if (!year || !month || !day) return null;
-  
+
       return `${day}-${month}-${year}`;
     } catch (error) {
       return null;
     }
   };
-  
+
 
   // Test cases
   console.log(formatDate("2002-08-08")); // Expected: "08-08-2002"
@@ -615,7 +627,7 @@ const CaseAllocationList = () => {
     const parsed = new Date(date);
     return isNaN(parsed) ? null : parsed;
   };
-  
+
 
   const handleDelete = async (id) => {
     const admin_id = JSON.parse(localStorage.getItem("admin"))?.id;
@@ -624,7 +636,7 @@ const CaseAllocationList = () => {
       method: "DELETE",
       redirect: "follow",
     };
-  
+
     try {
       const willDelete = await swal({
         title: "Are you sure?",
@@ -633,28 +645,28 @@ const CaseAllocationList = () => {
         buttons: true,
         dangerMode: true,
       });
-  
+
       if (willDelete) {
         setDeletingId(id);
-  
+
         const response = await fetch(
           `https://api.screeningstar.co.in/client-allocation/delete?id=${id}&admin_id=${admin_id}&_token=${storedToken}`,
           requestOptions
         );
-  
+
         if (!response.ok) {
           throw new Error(`Error: ${response.statusText}`);
         }
-  
+
         const result = await response.json();
-  
+
         // Dynamic message from API response
         const successMessage = result.message || "The data has been deleted successfully.";
         await swal("Deleted!", successMessage, "success");
-  
+
         setDeletingId(null);
         fetchData();
-  
+
         const newToken = result.token || result._token || storedToken || "";
         if (newToken) {
           localStorage.setItem("_token", newToken);
@@ -666,7 +678,7 @@ const CaseAllocationList = () => {
       setDeletingId(null);
     }
   };
-  
+
   return (
 
     <div className="w-full bg-[#c1dff2] overflow-hidden">
@@ -682,21 +694,21 @@ const CaseAllocationList = () => {
             <form className="space-y-4" onSubmit={handleSubmit}>
               <div className="mb-4">
                 <label className="block text-sm font-medium">Month</label>
-                               <DatePicker
-                   selected={
-                       formData.month
-                           ? moment(formData.month, "YYYY-MM").toDate() // Convert to Date
-                           : null
-                   }
-                   onChange={(date) => {
-                       const formatted = moment(date).format("YYYY-MM"); // Format the date
-                       setFormData({ ...formData, month: formatted });
-                   }}
-                   dateFormat="MM-yyyy"
-                   showMonthYearPicker
-                   placeholderText="Select Month"
-                   className="w-full p-2 border rounded"
-               />
+                <DatePicker
+                  selected={
+                    formData.month
+                      ? moment(formData.month, "YYYY-MM").toDate() // Convert to Date
+                      : null
+                  }
+                  onChange={(date) => {
+                    const formatted = moment(date).format("YYYY-MM"); // Format the date
+                    setFormData({ ...formData, month: formatted });
+                  }}
+                  dateFormat="MM-yyyy"
+                  showMonthYearPicker
+                  placeholderText="Select Month"
+                  className="w-full p-2 border rounded"
+                />
               </div>
               <div className="mb-4">
                 <label className="block text-sm font-medium">Date of Initiation </label>
@@ -1031,163 +1043,179 @@ const CaseAllocationList = () => {
             </div>
 
             {/* Table */}
-            <div className="overflow-scroll">
-              <table className="min-w-full border-collapse border border-black rounded-lg"
-                ref={tableRef} >
-                <thead className="rounded-lg border border-black">
-                  <tr className="bg-[#c1dff2] text-[#4d606b] whitespace-nowrap text-left">
-                    <th className=" uppercase border  border-black px-4 py-2 text-center">SL No</th>
-                    <th className=" uppercase border  border-black px-4 py-2">Month</th>
-                    <th className=" uppercase border  border-black px-4 py-2">Date of Initiation</th>
-                    <th className=" uppercase border  border-black px-4 py-2">Employee ID</th>
-                    <th className=" uppercase border  border-black px-4 py-2">Reference ID</th>
-                    <th className=" uppercase border  border-black px-4 py-2">Name of the Applicant</th>
-                    <th className=" uppercase border  border-black px-4 py-2">Date of Birth</th>
-                    <th className=" uppercase border  border-black px-4 py-2">Gender</th>
-                    <th className=" uppercase border  border-black px-4 py-2">Mobile Number</th>
-                    <th className=" uppercase border  border-black px-4 py-2">Alternate Number</th>
-                    <th className=" uppercase border  border-black px-4 py-2">Father/Spouse Name</th>
-                    <th className=" uppercase border  border-black px-4 py-2">Address</th>
-                    <th className=" uppercase border  border-black px-4 py-2">
-                      Scope of Service
-                    </th>
-                    <th className=" uppercase border  border-black px-4 py-2">Color Code</th>
-                    <th className=" uppercase border  border-black px-4 py-2">Name of the Vendor</th>
-                    <th className=" uppercase border  border-black px-4 py-2">Deadline Date</th>
-                    <th className=" uppercase border  border-black px-4 py-2">Report Date</th>
-                    <th className=" uppercase border  border-black px-4 py-2">Case Aging</th>
-                    <th className=" uppercase border  border-black px-4 py-2">Remarks</th>
-                    <th className=" uppercase border  border-black px-4 py-2">Action</th>
+            <div className="table-container rounded-lg">
+              {/* Top Scroll */}
+              <div
+                className="top-scroll"
+                ref={topScrollRef}
+                onScroll={syncScroll}
+              >
+                <div className="top-scroll-inner" style={{ width: tableScrollRef.current?.scrollWidth || "100%" }} />
+              </div>
 
-                  </tr>
-                </thead>
+              {/* Actual Table Scroll */}
+              <div
+                className="table-scroll rounded-lg"
+                ref={tableScrollRef}
+                onScroll={syncScroll}
+              >
+                <table className="min-w-full border-collapse border border-black rounded-lg"
+                  ref={tableRef} >
+                  <thead className="rounded-lg border border-black">
+                    <tr className="bg-[#c1dff2] text-[#4d606b] whitespace-nowrap text-left">
+                      <th className=" uppercase border  border-black px-4 py-2 text-center">SL No</th>
+                      <th className=" uppercase border  border-black px-4 py-2">Month</th>
+                      <th className=" uppercase border  border-black px-4 py-2">Date of Initiation</th>
+                      <th className=" uppercase border  border-black px-4 py-2">Employee ID</th>
+                      <th className=" uppercase border  border-black px-4 py-2">Reference ID</th>
+                      <th className=" uppercase border  border-black px-4 py-2">Name of the Applicant</th>
+                      <th className=" uppercase border  border-black px-4 py-2">Date of Birth</th>
+                      <th className=" uppercase border  border-black px-4 py-2">Gender</th>
+                      <th className=" uppercase border  border-black px-4 py-2">Mobile Number</th>
+                      <th className=" uppercase border  border-black px-4 py-2">Alternate Number</th>
+                      <th className=" uppercase border  border-black px-4 py-2">Father/Spouse Name</th>
+                      <th className=" uppercase border  border-black px-4 py-2">Address</th>
+                      <th className=" uppercase border  border-black px-4 py-2">
+                        Scope of Service
+                      </th>
+                      <th className=" uppercase border  border-black px-4 py-2">Color Code</th>
+                      <th className=" uppercase border  border-black px-4 py-2">Name of the Vendor</th>
+                      <th className=" uppercase border  border-black px-4 py-2">Deadline Date</th>
+                      <th className=" uppercase border  border-black px-4 py-2">Report Date</th>
+                      <th className=" uppercase border  border-black px-4 py-2">Case Aging</th>
+                      <th className=" uppercase border  border-black px-4 py-2">Remarks</th>
+                      <th className=" uppercase border  border-black px-4 py-2">Action</th>
 
-                {loading ? (
-                  <tbody className="h-10">
-                    <tr>
-                      <td colSpan="12" className="w-full py-10 h-10 text-center">
-                        <div className="flex justify-center items-center w-full h-full">
-                          <div className="loader border-t-4 border-[#2c81ba] rounded-full w-10 h-10 animate-spin"></div>
-                        </div>
-                      </td>
                     </tr>
-                  </tbody>
-                ) : displayedEntries.length === 0 ? (
-                  <tbody className="h-10">
-                    <tr>
-                      <td colSpan={17} className="py-4 text-center text-red-500">
-                        {responseError && responseError !== "" ? responseError : "No data available in table"}
+                  </thead>
 
-                      </td>
-                    </tr>
-                  </tbody>
-                ) : (
-                  <tbody>
-                    {displayedEntries.map((item, index) => (
-                      <tr key={index}>
-                        <td className="border border-black px-4 py-2 text-center">{index + 1 + (currentPage - 1) * entriesPerPage}</td>
-                        <td className="border border-black px-4 py-2">{item.month_year}</td>
-                        <td className="border border-black px-4 py-2">
-                          {(() => {
-                            const date = new Date(item.created_at);
-                            const day = String(date.getDate()).padStart(2, '0');
-                            const month = String(date.getMonth() + 1).padStart(2, '0');
-                            const year = date.getFullYear();
-                            return `${day}-${month}-${year}`;
-                          })()}
+                  {loading ? (
+                    <tbody className="h-10">
+                      <tr>
+                        <td colSpan="12" className="w-full py-10 h-10 text-center">
+                          <div className="flex justify-center items-center w-full h-full">
+                            <div className="loader border-t-4 border-[#2c81ba] rounded-full w-10 h-10 animate-spin"></div>
+                          </div>
                         </td>
+                      </tr>
+                    </tbody>
+                  ) : displayedEntries.length === 0 ? (
+                    <tbody className="h-10">
+                      <tr>
+                        <td colSpan={17} className="py-4 text-center text-red-500">
+                          {responseError && responseError !== "" ? responseError : "No data available in table"}
+
+                        </td>
+                      </tr>
+                    </tbody>
+                  ) : (
+                    <tbody>
+                      {displayedEntries.map((item, index) => (
+                        <tr key={index}>
+                          <td className="border border-black px-4 py-2 text-center">{index + 1 + (currentPage - 1) * entriesPerPage}</td>
+                          <td className="border border-black px-4 py-2">{item.month_year}</td>
+                          <td className="border border-black px-4 py-2">
+                            {(() => {
+                              const date = new Date(item.created_at);
+                              const day = String(date.getDate()).padStart(2, '0');
+                              const month = String(date.getMonth() + 1).padStart(2, '0');
+                              const year = date.getFullYear();
+                              return `${day}-${month}-${year}`;
+                            })()}
+                          </td>
 
 
-                        <td className="border border-black px-4 py-2 whitespace-nowrap">{item.employee_id}</td>
-                        <td className="border border-black px-4 py-2">{item.application_id}</td>
-                        <td className="border border-black px-4 py-2">{item.name}</td>
-                        <td className="border border-black px-4 py-2">{formatDate(item?.dob)}</td>
-                        <td className="border border-black px-4 py-2">{item.gender}</td>
-                        <td className="border border-black px-4 py-2">{item.contact_number}</td>
-                        <td className="border border-black px-4 py-2">{item.contact_number2}</td>
-                        <td className="border border-black px-4 py-2">{item.father_name || item.spouse_name}</td>
-                        <td className="border border-black px-4 py-2 min-w-[500px]">{item.permanent_address}</td>
-                        <td className="border  border-black px-4 py-2 text-left">
-                          <div className=" ">
-                            <div className="flex whitespace-nowrap">
-                              {(() => {
-                                let serviceIds = [];
+                          <td className="border border-black px-4 py-2 whitespace-nowrap">{item.employee_id}</td>
+                          <td className="border border-black px-4 py-2">{item.application_id}</td>
+                          <td className="border border-black px-4 py-2">{item.name}</td>
+                          <td className="border border-black px-4 py-2">{formatDate(item?.dob)}</td>
+                          <td className="border border-black px-4 py-2">{item.gender}</td>
+                          <td className="border border-black px-4 py-2">{item.contact_number}</td>
+                          <td className="border border-black px-4 py-2">{item.contact_number2}</td>
+                          <td className="border border-black px-4 py-2">{item.father_name || item.spouse_name}</td>
+                          <td className="border border-black px-4 py-2 min-w-[500px]">{item.permanent_address}</td>
+                          <td className="border  border-black px-4 py-2 text-left">
+                            <div className=" ">
+                              <div className="flex whitespace-nowrap">
+                                {(() => {
+                                  let serviceIds = [];
 
-                                // Validate & Parse item.service_ids
-                                if (typeof item.service_ids === "string" && item.service_ids.trim() !== "") {
-                                  try {
-                                    serviceIds = JSON.parse(item?.service_ids);
-                                  } catch (error) {
-                                    console.error("Failed to parse service_ids:", error, "Raw value:", item.service_ids);
+                                  // Validate & Parse item.service_ids
+                                  if (typeof item.service_ids === "string" && item.service_ids.trim() !== "") {
+                                    try {
+                                      serviceIds = JSON.parse(item?.service_ids);
+                                    } catch (error) {
+                                      console.error("Failed to parse service_ids:", error, "Raw value:", item.service_ids);
+                                    }
                                   }
-                                }
-                                // Ensure serviceIds is an array & convert IDs to numbers
-                                const numericServiceIds = Array.isArray(serviceIds) ? serviceIds.map(Number) : [];
+                                  // Ensure serviceIds is an array & convert IDs to numbers
+                                  const numericServiceIds = Array.isArray(serviceIds) ? serviceIds.map(Number) : [];
 
-                                // Match serviceIds with servicesList
-                                const matchedServices =
-                                  Array.isArray(servicesList) && servicesList.length > 0
-                                    ? numericServiceIds.map((id) => servicesList.find((service) => service?.id === id)).filter(Boolean)
-                                    : [];
+                                  // Match serviceIds with servicesList
+                                  const matchedServices =
+                                    Array.isArray(servicesList) && servicesList.length > 0
+                                      ? numericServiceIds.map((id) => servicesList.find((service) => service?.id === id)).filter(Boolean)
+                                      : [];
 
-                                // UI Logic
-                                if (matchedServices.length === 0) {
-                                  return (
-                                    <span className="px-4 py-2 bg-red-100 border border-red-500 rounded-lg">
-                                      No matching services found
-                                    </span>
-                                  );
-                                }
+                                  // UI Logic
+                                  if (matchedServices.length === 0) {
+                                    return (
+                                      <span className="px-4 py-2 bg-red-100 border border-red-500 rounded-lg">
+                                        No matching services found
+                                      </span>
+                                    );
+                                  }
 
-                                return matchedServices.length === 1 ? (
-                                  <span className="px-4 py-2 bg-blue-100 border border-blue-500 rounded-lg text-sm">
-                                    {matchedServices[0].title}
-                                  </span>
-                                ) : (
-                                  <>
+                                  return matchedServices.length === 1 ? (
                                     <span className="px-4 py-2 bg-blue-100 border border-blue-500 rounded-lg text-sm">
                                       {matchedServices[0].title}
                                     </span>
-                                    <button className="text-blue-500 ml-2" onClick={() => handleViewMore(matchedServices)}>
-                                      View More
-                                    </button>
-                                  </>
-                                );
-                              })()}
+                                  ) : (
+                                    <>
+                                      <span className="px-4 py-2 bg-blue-100 border border-blue-500 rounded-lg text-sm">
+                                        {matchedServices[0].title}
+                                      </span>
+                                      <button className="text-blue-500 ml-2" onClick={() => handleViewMore(matchedServices)}>
+                                        View More
+                                      </button>
+                                    </>
+                                  );
+                                })()}
+                              </div>
+
                             </div>
+                          </td>
 
-                          </div>
-                        </td>
-
-                        <td className="border border-black px-4 py-2">{item.color_code}</td>
-                        <td className="border border-black px-4 py-2">{item.vendor_name}</td>
-                        <td className="border border-black px-4 py-2">{formatDate(item?.deadline_date)}</td>
-                        <td className="border border-black px-4 py-2">{formatDate(item?.report_date)}</td>
-                        <td className="border border-black px-4 py-2">{item.case_aging}</td>
-                        <td className="border border-black px-4 py-2">{item.remarks}</td>
-                        <td className="border border-black px-4 py-2">
-                          <div className='flex gap-4'>
-                          <button
-                            className="px-4 py-2 text-white rounded-md font-bold bg-green-500 hover:bg-green-600 hover:scale-105 transition-transform duration-300 ease-in-out transform"
-                            onClick={() => handleEdit(item)}
-                          >
-                            EDIT
-                          </button>
-                          <button
-                            className="px-4 py-2 text-white rounded-md font-bold bg-red-500 hover:bg-red-600 hover:scale-105 transition-transform duration-300 ease-in-out transform"
-                            onClick={() => handleDelete(item.id)}
-                          >
-                            DELETE
-                          </button>
-                          </div>
-                        </td>
+                          <td className="border border-black px-4 py-2">{item.color_code}</td>
+                          <td className="border border-black px-4 py-2">{item.vendor_name}</td>
+                          <td className="border border-black px-4 py-2">{formatDate(item?.deadline_date)}</td>
+                          <td className="border border-black px-4 py-2">{formatDate(item?.report_date)}</td>
+                          <td className="border border-black px-4 py-2">{item.case_aging}</td>
+                          <td className="border border-black px-4 py-2">{item.remarks}</td>
+                          <td className="border border-black px-4 py-2">
+                            <div className='flex gap-4'>
+                              <button
+                                className="px-4 py-2 text-white rounded-md font-bold bg-green-500 hover:bg-green-600 hover:scale-105 transition-transform duration-300 ease-in-out transform"
+                                onClick={() => handleEdit(item)}
+                              >
+                                EDIT
+                              </button>
+                              <button
+                                className="px-4 py-2 text-white rounded-md font-bold bg-red-500 hover:bg-red-600 hover:scale-105 transition-transform duration-300 ease-in-out transform"
+                                onClick={() => handleDelete(item.id)}
+                              >
+                                DELETE
+                              </button>
+                            </div>
+                          </td>
 
 
-                      </tr>
-                    ))}
-                  </tbody>
-                )}
-              </table>
+                        </tr>
+                      ))}
+                    </tbody>
+                  )}
+                </table>
+              </div>
             </div>
 
             {/* Pagination */}

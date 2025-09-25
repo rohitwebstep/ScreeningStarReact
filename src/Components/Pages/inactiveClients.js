@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import axios from 'axios';
 import Swal from 'sweetalert2'
 import * as XLSX from 'xlsx';
@@ -24,10 +24,21 @@ const InactiveClients = () => {
 
     const [currentPage, setCurrentPage] = useState(1);
     const [entriesPerPage, setEntriesPerPage] = useState(10);
-    const optionsPerPage = [10, 50, 100, 200,500,1000];
+    const optionsPerPage = [10, 50, 100, 200, 500, 1000];
     const totalPages = Math.ceil(inactiveClients.length / entriesPerPage);
 
+   const tableScrollRef = useRef(null);
+    const topScrollRef = useRef(null);
+    const [scrollWidth, setScrollWidth] = useState("100%");
 
+    // 🔹 Sync scroll positions
+    const syncScroll = (e) => {
+        if (e.target === topScrollRef.current) {
+            tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+        } else {
+            topScrollRef.current.scrollLeft = e.target.scrollLeft;
+        }
+    };
 
 
     const fetchInactiveClients = useCallback(async () => {
@@ -302,6 +313,11 @@ const InactiveClients = () => {
             }
         });
     }, [fetchInactiveClients]);
+     useEffect(() => {
+    if (tableScrollRef.current) {
+      setScrollWidth(tableScrollRef.current.scrollWidth + "px");
+    }
+  }, [filteredData, loading]); 
 
     return (
         <div className="">
@@ -342,121 +358,123 @@ const InactiveClients = () => {
                         />
                     </div>
                 </div>
-                <div className="flex space-x-4">
-
-
-                    <div className="w-full overflow-x-auto">
-                        <table className="min-w-full border-collapse border border-black rounded-lg">
-                            <thead className="rounded-lg">
-                                <tr className="bg-[#c1dff2] text-[#4d606b] whitespace-nowrap">
-                                    {/* Table Headers */}
-                                    <th className=" uppercase border border-black px-4 py-2">SL</th>
-                                    <th className=" uppercase border border-black px-4 py-2 text-left">Client ID</th>
-                                    <th className=" uppercase border border-black px-4 py-2 text-left">Organization Name</th>
-                                    <th className=" uppercase border border-black px-4 py-2 text-left">Registered Address</th>
-                                    <th className=" uppercase border border-black px-4 py-2 text-left">Email</th>
-                                    <th className=" uppercase border border-black px-4 py-2 text-left">State</th>
-                                    <th className=" uppercase border border-black px-4 py-2 text-left">State Code</th>
-                                    <th className=" uppercase border border-black px-4 py-2 text-left">GST Number</th>
-                                    <th className=" uppercase border border-black px-4 py-2 text-left">Mobile Number</th>
-                                    <th className=" uppercase border border-black px-4 py-2">TAT</th>
-                                    <th className=" uppercase border border-black px-4 py-2">Date of Agreement</th>
-                                    <th className=" uppercase border border-black px-4 py-2">Standard Process</th>
-                                    <th className=" uppercase border border-black px-4 py-2">Agreement Period</th>
-                                    <th className=" uppercase border border-black px-4 py-2">Custom Template</th>
-                                    <th className=" uppercase border border-black px-4 py-2">Upload Client logo</th>
-                                    <th className=" uppercase border border-black px-4 py-2">Additional login required?</th>
-                                    <th className=" uppercase border border-black px-4 py-2" colSpan={2}>
-                                        Action
-                                    </th>
-                                </tr>
-                            </thead>
-                            {loading ? (
-                                <tbody className="h-10">
-                                    <tr className="">
-                                        <td colSpan="12" className="w-full py-10 h-10  text-center">
-                                            <div className="flex justify-center  items-center w-full h-full">
-                                                <div className="loader border-t-4 border-[#2c81ba] rounded-full w-10 h-10 animate-spin"></div>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            ) : (
-                                <tbody>
-                                    {filteredData.length === 0 ? (
-                                        <tr>
-                                            <td colSpan="21" className="text-center py-4 text-red-500">
-                                                {responseError && responseError !== "" ? responseError : "No data available in table"}
-                                            </td>
-                                        </tr>
-                                    ) : (
-                                        filteredData.map((client, index) => (
-                                            <tr key={client.clientId} className="text-center border-b border-gray-300">
-                                                <td className="border border-black px-4 py-2">{(currentPage - 1) * entriesPerPage + index + 1}</td>
-                                                <td className="border border-black px-4 whitespace-nowrap py-2 text-left">{client.client_unique_id}</td>
-                                                <td className="border border-black px-4 py-2 whitespace-nowrap min-w-[200px] text-left">{client.name}</td>
-                                                <td className="border border-black px-4 py-2 text-left">{client.address}</td>
-                                                <td className="border border-black px-4 py-2 text-left">
-                                                    {client.emails ? JSON.parse(client.emails).join(', ') : 'NIL'}
-                                                </td>
-                                                <td className="border border-black px-4 py-2 text-left">{client.state}</td>
-                                                <td className="border border-black px-4 py-2 text-left">{client.state_code}</td>
-                                                <td className="border border-black px-4 py-2 min-w-[200px] text-left">{client.gst_number}</td>
-                                                <td className="border border-black px-4 py-2 min-w-[200px] text-left">{client.mobile}</td>
-                                                <td className="border border-black px-4 whitespace-nowrap py-2">{client.tat_days}</td>
-                                                <td className="border border-black px-4 py-2 min-w-[300px]">
-
-
-                                                    {client.agreement_date
-                                                        ? new Date(client.agreement_date).toLocaleDateString('en-GB').replace(/\//g, '-')
-                                                        : 'NIL'}
-
-
-                                                </td>
-                                                <td className="border border-black px-4 uppercase py-2 min-w-[300px]">{client.client_standard}</td>
-                                                <td className="border border-black px-4 py-2">
-                                                    {client.agreement_duration}
-                                                </td>
-                                                <td className="border border-black px-4 uppercase py-2">{client.custom_template || 'NIL'}</td>
-                                                <td className="border border-black px-4 py-2">
-                                                    <img
-                                                        src={client.logo ? client.logo : `${Default}`}
-                                                        alt="Client Logo"
-                                                        className="w-10 m-auto h-10"
-                                                    />
-                                                </td>
-                                                <td className="border uppercase border-black px-4 py-2">
-                                                    {client.additional_login == 1 ? 'yes' : 'no'}
-                                                </td>
-                                                <td className="border border-black px-4 py-2 ">
-                                                    <button
-                                                        onClick={() => handleUnblock(client.main_id)}
-                                                        disabled={isUnblockLoading && activeId === client.main_id}
-                                                        className={`bg-red-500 hover:bg-red-600 hover:scale-105 text-white px-4 py-2 rounded mr-3 ${isUnblockLoading && activeId === client.main_id ? "opacity-50 cursor-not-allowed" : ""} `}
-                                                    >
-                                                        Unblock
-                                                    </button>
-                                                </td>
-                                                <td className="border border-black px-4 py-2 ">
-                                                    <button
-                                                        onClick={() => handleDelete(client.main_id)}
-                                                        disabled={isDeleteLoading && activeId == client.main_id}
-                                                        className={`bg-[#073d88] hover:scale-105 hover:bg-[#12253f] text-white px-4 py-2 rounded ${isDeleteLoading && activeId == client.main_id ? "opacity-50 cursor-not-allowed" : ""}`}
-                                                    >
-                                                        Delete
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            )}
-                        </table>
-
+            <div className="table-container rounded-lg">
+                    {/* Top Scroll */}
+                    <div className="top-scroll" ref={topScrollRef} onScroll={syncScroll}>
+                        <div className="top-scroll-inner" style={{ width: scrollWidth }} />
                     </div>
 
+                    {/* Actual Table Scroll */}
+                    <div className="table-scroll rounded-lg" ref={tableScrollRef} onScroll={syncScroll}>
+                            <table className="min-w-full border-collapse border border-black rounded-lg">
+                                <thead className="rounded-lg">
+                                    <tr className="bg-[#c1dff2] text-[#4d606b] whitespace-nowrap">
+                                        {/* Table Headers */}
+                                        <th className=" uppercase border border-black px-4 py-2">SL</th>
+                                        <th className=" uppercase border border-black px-4 py-2 text-left">Client ID</th>
+                                        <th className=" uppercase border border-black px-4 py-2 text-left">Organization Name</th>
+                                        <th className=" uppercase border border-black px-4 py-2 text-left">Registered Address</th>
+                                        <th className=" uppercase border border-black px-4 py-2 text-left">Email</th>
+                                        <th className=" uppercase border border-black px-4 py-2 text-left">State</th>
+                                        <th className=" uppercase border border-black px-4 py-2 text-left">State Code</th>
+                                        <th className=" uppercase border border-black px-4 py-2 text-left">GST Number</th>
+                                        <th className=" uppercase border border-black px-4 py-2 text-left">Mobile Number</th>
+                                        <th className=" uppercase border border-black px-4 py-2">TAT</th>
+                                        <th className=" uppercase border border-black px-4 py-2">Date of Agreement</th>
+                                        <th className=" uppercase border border-black px-4 py-2">Standard Process</th>
+                                        <th className=" uppercase border border-black px-4 py-2">Agreement Period</th>
+                                        <th className=" uppercase border border-black px-4 py-2">Custom Template</th>
+                                        <th className=" uppercase border border-black px-4 py-2">Upload Client logo</th>
+                                        <th className=" uppercase border border-black px-4 py-2">Additional login required?</th>
+                                        <th className=" uppercase border border-black px-4 py-2" colSpan={2}>
+                                            Action
+                                        </th>
+                                    </tr>
+                                </thead>
+                                {loading ? (
+                                    <tbody className="h-10">
+                                        <tr className="">
+                                            <td colSpan="12" className="w-full py-10 h-10  text-center">
+                                                <div className="flex justify-center  items-center w-full h-full">
+                                                    <div className="loader border-t-4 border-[#2c81ba] rounded-full w-10 h-10 animate-spin"></div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                ) : (
+                                    <tbody>
+                                        {filteredData.length === 0 ? (
+                                            <tr>
+                                                <td colSpan="21" className="text-center py-4 text-red-500">
+                                                    {responseError && responseError !== "" ? responseError : "No data available in table"}
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            filteredData.map((client, index) => (
+                                                <tr key={client.clientId} className="text-center border-b border-gray-300">
+                                                    <td className="border border-black px-4 py-2">{(currentPage - 1) * entriesPerPage + index + 1}</td>
+                                                    <td className="border border-black px-4 whitespace-nowrap py-2 text-left">{client.client_unique_id}</td>
+                                                    <td className="border border-black px-4 py-2 whitespace-nowrap min-w-[200px] text-left">{client.name}</td>
+                                                    <td className="border border-black px-4 py-2 text-left">{client.address}</td>
+                                                    <td className="border border-black px-4 py-2 text-left">
+                                                        {client.emails ? JSON.parse(client.emails).join(', ') : 'NIL'}
+                                                    </td>
+                                                    <td className="border border-black px-4 py-2 text-left">{client.state}</td>
+                                                    <td className="border border-black px-4 py-2 text-left">{client.state_code}</td>
+                                                    <td className="border border-black px-4 py-2 min-w-[200px] text-left">{client.gst_number}</td>
+                                                    <td className="border border-black px-4 py-2 min-w-[200px] text-left">{client.mobile}</td>
+                                                    <td className="border border-black px-4 whitespace-nowrap py-2">{client.tat_days}</td>
+                                                    <td className="border border-black px-4 py-2 min-w-[300px]">
 
-                </div>
+
+                                                        {client.agreement_date
+                                                            ? new Date(client.agreement_date).toLocaleDateString('en-GB').replace(/\//g, '-')
+                                                            : 'NIL'}
+
+
+                                                    </td>
+                                                    <td className="border border-black px-4 uppercase py-2 min-w-[300px]">{client.client_standard}</td>
+                                                    <td className="border border-black px-4 py-2">
+                                                        {client.agreement_duration}
+                                                    </td>
+                                                    <td className="border border-black px-4 uppercase py-2">{client.custom_template || 'NIL'}</td>
+                                                    <td className="border border-black px-4 py-2">
+                                                        <img
+                                                            src={client.logo ? client.logo : `${Default}`}
+                                                            alt="Client Logo"
+                                                            className="w-10 m-auto h-10"
+                                                        />
+                                                    </td>
+                                                    <td className="border uppercase border-black px-4 py-2">
+                                                        {client.additional_login == 1 ? 'yes' : 'no'}
+                                                    </td>
+                                                    <td className="border border-black px-4 py-2 ">
+                                                        <button
+                                                            onClick={() => handleUnblock(client.main_id)}
+                                                            disabled={isUnblockLoading && activeId === client.main_id}
+                                                            className={`bg-red-500 hover:bg-red-600 hover:scale-105 text-white px-4 py-2 rounded mr-3 ${isUnblockLoading && activeId === client.main_id ? "opacity-50 cursor-not-allowed" : ""} `}
+                                                        >
+                                                            Unblock
+                                                        </button>
+                                                    </td>
+                                                    <td className="border border-black px-4 py-2 ">
+                                                        <button
+                                                            onClick={() => handleDelete(client.main_id)}
+                                                            disabled={isDeleteLoading && activeId == client.main_id}
+                                                            className={`bg-[#073d88] hover:scale-105 hover:bg-[#12253f] text-white px-4 py-2 rounded ${isDeleteLoading && activeId == client.main_id ? "opacity-50 cursor-not-allowed" : ""}`}
+                                                        >
+                                                            Delete
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                )}
+                            </table>
+
+                        </div>
+                    </div>
                 <div className="flex justify-between items-center mt-4">
                     <button
                         onClick={() => handlePageChange(currentPage - 1)}

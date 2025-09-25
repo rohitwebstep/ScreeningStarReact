@@ -26,6 +26,18 @@ const EscalationManager = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
+     const tableScrollRef = useRef(null);
+    const topScrollRef = useRef(null);
+    const [scrollWidth, setScrollWidth] = useState("100%");
+
+    // 🔹 Sync scroll positions
+    const syncScroll = (e) => {
+        if (e.target === topScrollRef.current) {
+            tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+        } else {
+            topScrollRef.current.scrollLeft = e.target.scrollLeft;
+        }
+    };
 
 
   const fetchData = useCallback(() => {
@@ -101,8 +113,8 @@ const EscalationManager = () => {
   };
 
   const handleSubmit = async (e) => {
-            setApiLoading(true);
-            setLoading(true); // Set loading to true when data fetch begins
+    setApiLoading(true);
+    setLoading(true); // Set loading to true when data fetch begins
     e.preventDefault();
     const admin_id = JSON.parse(localStorage.getItem("admin"))?.id;
     const storedToken = localStorage.getItem("_token");
@@ -128,8 +140,8 @@ const EscalationManager = () => {
       const result = await response.json();
 
       if (response.ok) {
-            setApiLoading(false);
-            setLoading(false);
+        setApiLoading(false);
+        setLoading(false);
         fetchData(); // Refresh data after form submission
         setFormData({ name: "", designation: "", phone: "", email: "" });
         setIsEditing(false);
@@ -152,14 +164,14 @@ const EscalationManager = () => {
         const errorMessage = result.message || "An unexpected error occurred";
         swal("Failed!", errorMessage, "error");
         console.error("Failed to submit form:", errorMessage);
-            setApiLoading(false);
-            setLoading(false);
+        setApiLoading(false);
+        setLoading(false);
       }
     } catch (error) {
       swal("Failed!", "An error occurred while submitting the form. Please try again.", "error");
       console.error("Error submitting form:", error);
-            setApiLoading(false);
-            setLoading(false);
+      setApiLoading(false);
+      setLoading(false);
     }
   };
 
@@ -167,7 +179,7 @@ const EscalationManager = () => {
   const handleEdit = (spoc) => {
     if (clientEditRef.current) {
       clientEditRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
+    }
     setFormData(spoc);
     setIsEditing(true);
     setCurrentSpocId(spoc.id);
@@ -241,10 +253,10 @@ const EscalationManager = () => {
     setFormData({ name: "", designation: "", phone: "", email: "", email1: "", email2: "", email3: "", email4: "" });
     setIsEditing(false);
     setCurrentSpocId(null);
-};
+  };
   return (
     <div className="">
-      <div ref={clientEditRef}  className="bg-white md:p-12 p-6 border border-black w-full mx-auto">
+      <div ref={clientEditRef} className="bg-white md:p-12 p-6 border border-black w-full mx-auto">
         <div className="md:flex space-x-4">
 
           <div className="md:w-2/5">
@@ -331,63 +343,79 @@ const EscalationManager = () => {
                 onChange={handleSearch}
               />
             </div>
-            <div className="overflow-auto">
-              <table className="min-w-full border-collapse border border-black  rounded-lg">
-                <thead className="rounded-lg">
-                  <tr className="bg-[#c1dff2] text-[#4d606b] text-left rounded-lg whitespace-nowrap">
-                    <th className="py-2 px-4 border border-black  uppercase">No.</th>
-                    <th className="py-2 px-4 border border-black  uppercase">Name of the Escalation</th>
-                    <th className="py-2 px-4 border border-black  uppercase">Designation</th>
-                    <th className="py-2 px-4 border border-black  uppercase">Contact Number</th>
-                    <th className="py-2 px-4 border border-black  uppercase ">Email ID</th>
-                    <th className="py-2 px-4 border border-black  uppercase text-center">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
+            <div className="table-container rounded-lg">
+              {/* Top Scroll */}
+              <div
+                className="top-scroll"
+                ref={topScrollRef}
+                onScroll={syncScroll}
+              >
+                <div className="top-scroll-inner" style={{ width: tableScrollRef.current?.scrollWidth || "100%" }} />
+              </div>
 
-                  {loading ? (
-
-                    <tr>
-                      <td colSpan={6} className="py-4 text-center text-gray-500">
-                        <Loader className="text-center" />
-                      </td>
+              {/* Actual Table Scroll */}
+              <div
+                className="table-scroll rounded-lg"
+                ref={tableScrollRef}
+                onScroll={syncScroll}
+              >
+                <table className="min-w-full border-collapse border border-black  rounded-lg">
+                  <thead className="rounded-lg">
+                    <tr className="bg-[#c1dff2] text-[#4d606b] text-left rounded-lg whitespace-nowrap">
+                      <th className="py-2 px-4 border border-black  uppercase">No.</th>
+                      <th className="py-2 px-4 border border-black  uppercase">Name of the Escalation</th>
+                      <th className="py-2 px-4 border border-black  uppercase">Designation</th>
+                      <th className="py-2 px-4 border border-black  uppercase">Contact Number</th>
+                      <th className="py-2 px-4 border border-black  uppercase ">Email ID</th>
+                      <th className="py-2 px-4 border border-black  uppercase text-center">Actions</th>
                     </tr>
-                  ) : (
-                    <>
+                  </thead>
+                  <tbody>
 
-                      {currentSpocs.length === 0 ? (
-                        <tr>
-                          <td colSpan={6} className="py-4 text-center text-gray-500">
-                            Your Table Is Empty.
-                          </td>
-                        </tr>
-                      ) : (
-                        currentSpocs.map((spoc, index) => (
-                          <tr key={spoc.id} className="hover:bg-gray-200">
-                            <td className="py-2 px-4 border border-black ">{index + 1 + indexOfFirstItem}</td>
-                            <td className="py-2 px-4 border border-black ">{spoc.name}</td>
-                            <td className="py-2 px-4 border border-black ">{spoc.designation}</td>
-                            <td className="py-2 px-4 border border-black ">{spoc.phone}</td>
-                            <td className="py-2 px-4 border border-black ">{spoc.email}</td>
-                            <td className="py-2 px-4 border border-black  whitespace-nowrap">
-                              <button className="bg-green-500 hover:scale-105 hover:bg-green-600 text-white px-4 py-2 rounded mr-2" onClick={() => handleEdit(spoc)}>Edit</button>
-                              <button
-                                disabled={deletingId === spoc.id}
-                                className={`bg-red-500 hover:scale-105 hover:bg-red-600  text-white px-4 py-2 rounded ${deletingId === spoc.id ? "opacity-50 cursor-not-allowed" : ""} `}
-                                onClick={() => handleDelete(spoc.id)}>
-                                {deletingId === spoc.id ? "Deleting..." : "Delete"}
-                              </button>
+                    {loading ? (
+
+                      <tr>
+                        <td colSpan={6} className="py-4 text-center text-gray-500">
+                          <Loader className="text-center" />
+                        </td>
+                      </tr>
+                    ) : (
+                      <>
+
+                        {currentSpocs.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="py-4 text-center text-gray-500">
+                              Your Table Is Empty.
                             </td>
                           </tr>
-                        ))
-                      )}
-                    </>
-                  )}
-                </tbody>
+                        ) : (
+                          currentSpocs.map((spoc, index) => (
+                            <tr key={spoc.id} className="hover:bg-gray-200">
+                              <td className="py-2 px-4 border border-black ">{index + 1 + indexOfFirstItem}</td>
+                              <td className="py-2 px-4 border border-black ">{spoc.name}</td>
+                              <td className="py-2 px-4 border border-black ">{spoc.designation}</td>
+                              <td className="py-2 px-4 border border-black ">{spoc.phone}</td>
+                              <td className="py-2 px-4 border border-black ">{spoc.email}</td>
+                              <td className="py-2 px-4 border border-black  whitespace-nowrap">
+                                <button className="bg-green-500 hover:scale-105 hover:bg-green-600 text-white px-4 py-2 rounded mr-2" onClick={() => handleEdit(spoc)}>Edit</button>
+                                <button
+                                  disabled={deletingId === spoc.id}
+                                  className={`bg-red-500 hover:scale-105 hover:bg-red-600  text-white px-4 py-2 rounded ${deletingId === spoc.id ? "opacity-50 cursor-not-allowed" : ""} `}
+                                  onClick={() => handleDelete(spoc.id)}>
+                                  {deletingId === spoc.id ? "Deleting..." : "Delete"}
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </>
+                    )}
+                  </tbody>
 
 
-              </table>
+                </table>
 
+              </div>
             </div>
             <div className="flex justify-center mt-4">
               {Array.from({ length: totalPages }, (_, index) => (

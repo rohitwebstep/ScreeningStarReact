@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { jsPDF } from "jspdf";
 import "jspdf-autotable";
@@ -25,6 +25,18 @@ const ApplicationTrashCheckin = () => {
     const [servicesDataInfo, setServicesDataInfo] = useState('');
     const [expandedRow, setExpandedRow] = useState({ index: '', headingsAndStatuses: [] });
     const navigate = useNavigate();
+    const tableScrollRef = useRef(null);
+    const topScrollRef = useRef(null);
+    const [scrollWidth, setScrollWidth] = useState("100%");
+
+    // 🔹 Sync scroll positions
+    const syncScroll = (e) => {
+        if (e.target === topScrollRef.current) {
+            tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+        } else {
+            topScrollRef.current.scrollLeft = e.target.scrollLeft;
+        }
+    };
     const location = useLocation();
     const [adminTAT, setAdminTAT] = useState('');
     const [data, setData] = useState([]);
@@ -53,7 +65,7 @@ const ApplicationTrashCheckin = () => {
 
     const [currentPage, setCurrentPage] = useState(1);
     const [rowsPerPage, setRowsPerPage] = useState(10);
-    const optionsPerPage = [10, 50, 100, 200,500,1000];
+    const optionsPerPage = [10, 50, 100, 200, 500, 1000];
     const totalPages = Math.ceil(data.length / rowsPerPage);
     const paginatedData = data.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
     const colorNames = ['red', 'green', 'blue', 'yellow', 'orange', 'purple', 'pink'];
@@ -565,7 +577,7 @@ const ApplicationTrashCheckin = () => {
                 }
             }
         });
-        
+
 
 
         doc.setDrawColor(62, 118, 165);
@@ -807,7 +819,7 @@ const ApplicationTrashCheckin = () => {
                             content: formatStatus(statusContent).toUpperCase(),
                             styles: {
                                 fontStyle: 'bold',
-                                font :'TimesNewRomanBold',
+                                font: 'TimesNewRomanBold',
                                 textColor: textColorr // Apply the color based on the status
                             },
                         },
@@ -1138,7 +1150,7 @@ const ApplicationTrashCheckin = () => {
                         {
                             content: formatStatus(statusContent).toUpperCase(),
                             styles: {
-                                font:'TimesNewRomanBold',
+                                font: 'TimesNewRomanBold',
                                 fontStyle: 'bold',
                                 textColor: textColorr, // Apply the color based on the status
                             },
@@ -1307,12 +1319,12 @@ const ApplicationTrashCheckin = () => {
                         didParseCell: function (data) {
                             if (data.section === 'body' && data.column.index === 0) {
                                 data.cell.styles.fontStyle = "bold"; // Bold for "PARTICULARS"
-                            } 
+                            }
                         }
                     });
-                    
-                    
-                    
+
+
+
 
 
                     yPosition = doc.lastAutoTable.finalY + 10;
@@ -1328,7 +1340,7 @@ const ApplicationTrashCheckin = () => {
                     } else {
                         console.error("remarksData or remarksData.values is null/undefined");
                     }
-                    
+
 
                     const annexureImagesKey = Object.keys(service?.annexureData || {}).find(
                         key => key.toLowerCase().startsWith('annexure') && !key.includes('[') && !key.includes(']')
@@ -1862,15 +1874,15 @@ report.For any clarifications you can mail us at `;
     };
 
     // Function to format the date to "Month Day, Year" format
-   const formatDate = (date) => {
-    if (!date) return "NOT APPLICABLE"; // Check for null, undefined, or empty
-    const dateObj = new Date(date);
-    if (isNaN(dateObj.getTime())) return "Nill"; // Check for invalid date
-    const day = String(dateObj.getDate()).padStart(2, '0');
-    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-    const year = dateObj.getFullYear();
-    return `${day}-${month}-${year}`;
-};
+    const formatDate = (date) => {
+        if (!date) return "NOT APPLICABLE"; // Check for null, undefined, or empty
+        const dateObj = new Date(date);
+        if (isNaN(dateObj.getTime())) return "Nill"; // Check for invalid date
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const year = dateObj.getFullYear();
+        return `${day}-${month}-${year}`;
+    };
 
 
 
@@ -2111,7 +2123,11 @@ report.For any clarifications you can mail us at `;
             setDownloadingIndex(null); // Hide loader after completion
         }
     };
-
+    useEffect(() => {
+        if (tableScrollRef.current) {
+            setScrollWidth(tableScrollRef.current.scrollWidth + "px");
+        }
+    }, [filteredData, loading]);
 
     const modifiedNames = customerEmails.map(name =>
         name[0] + name.slice(2)
@@ -2242,106 +2258,113 @@ report.For any clarifications you can mail us at `;
                     </div>
                 </div>
 
-                <div className="rounded-lg overflow-scroll">
-                    <table className="min-w-full border-collapse border border-black overflow-scroll rounded-lg whitespace-nowrap">
-                        <thead className='rounded-lg'>
-                            <tr className="bg-[#c1dff2] text-[#4d606b]">
-                                <th className="border border-black px-4 py-2">
-                                    <input
-                                        type="checkbox"
-                                        className='w-5 h-5'
-                                        checked={selectedRows.length === filteredData.filter((data) => data.overall_status === "completed" && data.is_verify === "yes").length}
+                <div className="table-container rounded-lg">
+                    {/* Top Scroll */}
+                    <div className="top-scroll" ref={topScrollRef} onScroll={syncScroll}>
+                        <div className="top-scroll-inner" style={{ width: scrollWidth }} />
+                    </div>
 
-                                        onChange={handleSelectAll}
-                                    />
-                                </th>
+                    {/* Actual Table Scroll */}
+                    <div className="table-scroll rounded-lg" ref={tableScrollRef} onScroll={syncScroll}>
+                        <table className="min-w-full border-collapse border border-black overflow-scroll rounded-lg whitespace-nowrap">
+                            <thead className='rounded-lg'>
+                                <tr className="bg-[#c1dff2] text-[#4d606b]">
+                                    <th className="border border-black px-4 py-2">
+                                        <input
+                                            type="checkbox"
+                                            className='w-5 h-5'
+                                            checked={selectedRows.length === filteredData.filter((data) => data.overall_status === "completed" && data.is_verify === "yes").length}
 
-                                <th className="uppercase border border-black px-4 py-2">SL NO</th>
-                                <th className="uppercase border border-black px-4 py-2">TAT Days</th>
-                                <th className="uppercase border border-black px-4 py-2">Location</th>
-                                <th className="uppercase border border-black px-4 py-2">Name Of Organisation</th>
-                                <th className="uppercase border border-black px-4 py-2">Reference Id</th>
-                                <th className="uppercase border border-black px-4 py-2">Photo</th>
-                                <th className="uppercase border border-black px-4 py-2">Applicant Employe Id</th>
-                                <th className="uppercase border border-black px-4 py-2">Initiation Date</th>
-                                <th className="uppercase border border-black px-4 py-2">Deadline Date</th>
-                                {/* <th className="uppercase border border-black px-4 py-2">Report Data</th> */}
-                                <th className="uppercase border border-black px-4 py-2">Download Status</th>
-                                <th className="uppercase border border-black px-4 py-2">View More</th>
-                                <th className="uppercase border border-black px-4 py-2">Overall Status</th>
-                                <th className="uppercase border border-black px-4 py-2">Report Type</th>
-                                <th className="uppercase border border-black px-4 py-2">Report Date</th>
-                                <th className="uppercase border border-black px-4 py-2">Report Generated By</th>
-                                <th className="uppercase border border-black px-4 py-2">QC Done By</th>
-                                <th className="uppercase border border-black px-4 py-2 " colSpan={2}>Action</th>
-                                {/* <th className="uppercase border border-black px-4 py-2 ">HIGHLIGHT</th> */}
+                                            onChange={handleSelectAll}
+                                        />
+                                    </th>
+
+                                    <th className="uppercase border border-black px-4 py-2">SL NO</th>
+                                    <th className="uppercase border border-black px-4 py-2">TAT Days</th>
+                                    <th className="uppercase border border-black px-4 py-2">Location</th>
+                                    <th className="uppercase border border-black px-4 py-2">Name Of Organisation</th>
+                                    <th className="uppercase border border-black px-4 py-2">Reference Id</th>
+                                    <th className="uppercase border border-black px-4 py-2">Photo</th>
+                                    <th className="uppercase border border-black px-4 py-2">Applicant Employe Id</th>
+                                    <th className="uppercase border border-black px-4 py-2">Initiation Date</th>
+                                    <th className="uppercase border border-black px-4 py-2">Deadline Date</th>
+                                    {/* <th className="uppercase border border-black px-4 py-2">Report Data</th> */}
+                                    <th className="uppercase border border-black px-4 py-2">Download Status</th>
+                                    <th className="uppercase border border-black px-4 py-2">View More</th>
+                                    <th className="uppercase border border-black px-4 py-2">Overall Status</th>
+                                    <th className="uppercase border border-black px-4 py-2">Report Type</th>
+                                    <th className="uppercase border border-black px-4 py-2">Report Date</th>
+                                    <th className="uppercase border border-black px-4 py-2">Report Generated By</th>
+                                    <th className="uppercase border border-black px-4 py-2">QC Done By</th>
+                                    <th className="uppercase border border-black px-4 py-2 " colSpan={2}>Action</th>
+                                    {/* <th className="uppercase border border-black px-4 py-2 ">HIGHLIGHT</th> */}
 
 
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {loading ? (
-
-                                <tr>
-                                    <td colSpan={17} className="py-4 text-center text-gray-500">
-                                        <Loader className="text-center" />
-                                    </td>
                                 </tr>
-                            ) : filteredData.length === 0 ? (
-                                <tr>
-                                    <td colSpan={17} className="py-4 text-center text-gray-500">
-                                        No data available in table
-                                    </td>
-                                </tr>
-                            ) : (
-                                <>
-                                    {filteredData.map((data, index) => {
-                                        const isDownloadable = data.overall_status === "completed" && data.is_verify === "yes";
-                                        return (
+                            </thead>
+                            <tbody>
+                                {loading ? (
+
+                                    <tr>
+                                        <td colSpan={17} className="py-4 text-center text-gray-500">
+                                            <Loader className="text-center" />
+                                        </td>
+                                    </tr>
+                                ) : filteredData.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={17} className="py-4 text-center text-gray-500">
+                                            No data available in table
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    <>
+                                        {filteredData.map((data, index) => {
+                                            const isDownloadable = data.overall_status === "completed" && data.is_verify === "yes";
+                                            return (
 
 
-                                            <React.Fragment key={data.id}>
-                                                <tr
-                                                    className={`text-center ${data.is_highlight === 1 ? 'highlight' : ''}`}
-                                                    style={{
-                                                        borderColor: data.is_highlight === 1 ? 'yellow' : 'transparent',
-                                                    }}
-                                                >
-                                                    <td className="border border-black px-4 py-2">
-                                                        <input
-                                                            type="checkbox"
-                                                            className='w-5 h-5'
-                                                            checked={selectedRows.includes(data.id)}
-                                                            onChange={() => handleCheckboxChange(data.id, isDownloadable)}
-                                                            disabled={!isDownloadable}
-                                                        />
-                                                    </td>
-                                                    <td className="border border-black px-4 py-2">{index + 1}</td>
-                                                    <td className="border border-black px-4 py-2">{adminTAT || 'NIL'}</td>
-                                                    <td className="border border-black px-4 py-2">{data.location || 'NIL'}</td>
-                                                    <td className="border border-black px-4 py-2">
-                                                        {companyName || branchName || 'NIL'}
-                                                    </td>
+                                                <React.Fragment key={data.id}>
+                                                    <tr
+                                                        className={`text-center ${data.is_highlight === 1 ? 'highlight' : ''}`}
+                                                        style={{
+                                                            borderColor: data.is_highlight === 1 ? 'yellow' : 'transparent',
+                                                        }}
+                                                    >
+                                                        <td className="border border-black px-4 py-2">
+                                                            <input
+                                                                type="checkbox"
+                                                                className='w-5 h-5'
+                                                                checked={selectedRows.includes(data.id)}
+                                                                onChange={() => handleCheckboxChange(data.id, isDownloadable)}
+                                                                disabled={!isDownloadable}
+                                                            />
+                                                        </td>
+                                                        <td className="border border-black px-4 py-2">{index + 1}</td>
+                                                        <td className="border border-black px-4 py-2">{adminTAT || 'NIL'}</td>
+                                                        <td className="border border-black px-4 py-2">{data.location || 'NIL'}</td>
+                                                        <td className="border border-black px-4 py-2">
+                                                            {companyName || branchName || 'NIL'}
+                                                        </td>
 
-                                                    <td className="border border-black px-4 py-2">{data.application_id || 'NIL'}</td>
-                                                    <td className="border border-black px-4 py-2">
-                                                        <div className='flex justify-center items-center'>
-                                                            <img src={data.photo ? data.photo : `${Default}`}
-                                                                alt={data.name} className="w-10 h-10 rounded-full" />
-                                                        </div>
-                                                    </td>
-                                                    <td className="border border-black px-4 py-2">{data.employee_id || 'NIL'}</td>
-                                                    <td className="border border-black px-4 py-2">
-                                                        {data.created_at
-                                                            ? new Date(data.created_at).toLocaleDateString('en-GB').replace(/\//g, '-')
-                                                            : 'NIL'}
-                                                    </td>
-                                                    <td className="border border-black px-4 py-2">
-                                                        {data.updated_at
-                                                            ? new Date(data.updated_at).toLocaleDateString('en-GB').replace(/\//g, '-')
-                                                            : 'NIL'}
-                                                    </td>
-                                                    {/* <td className="border border-black px-4 py-2">
+                                                        <td className="border border-black px-4 py-2">{data.application_id || 'NIL'}</td>
+                                                        <td className="border border-black px-4 py-2">
+                                                            <div className='flex justify-center items-center'>
+                                                                <img src={data.photo ? data.photo : `${Default}`}
+                                                                    alt={data.name} className="w-10 h-10 rounded-full" />
+                                                            </div>
+                                                        </td>
+                                                        <td className="border border-black px-4 py-2">{data.employee_id || 'NIL'}</td>
+                                                        <td className="border border-black px-4 py-2">
+                                                            {data.created_at
+                                                                ? new Date(data.created_at).toLocaleDateString('en-GB').replace(/\//g, '-')
+                                                                : 'NIL'}
+                                                        </td>
+                                                        <td className="border border-black px-4 py-2">
+                                                            {data.updated_at
+                                                                ? new Date(data.updated_at).toLocaleDateString('en-GB').replace(/\//g, '-')
+                                                                : 'NIL'}
+                                                        </td>
+                                                        {/* <td className="border border-black px-4 py-2">
                                                         <button
                                                             className="  border border-[#073d88] text-[#073d88] px-4 py-2 rounded hover:bg-[#073d88] hover:text-white"
                                                             onClick={() => handleUpload(data.id, data.branch_id)}
@@ -2350,118 +2373,118 @@ report.For any clarifications you can mail us at `;
                                                         </button>
                                                     </td> */}
 
-                                                    <td className="border border-black px-4 py-2">
-                                                        {(() => {
-                                                            let buttonText = "";
-                                                            let buttonDisabled = false;
+                                                        <td className="border border-black px-4 py-2">
+                                                            {(() => {
+                                                                let buttonText = "";
+                                                                let buttonDisabled = false;
 
-                                                            if (data.overall_status === "completed") {
-                                                                if (data.is_verify === "yes") {
-                                                                    buttonText = "DOWNLOAD";
+                                                                if (data.overall_status === "completed") {
+                                                                    if (data.is_verify === "yes") {
+                                                                        buttonText = "DOWNLOAD";
+                                                                    } else {
+                                                                        buttonText = "NOT READY";
+                                                                        buttonDisabled = true;
+                                                                    }
                                                                 } else {
                                                                     buttonText = "NOT READY";
                                                                     buttonDisabled = true;
                                                                 }
-                                                            } else {
-                                                                buttonText = "NOT READY";
-                                                                buttonDisabled = true;
-                                                            }
 
-                                                            return buttonDisabled ? (
-                                                                <button
-                                                                    className="bg-gray-500 text-white px-4 py-2 rounded cursor-not-allowed"
-                                                                    disabled
-                                                                >
-                                                                    {buttonText}
-                                                                </button>
-                                                            ) : (
-                                                                <button
-                                                                    onClick={() => handleDownload(index)}
-                                                                    disabled={downloadingIndex}
-                                                                    className={`bg-green-500 hover:scale-105 uppercase border border-white hover:border-whit text-white px-4 py-2 rounded hover:bg-green-300  ${downloadingIndex === index ? "opacity-50 cursor-not-allowed " : ""
-                                                                        }`}
-                                                                >
-                                                                    {downloadingIndex === index ? (
-                                                                        <span className="flex items-center gap-2">
-                                                                            <svg
-                                                                                className="animate-spin h-5 w-5 text-white hover:text-green-500"
-                                                                                viewBox="0 0 24 24"
-                                                                                fill="none"
-                                                                                xmlns="http://www.w3.org/2000/svg"
-                                                                            >
-                                                                                <circle
-                                                                                    className="opacity-25"
-                                                                                    cx="12"
-                                                                                    cy="12"
-                                                                                    r="10"
-                                                                                    stroke="currentColor"
-                                                                                    strokeWidth="4"
-                                                                                ></circle>
-                                                                                <path
-                                                                                    className="opacity-75"
-                                                                                    fill="currentColor"
-                                                                                    d="M4 12a8 8 0 018-8v8H4z"
-                                                                                ></path>
-                                                                            </svg>
-                                                                            Downloading...
-                                                                        </span>
-                                                                    ) : (
-                                                                        buttonText
-                                                                    )}
-                                                                </button>
-                                                            );
-                                                        })()}
-                                                    </td>
+                                                                return buttonDisabled ? (
+                                                                    <button
+                                                                        className="bg-gray-500 text-white px-4 py-2 rounded cursor-not-allowed"
+                                                                        disabled
+                                                                    >
+                                                                        {buttonText}
+                                                                    </button>
+                                                                ) : (
+                                                                    <button
+                                                                        onClick={() => handleDownload(index)}
+                                                                        disabled={downloadingIndex}
+                                                                        className={`bg-green-500 hover:scale-105 uppercase border border-white hover:border-whit text-white px-4 py-2 rounded hover:bg-green-300  ${downloadingIndex === index ? "opacity-50 cursor-not-allowed " : ""
+                                                                            }`}
+                                                                    >
+                                                                        {downloadingIndex === index ? (
+                                                                            <span className="flex items-center gap-2">
+                                                                                <svg
+                                                                                    className="animate-spin h-5 w-5 text-white hover:text-green-500"
+                                                                                    viewBox="0 0 24 24"
+                                                                                    fill="none"
+                                                                                    xmlns="http://www.w3.org/2000/svg"
+                                                                                >
+                                                                                    <circle
+                                                                                        className="opacity-25"
+                                                                                        cx="12"
+                                                                                        cy="12"
+                                                                                        r="10"
+                                                                                        stroke="currentColor"
+                                                                                        strokeWidth="4"
+                                                                                    ></circle>
+                                                                                    <path
+                                                                                        className="opacity-75"
+                                                                                        fill="currentColor"
+                                                                                        d="M4 12a8 8 0 018-8v8H4z"
+                                                                                    ></path>
+                                                                                </svg>
+                                                                                Downloading...
+                                                                            </span>
+                                                                        ) : (
+                                                                            buttonText
+                                                                        )}
+                                                                    </button>
+                                                                );
+                                                            })()}
+                                                        </td>
 
 
-                                                    <td className="border border-black px-4  py-2" >
-                                                        <button
-                                                            className={`bg-orange-500 hover:scale-105 *:uppercase border border-white hover:border-orange-500 text-white px-4 py-2 
+                                                        <td className="border border-black px-4  py-2" >
+                                                            <button
+                                                                className={`bg-orange-500 hover:scale-105 *:uppercase border border-white hover:border-orange-500 text-white px-4 py-2 
     ${loadingIndex === index ? 'opacity-50 cursor-not-allowed' : ''} rounded hover:bg-white hover:text-orange-500`}
-                                                            onClick={() => handleViewMore(index)}
-                                                            disabled={loadingIndex === index} // Disable the button only for the loading row
-                                                        >
-                                                            {expandedRow && expandedRow.index === index ? 'Less' : 'View'}
-                                                        </button>
+                                                                onClick={() => handleViewMore(index)}
+                                                                disabled={loadingIndex === index} // Disable the button only for the loading row
+                                                            >
+                                                                {expandedRow && expandedRow.index === index ? 'Less' : 'View'}
+                                                            </button>
 
-                                                    </td>
-                                                    <td className="border border-black px-4 uppercase py-2">{(data.overall_status || 'WIP').replace(/_/g, ' ')}
-                                                    </td>
-                                                    <td className="border border-black px-4 uppercase py-2">{data.report_type?.replace(/_/g, " ") || 'N/A'}</td>
-                                                    <td className="border border-black px-4 py-2">
+                                                        </td>
+                                                        <td className="border border-black px-4 uppercase py-2">{(data.overall_status || 'WIP').replace(/_/g, ' ')}
+                                                        </td>
+                                                        <td className="border border-black px-4 uppercase py-2">{data.report_type?.replace(/_/g, " ") || 'N/A'}</td>
+                                                        <td className="border border-black px-4 py-2">
 
-                                                        {data.report_date
-                                                            ? new Date(data.report_date).toLocaleDateString('en-GB').replace(/\//g, '-')
-                                                            : 'NIL'}
-                                                    </td>
+                                                            {data.report_date
+                                                                ? new Date(data.report_date).toLocaleDateString('en-GB').replace(/\//g, '-')
+                                                                : 'NIL'}
+                                                        </td>
 
-                                                    <td className="border border-black px-4 py-2">{data.report_generated_by_name || 'N/A'}</td>
-                                                    <td className="border border-black px-4 py-2">{data.qc_done_by_name || 'N/A'}</td>
-                                                    <td className="border border-black px-4 py-2">
-                                                        <button
-                                                            className={`text-white rounded px-4 py-2 bg-red-500 hover:bg-red-600 ${deleteLoading === data.main_id ? 'opacity-50 cursor-not-allowed' : ''
-                                                                }`}
-                                                            onClick={() => handleApplicationDelete(data.main_id)}
-                                                            disabled={deleteLoading === data.main_id}
-                                                        >
+                                                        <td className="border border-black px-4 py-2">{data.report_generated_by_name || 'N/A'}</td>
+                                                        <td className="border border-black px-4 py-2">{data.qc_done_by_name || 'N/A'}</td>
+                                                        <td className="border border-black px-4 py-2">
+                                                            <button
+                                                                className={`text-white rounded px-4 py-2 bg-red-500 hover:bg-red-600 ${deleteLoading === data.main_id ? 'opacity-50 cursor-not-allowed' : ''
+                                                                    }`}
+                                                                onClick={() => handleApplicationDelete(data.main_id)}
+                                                                disabled={deleteLoading === data.main_id}
+                                                            >
 
-                                                            {deleteLoading === data.main_id ? ' Deleting...' : ' Delete'}
-                                                        </button>
+                                                                {deleteLoading === data.main_id ? ' Deleting...' : ' Delete'}
+                                                            </button>
 
-                                                    </td>
-                                                    <td className="border border-black px-4 py-2">
-                                                        <button
-                                                            className={`text-white rounded px-4 py-2 bg-green-500 hover:bg-green-600 ${restoreLoading === data.main_id ? 'opacity-50 cursor-not-allowed' : ''
-                                                                }`}
-                                                            onClick={() => handleApplicationRestore(data.main_id)}
-                                                            disabled={restoreLoading === data.main_id}
-                                                        >
+                                                        </td>
+                                                        <td className="border border-black px-4 py-2">
+                                                            <button
+                                                                className={`text-white rounded px-4 py-2 bg-green-500 hover:bg-green-600 ${restoreLoading === data.main_id ? 'opacity-50 cursor-not-allowed' : ''
+                                                                    }`}
+                                                                onClick={() => handleApplicationRestore(data.main_id)}
+                                                                disabled={restoreLoading === data.main_id}
+                                                            >
 
-                                                            {restoreLoading === data.main_id ? ' Restoring...' : ' Restore'}
-                                                        </button>
+                                                                {restoreLoading === data.main_id ? ' Restoring...' : ' Restore'}
+                                                            </button>
 
-                                                    </td>
-                                                    {/* <td className="border border-black text-center px-4 py-2">
+                                                        </td>
+                                                        {/* <td className="border border-black text-center px-4 py-2">
                                                         <div className="flex items-center justify-center">
                                                             <FaFlag
                                                                 style={{
@@ -2493,81 +2516,82 @@ report.For any clarifications you can mail us at `;
                                                         </div>
                                                     </td> */}
 
-                                                </tr>
+                                                    </tr>
 
-                                                {expandedRow && expandedRow.index === index && (
-                                                    <>
-                                                        <tr>
-                                                            <td colSpan="100%" className="text-center p-4 w-1/4">
-                                                                {/* Table structure to display headings in the first column and statuses in the second column */}
-                                                                <table className="w-1/4">
-                                                                    <tbody>
+                                                    {expandedRow && expandedRow.index === index && (
+                                                        <>
+                                                            <tr>
+                                                                <td colSpan="100%" className="text-center p-4 w-1/4">
+                                                                    {/* Table structure to display headings in the first column and statuses in the second column */}
+                                                                    <table className="w-1/4">
+                                                                        <tbody>
 
-                                                                        {expandedRow.headingsAndStatuses &&
-                                                                            expandedRow.headingsAndStatuses.map((item, idx) => (
-                                                                                <>
-                                                                                    <tr key={`row-${idx}`}>
-                                                                                        <td
-                                                                                            className="text-left p-2 border border-black capitalize bg-gray-200">
-                                                                                            {sanitizeText(item.heading)}
-                                                                                        </td>
-                                                                                        <td className="text-left p-2 border font-bold border-black uppercase " style={getColorStyle(item.status)}>
-                                                                                            {isValidDate(item.status) ? formatDate(item.status) : sanitizeText(item.status)}
-                                                                                        </td>
-                                                                                    </tr>
-                                                                                </>
-                                                                            ))
-                                                                        }
-                                                                        <tr>
-                                                                            <td className="text-left p-2 border border-black uppercase bg-gray-200  ref={clientSubmitRef}" id="clientSubmit">First Level Insuff</td>
-                                                                            <td className="text-left p-2 border border-black capitalize font-bold">{formatedJson(data.first_insufficiency_marks) || ''}</td>
-                                                                        </tr>
-                                                                        <tr>
-                                                                            <td className="text-left p-2 border border-black uppercase bg-gray-200">First Level Insuff Date</td>
-                                                                            <td className="text-left p-2 border border-black capitalize font-bold">{data.first_insuff_date ? (isValidDate(data.first_insuff_date) ? formatDate(data.first_insuff_date) : sanitizeText(data.first_insuff_date)) : ''}</td>
-                                                                        </tr>
-                                                                        <tr>
-                                                                            <td className="text-left p-2 border border-black uppercase bg-gray-200">First Level Insuff Reopen Date</td>
-                                                                            <td className="text-left p-2 border border-black capitalize font-bold">{data.first_insuff_reopened_date ? (isValidDate(data.first_insuff_reopened_date) ? formatDate(data.first_insuff_reopened_date) : sanitizeText(data.first_insuff_reopened_date)) : ''}</td>
-                                                                        </tr>
-                                                                        <tr>
-                                                                            <td className="text-left p-2 border border-black uppercase bg-gray-200">Second Level Insuff</td>
-                                                                            <td className="text-left p-2 border border-black capitalize font-bold">{formatedJson(data.second_insufficiency_marks) || ''}</td>
-                                                                        </tr>
-                                                                        <tr>
-                                                                            <td className="text-left p-2 border border-black uppercase bg-gray-200">Second Level Insuff Date</td>
-                                                                            <td className="text-left p-2 border border-black capitalize font-bold">{data.second_insuff_date ? (isValidDate(data.second_insuff_date) ? formatDate(data.second_insuff_date) : sanitizeText(data.second_insuff_date)) : ""}</td>
-                                                                        </tr>
-                                                                        <tr>
-                                                                            <td className="text-left p-2 border border-black uppercase bg-gray-200">Third Level Insuff Marks</td>
-                                                                            <td className="text-left p-2 border border-black capitalize font-bold">{formatedJson(data.third_insufficiency_marks) || ''}</td>
-                                                                        </tr>
-                                                                        <tr>
-                                                                            <td className="text-left p-2 border border-black uppercase bg-gray-200">Third Level Insuff Date</td>
-                                                                            <td className="text-left p-2 border border-black capitalize font-bold">{data.third_insuff_date ? (isValidDate(data.third_insuff_date) ? formatDate(data.third_insuff_date) : sanitizeText(data.third_insuff_date)) : ''}</td>
-                                                                        </tr>
-                                                                        <tr>
-                                                                            <td className="text-left p-2 border border-black uppercase bg-gray-200">Third Level Insuff Reopen Date</td>
-                                                                            <td className="text-left p-2 border border-black capitalize font-bold">{data.third_insuff_reopened_date ? (isValidDate(data.third_insuff_reopened_date) ? formatDate(data.third_insuff_reopened_date) : sanitizeText(data.third_insuff_reopened_date)) : ""}</td>
-                                                                        </tr>
-                                                                        <tr>
-                                                                            <td className="text-left p-2 border border-black uppercase bg-gray-200">Reason For Delay</td>
-                                                                            <td className="text-left p-2 border border-black capitalize font-bold">{formatedJson(data.delay_reason) || ''}</td>
-                                                                        </tr>
+                                                                            {expandedRow.headingsAndStatuses &&
+                                                                                expandedRow.headingsAndStatuses.map((item, idx) => (
+                                                                                    <>
+                                                                                        <tr key={`row-${idx}`}>
+                                                                                            <td
+                                                                                                className="text-left p-2 border border-black capitalize bg-gray-200">
+                                                                                                {sanitizeText(item.heading)}
+                                                                                            </td>
+                                                                                            <td className="text-left p-2 border font-bold border-black uppercase " style={getColorStyle(item.status)}>
+                                                                                                {isValidDate(item.status) ? formatDate(item.status) : sanitizeText(item.status)}
+                                                                                            </td>
+                                                                                        </tr>
+                                                                                    </>
+                                                                                ))
+                                                                            }
+                                                                            <tr>
+                                                                                <td className="text-left p-2 border border-black uppercase bg-gray-200  ref={clientSubmitRef}" id="clientSubmit">First Level Insuff</td>
+                                                                                <td className="text-left p-2 border border-black capitalize font-bold">{formatedJson(data.first_insufficiency_marks) || ''}</td>
+                                                                            </tr>
+                                                                            <tr>
+                                                                                <td className="text-left p-2 border border-black uppercase bg-gray-200">First Level Insuff Date</td>
+                                                                                <td className="text-left p-2 border border-black capitalize font-bold">{data.first_insuff_date ? (isValidDate(data.first_insuff_date) ? formatDate(data.first_insuff_date) : sanitizeText(data.first_insuff_date)) : ''}</td>
+                                                                            </tr>
+                                                                            <tr>
+                                                                                <td className="text-left p-2 border border-black uppercase bg-gray-200">First Level Insuff Reopen Date</td>
+                                                                                <td className="text-left p-2 border border-black capitalize font-bold">{data.first_insuff_reopened_date ? (isValidDate(data.first_insuff_reopened_date) ? formatDate(data.first_insuff_reopened_date) : sanitizeText(data.first_insuff_reopened_date)) : ''}</td>
+                                                                            </tr>
+                                                                            <tr>
+                                                                                <td className="text-left p-2 border border-black uppercase bg-gray-200">Second Level Insuff</td>
+                                                                                <td className="text-left p-2 border border-black capitalize font-bold">{formatedJson(data.second_insufficiency_marks) || ''}</td>
+                                                                            </tr>
+                                                                            <tr>
+                                                                                <td className="text-left p-2 border border-black uppercase bg-gray-200">Second Level Insuff Date</td>
+                                                                                <td className="text-left p-2 border border-black capitalize font-bold">{data.second_insuff_date ? (isValidDate(data.second_insuff_date) ? formatDate(data.second_insuff_date) : sanitizeText(data.second_insuff_date)) : ""}</td>
+                                                                            </tr>
+                                                                            <tr>
+                                                                                <td className="text-left p-2 border border-black uppercase bg-gray-200">Third Level Insuff Marks</td>
+                                                                                <td className="text-left p-2 border border-black capitalize font-bold">{formatedJson(data.third_insufficiency_marks) || ''}</td>
+                                                                            </tr>
+                                                                            <tr>
+                                                                                <td className="text-left p-2 border border-black uppercase bg-gray-200">Third Level Insuff Date</td>
+                                                                                <td className="text-left p-2 border border-black capitalize font-bold">{data.third_insuff_date ? (isValidDate(data.third_insuff_date) ? formatDate(data.third_insuff_date) : sanitizeText(data.third_insuff_date)) : ''}</td>
+                                                                            </tr>
+                                                                            <tr>
+                                                                                <td className="text-left p-2 border border-black uppercase bg-gray-200">Third Level Insuff Reopen Date</td>
+                                                                                <td className="text-left p-2 border border-black capitalize font-bold">{data.third_insuff_reopened_date ? (isValidDate(data.third_insuff_reopened_date) ? formatDate(data.third_insuff_reopened_date) : sanitizeText(data.third_insuff_reopened_date)) : ""}</td>
+                                                                            </tr>
+                                                                            <tr>
+                                                                                <td className="text-left p-2 border border-black uppercase bg-gray-200">Reason For Delay</td>
+                                                                                <td className="text-left p-2 border border-black capitalize font-bold">{formatedJson(data.delay_reason) || ''}</td>
+                                                                            </tr>
 
-                                                                    </tbody>
-                                                                </table>
-                                                            </td>
-                                                        </tr>
-                                                    </>
-                                                )}
-                                            </React.Fragment>
-                                        )
-                                    })}
-                                </>
-                            )}
-                        </tbody>
-                    </table>
+                                                                        </tbody>
+                                                                    </table>
+                                                                </td>
+                                                            </tr>
+                                                        </>
+                                                    )}
+                                                </React.Fragment>
+                                            )
+                                        })}
+                                    </>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
                 <div className="flex justify-between items-center mt-4">
                     <button

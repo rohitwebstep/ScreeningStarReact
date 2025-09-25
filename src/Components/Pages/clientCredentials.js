@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import SidebarContext from '../SidebarContext'
 import { useApiLoading } from "../ApiLoadingContext";
@@ -16,6 +16,18 @@ const ClientCredentials = () => {
   const [viewBranchesRow, setViewBranchesRow] = useState(null);
   const [branchesData, setBranchesData] = useState([]);
   const storedToken = localStorage.getItem('token');
+  const tableScrollRef = useRef(null);
+  const topScrollRef = useRef(null);
+  const [scrollWidth, setScrollWidth] = useState("100%");
+
+  // 🔹 Sync scroll positions
+  const syncScroll = (e) => {
+    if (e.target === topScrollRef.current) {
+      tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+    } else {
+      topScrollRef.current.scrollLeft = e.target.scrollLeft;
+    }
+  };
 
   const location = useLocation();
   const query = new URLSearchParams(location.search);
@@ -23,7 +35,7 @@ const ClientCredentials = () => {
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const optionsPerPage = [10, 50, 100, 200,500,1000];
+  const optionsPerPage = [10, 50, 100, 200, 500, 1000];
   const fetchClientData = async () => {
     const admin_id = JSON.parse(localStorage.getItem("admin"))?.id;
     const storedToken = localStorage.getItem("_token");
@@ -159,7 +171,11 @@ const ClientCredentials = () => {
 
   const totalPages = Math.ceil(filteredClientData.length / itemsPerPage);
 
-
+  useEffect(() => {
+    if (tableScrollRef.current) {
+      setScrollWidth(tableScrollRef.current.scrollWidth + "px");
+    }
+  }, [currentData, loading]);
 
   return (
     <div className="w-full bg-[#c1dff2] border border-black overflow-hidden">
@@ -193,127 +209,135 @@ const ClientCredentials = () => {
             </option>
           ))}
         </select>
-        <div className=" overflow-scroll">
-          <table className="min-w-full border-collapse border border-black text-sm md:text-base">
-            <thead className="">
-              <tr className="bg-[#c1dff2] whitespace-nowrap text-[#4d606b] text-left ">
-                <th className=" uppercase border border-black px-4 py-2  text-center">SI</th>
-                <th className=" uppercase border border-black px-4 py-2">Client ID</th>
-                <th className=" uppercase border border-black px-4 py-2">Name of Client Organisation</th>
-                <th className=" uppercase border border-black px-4 py-2">Username</th>
-                <th className=" uppercase border border-black px-4 py-2 text-center">Link</th>
-              </tr>
-            </thead>
-            {loading ? (
-              <tbody className="h-10">
-                <tr className="">
-                  <td colSpan="10" className="w-full py-10 h-10  text-center">
-                    <div className="flex justify-center  items-center w-full h-full">
-                      <div className="loader border-t-4 border-[#2c81ba] rounded-full w-10 h-10 animate-spin"></div>
-                    </div>
-                  </td>
+        <div className="table-container rounded-lg">
+          {/* Top Scroll */}
+          <div className="top-scroll" ref={topScrollRef} onScroll={syncScroll}>
+            <div className="top-scroll-inner" style={{ width: scrollWidth }} />
+          </div>
+
+          {/* Actual Table Scroll */}
+          <div className="table-scroll rounded-lg" ref={tableScrollRef} onScroll={syncScroll}>
+            <table className="min-w-full border-collapse border border-black text-sm md:text-base">
+              <thead className="">
+                <tr className="bg-[#c1dff2] whitespace-nowrap text-[#4d606b] text-left ">
+                  <th className=" uppercase border border-black px-4 py-2  text-center">SI</th>
+                  <th className=" uppercase border border-black px-4 py-2">Client ID</th>
+                  <th className=" uppercase border border-black px-4 py-2">Name of Client Organisation</th>
+                  <th className=" uppercase border border-black px-4 py-2">Username</th>
+                  <th className=" uppercase border border-black px-4 py-2 text-center">Link</th>
                 </tr>
-              </tbody>
-            ) : (
-              <tbody className="text-center">
-                {error ? (
-                  <tr>
-                    <td colSpan={5} className="border border-black px-4 py-2 text-red-500">
-                      {responseError}
+              </thead>
+              {loading ? (
+                <tbody className="h-10">
+                  <tr className="">
+                    <td colSpan="10" className="w-full py-10 h-10  text-center">
+                      <div className="flex justify-center  items-center w-full h-full">
+                        <div className="loader border-t-4 border-[#2c81ba] rounded-full w-10 h-10 animate-spin"></div>
+                      </div>
                     </td>
                   </tr>
-                ) : currentData.length > 0 ? (
-                  currentData.map((client, index) => (
-                    <React.Fragment key={client.clientId}>
-                      <tr className="text-left">
-                        <td className="border border-black px-4 py-2 text-center">    {(currentPage - 1) * itemsPerPage + index + 1}</td>
-                        <td className="border border-black px-4 py-2 text-left">{client.clientId}</td>
-                        <td className="border border-black px-4 py-2 text-left">{client.branchName}</td>
-                        <td className="border border-black px-4 py-2 text-left">
-                          <div className="text-left">{client.branchEmail}</div>
-                        </td>
-                        <td className="border border-black whitespace-nowrap px-4 text-center py-2">
-                          {client.branchCount > 1 ? (
-                            <button
-                              onClick={() => handleViewBranchesClick(client.main_id)}
-                              className={`ml-2 p-2 px-4 font-bold  text-white transition-transform duration-300 ease-in-out transform rounded-md border ${isLoading === client.main_id
-                                ? 'opacity-50  cursor-not-allowed bg-green-500 hover:bg-green-600'
-                                : viewBranchesRow === client.main_id
-                                  ? 'bg-red-500 hover:bg-red-600 focus:ring-2 focus:ring-red-300'
-                                  : 'bg-green-500 hover:bg-green-600 focus:ring-2 focus:ring-green-300'
-                                } ${!isLoading && 'hover:scale-105'}`}
-                              disabled={isLoading === client.main_id}
-                            >
-                              {viewBranchesRow === client.main_id ? 'LESS' : 'VIEW BRANCHES'}
-                            </button>
+                </tbody>
+              ) : (
+                <tbody className="text-center">
+                  {error ? (
+                    <tr>
+                      <td colSpan={5} className="border border-black px-4 py-2 text-red-500">
+                        {responseError}
+                      </td>
+                    </tr>
+                  ) : currentData.length > 0 ? (
+                    currentData.map((client, index) => (
+                      <React.Fragment key={client.clientId}>
+                        <tr className="text-left">
+                          <td className="border border-black px-4 py-2 text-center">    {(currentPage - 1) * itemsPerPage + index + 1}</td>
+                          <td className="border border-black px-4 py-2 text-left">{client.clientId}</td>
+                          <td className="border border-black px-4 py-2 text-left">{client.branchName}</td>
+                          <td className="border border-black px-4 py-2 text-left">
+                            <div className="text-left">{client.branchEmail}</div>
+                          </td>
+                          <td className="border border-black whitespace-nowrap px-4 text-center py-2">
+                            {client.branchCount > 1 ? (
+                              <button
+                                onClick={() => handleViewBranchesClick(client.main_id)}
+                                className={`ml-2 p-2 px-4 font-bold  text-white transition-transform duration-300 ease-in-out transform rounded-md border ${isLoading === client.main_id
+                                  ? 'opacity-50  cursor-not-allowed bg-green-500 hover:bg-green-600'
+                                  : viewBranchesRow === client.main_id
+                                    ? 'bg-red-500 hover:bg-red-600 focus:ring-2 focus:ring-red-300'
+                                    : 'bg-green-500 hover:bg-green-600 focus:ring-2 focus:ring-green-300'
+                                  } ${!isLoading && 'hover:scale-105'}`}
+                                disabled={isLoading === client.main_id}
+                              >
+                                {viewBranchesRow === client.main_id ? 'LESS' : 'VIEW BRANCHES'}
+                              </button>
 
-                          ) : (
-                            <Link
-                              to={`/userLogin?branchEmail=${encodeURIComponent(client.branchEmail)}&adminid=${JSON.parse(localStorage.getItem("admin"))?.id}&token=${localStorage.getItem("_token")}&logo=${client.logo}`}
-                              target="_blank"
-                              className="bg-green-500 hover:bg-green-600 hover:scale-105 focus:ring-2 focus:ring-green-300 ml-2 p-2 px-4 font-bold  text-white transition-transform duration-300 ease-in-out transform rounded-md border "
-                            >
-                             LOGIN 
-                            </Link>
-                          )}
-                        </td>
-                      </tr>
-
-                      {/* Conditionally render branches for the selected row */}
-                      {viewBranchesRow === client.main_id && client.branchCount > 1 && (
-                        <tr>
-                          <td colSpan={5} className="p-4">
-                            <table className="min-w-full border-collapse border border-black">
-                              <thead>
-                                <tr className="bg-[#c1dff2] whitespace-nowrap text-[#4d606b]">
-                                  <th className="uppercase border border-black px-4 py-2">Branch ID</th>
-                                  <th className="uppercase border border-black px-4 py-2 text-left">Branch Name</th>
-                                  <th className="uppercase border border-black px-4 py-2 text-left">Branch Email</th>
-                                  <th className="uppercase border border-black px-4 py-2">Link</th>
-                                </tr>
-                              </thead>
-                              <tbody className="text-center">
-                                {branchesData.length > 0 ? (
-                                  branchesData.map((branch) => (
-                                    <tr key={branch.id}>
-                                      <td className="border border-black px-4 py-2">{branch.id}</td>
-                                      <td className="border border-black px-4 py-2 text-left">{branch.name}</td>
-                                      <td className="border border-black px-4 py-2 text-left">{branch.email}</td>
-                                      <td className="border border-black px-4 py-2">
-                                        <Link
-                                          to={`/userLogin?branchEmail=${encodeURIComponent(branch.email)}&adminid=${JSON.parse(localStorage.getItem("admin"))?.id}&token=${localStorage.getItem("_token")}&logo=${client.logo}`}
-                                          target="_blank"
-                                          className="bg-green-500 hover:bg-green-600 hover:scale-105 focus:ring-2 focus:ring-green-300 ml-2 p-2 px-4 font-bold  text-white transition-transform duration-300 ease-in-out transform rounded-md border"
-                                        >
-                                          LOGIN
-                                        </Link>
-                                      </td>
-                                    </tr>
-                                  ))
-                                ) : (
-                                  <tr>
-                                    <td colSpan={4} className="border border-black px-4 py-2 font-light">
-                                      You have no branches.
-                                    </td>
-                                  </tr>
-                                )}
-                              </tbody>
-                            </table>
+                            ) : (
+                              <Link
+                                to={`/userLogin?branchEmail=${encodeURIComponent(client.branchEmail)}&adminid=${JSON.parse(localStorage.getItem("admin"))?.id}&token=${localStorage.getItem("_token")}&logo=${client.logo}`}
+                                target="_blank"
+                                className="bg-green-500 hover:bg-green-600 hover:scale-105 focus:ring-2 focus:ring-green-300 ml-2 p-2 px-4 font-bold  text-white transition-transform duration-300 ease-in-out transform rounded-md border "
+                              >
+                                LOGIN
+                              </Link>
+                            )}
                           </td>
                         </tr>
-                      )}
-                    </React.Fragment>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={5} className="border border-black px-4 py-2">
-                      No head branches found.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            )}
-          </table>
+
+                        {/* Conditionally render branches for the selected row */}
+                        {viewBranchesRow === client.main_id && client.branchCount > 1 && (
+                          <tr>
+                            <td colSpan={5} className="p-4">
+                              <table className="min-w-full border-collapse border border-black">
+                                <thead>
+                                  <tr className="bg-[#c1dff2] whitespace-nowrap text-[#4d606b]">
+                                    <th className="uppercase border border-black px-4 py-2">Branch ID</th>
+                                    <th className="uppercase border border-black px-4 py-2 text-left">Branch Name</th>
+                                    <th className="uppercase border border-black px-4 py-2 text-left">Branch Email</th>
+                                    <th className="uppercase border border-black px-4 py-2">Link</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="text-center">
+                                  {branchesData.length > 0 ? (
+                                    branchesData.map((branch) => (
+                                      <tr key={branch.id}>
+                                        <td className="border border-black px-4 py-2">{branch.id}</td>
+                                        <td className="border border-black px-4 py-2 text-left">{branch.name}</td>
+                                        <td className="border border-black px-4 py-2 text-left">{branch.email}</td>
+                                        <td className="border border-black px-4 py-2">
+                                          <Link
+                                            to={`/userLogin?branchEmail=${encodeURIComponent(branch.email)}&adminid=${JSON.parse(localStorage.getItem("admin"))?.id}&token=${localStorage.getItem("_token")}&logo=${client.logo}`}
+                                            target="_blank"
+                                            className="bg-green-500 hover:bg-green-600 hover:scale-105 focus:ring-2 focus:ring-green-300 ml-2 p-2 px-4 font-bold  text-white transition-transform duration-300 ease-in-out transform rounded-md border"
+                                          >
+                                            LOGIN
+                                          </Link>
+                                        </td>
+                                      </tr>
+                                    ))
+                                  ) : (
+                                    <tr>
+                                      <td colSpan={4} className="border border-black px-4 py-2 font-light">
+                                        You have no branches.
+                                      </td>
+                                    </tr>
+                                  )}
+                                </tbody>
+                              </table>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={5} className="border border-black px-4 py-2">
+                        No head branches found.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              )}
+            </table>
+          </div>
         </div>
         <div className="flex justify-between items-center mt-4">
           <button

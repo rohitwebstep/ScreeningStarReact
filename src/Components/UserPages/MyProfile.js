@@ -1,4 +1,4 @@
-import { React, useCallback, useEffect, useState } from 'react';
+import { React, useCallback, useEffect, useState, useRef } from 'react';
 // import PulseLoader from 'react-spinners/PulseLoader';
 import Swal from 'sweetalert2';
 import { useApiLoadingBranch } from '../BranchApiLoadingContext';
@@ -11,6 +11,18 @@ const MyProfile = () => {
     const branch_token = localStorage.getItem("branch_token");
     const [rowsPerPage, setRowsPerPage] = useState(10);
     const [currentPage, setCurrentPage] = useState(1);
+    const tableScrollRef = useRef(null);
+    const topScrollRef = useRef(null);
+    const [scrollWidth, setScrollWidth] = useState("100%");
+
+    // 🔹 Sync scroll positions
+    const syncScroll = (e) => {
+        if (e.target === topScrollRef.current) {
+            tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+        } else {
+            topScrollRef.current.scrollLeft = e.target.scrollLeft;
+        }
+    };
 
     const [rowsPerPageOne, setRowsPerPageOne] = useState(10);
     const [currentPageOne, setCurrentPageOne] = useState(1);
@@ -126,6 +138,11 @@ const MyProfile = () => {
     const totalPages = Math.ceil(services.length / rowsPerPage);
     const displayedServices = services.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
 
+    useEffect(() => {
+        if (tableScrollRef.current) {
+            setScrollWidth(tableScrollRef.current.scrollWidth + "px");
+        }
+    }, [customer, loading]);
 
 
     const handleRowsChange = (e) => {
@@ -147,230 +164,241 @@ const MyProfile = () => {
                     </div>
                 ) : (
                     <>
-                        <div className="overflow-x-auto bg-white shadow-md rounded-md md:m-10  m-3 h-full">
-                            <table className="min-w-full border bg-white overflow-auto shadow-md rounded-md p-3 ">
+                        <div className="table-container rounded-lg">
+                            {/* Top Scroll */}
+                            <div className="top-scroll" ref={topScrollRef} onScroll={syncScroll}>
+                                <div className="top-scroll-inner" style={{ width: scrollWidth }} />
+                            </div>
 
-                                <tbody>
-
-                                    <tr className='bg-[#c1dff2] text-[#4d606b]'>
-                                        <th className="py-2 px-4 border border-black  whitespace-nowrap text-center font-bold">PARTICULARS</th>
-                                        <td className="py-2 px-4 border border-black text-center  whitespace-nowrap uppercase font-bold">INFORMATION</td>
-                                    </tr>
-                                  
-                                    <tr>
-                                        <th className="py-2 px-4 border border-black  whitespace-nowrap text-left">Name of the Organization</th>
-                                        <td className="py-2 px-4 border border-black text-left  whitespace-nowrap">{customer?.name || 'NA'}</td>
-                                    </tr>
-                                    <tr>
-                                        <th className="py-2 px-4 border border-black  whitespace-nowrap text-left">Client Unique Code</th>
-                                        <td className="py-2 px-4 border border-black text-left  whitespace-nowrap">{customer?.client_unique_id || 'NA'}</td>
-                                    </tr>
-                                    <tr>
-                                        <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Registered Address</th>
-                                        <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.address || 'NA'}</td>
-                                    </tr>
-                                    <tr>
-                                        <th className="py-2 px-4 border border-black text-left whitespace-nowrap">State</th>
-                                        <td className={`py-2 px-4 border border-black text-left whitespace-nowrap`}>
-                                            {customer?.state || 'null'}
-
-                                        </td>
-                                    </tr>
-
-                                    <tr>
-                                        <th className="py-2 px-4 border border-black text-left whitespace-nowrap">State Code</th>
-                                        <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.state_code || 'NA'}</td>
-                                    </tr>
-                                    <tr>
-                                        <th className="py-2 px-4 border border-black text-left whitespace-nowrap">GSTIN</th>
-                                        <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.gst_number || 'NA'}</td>
-                                    </tr>
-                                    <tr>
-                                        <th className="py-2 px-4 border border-black text-left whitespace-nowrap">TAT</th>
-                                        <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.tat_days || 'NA'}</td>
-                                    </tr>
-                                    <tr>
-                                        <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Agreement Date </th>
-                                        <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.agreement_date || 'NA'}</td>
-                                    </tr>
-                                    <tr>
-                                        <th className="py-2 px-4 border border-black text-left whitespace-nowrap">
-                                            Client Logo
-                                        </th>
-                                        <td className="py-2 px-4 border border-black text-left">
-                                            {customer?.logo ? (
-                                                <img src={customer?.logo} alt="Company Logo" className="h-16 w-auto" />
-                                            ) : (
-                                                <span className="text-gray-500 italic">Not Available</span>
-                                            )}
-                                        </td>
-                                    </tr>
-                                
-                                
-                                    <tr>
-                                        <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Standard Process</th>
-                                        <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.client_standard || 'NA'}</td>
-                                    </tr>
-                                    <tr>
-                                        <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Agreement Period</th>
-                                        <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.agreement_duration || 'NA'}</td>
-                                    </tr>
-                                    <tr>
-                                        <th className="py-2 px-4 border border-black text-left whitespace-nowrap">
-                                            Uploaded Agreement
-                                        </th>
-                                        <td className="py-2 px-4 border border-black text-left">
-                                            {customer?.agreement ? (
-                                                <img src={customer?.agreement} alt="Company Logo" className="h-16 w-auto" />
-                                            ) : (
-                                                <span className="text-gray-500 italic">Not Available</span>
-                                            )}
-                                        </td>
-                                    </tr>
+                            {/* Actual Table Scroll */}
+                            <div className="table-scroll rounded-lg" ref={tableScrollRef} onScroll={syncScroll}>
 
 
-                                    <tr>
-                                        <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Client SPOC Name</th>
-                                        <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.first_level_matrix_name || 'NA'}</td>
-                                    </tr>
-                                    <tr>
-                                        <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Client SPOC Email</th>
-                                        <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.emails && JSON.parse(customer?.emails).join(", ")}</td>
-                                    </tr>
-                                    <tr>
-                                        <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Client SPOC Mobile</th>
-                                        <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.mobile || 'NA'}</td>
-                                    </tr>
-                                    <tr>
-                                        <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Client SPOC Designation</th>
-                                        <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.first_level_matrix_designation || 'NA'}</td>
-                                    </tr>
+                                <table className="min-w-full border bg-white overflow-auto shadow-md rounded-md p-3 ">
 
-                                    <tr>
-                                        <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Escalation Manager Name</th>
-                                        <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.esc_manager_name || 'NA'}</td>
-                                    </tr>
-                                    <tr>
-                                        <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Escalation Manager Email</th>
-                                        <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.esc_manager_email || 'NA'}</td>
-                                    </tr>
-                                    <tr>
-                                        <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Escalation Manager Mobile</th>
-                                        <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.esc_manager_mobile || 'NA'}</td>
-                                    </tr>
-                                    <tr>
-                                        <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Escalation Manager Designation</th>
-                                        <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.esc_manager_desgn || 'NA'}</td>
-                                    </tr>
+                                    <tbody>
 
-                                    <tr>
-                                        <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Billing SPOC Name</th>
-                                        <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.billing_spoc_name || 'NA'}</td>
-                                    </tr>
-                                    <tr>
-                                        <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Billing SPOC Email</th>
-                                        <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.billing_spoc_email || 'NA'}</td>
-                                    </tr>
-                                    <tr>
-                                        <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Billing SPOC Mobile</th>
-                                        <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.billing_spoc_mobile || 'NA'}</td>
-                                    </tr>
-                                    <tr>
-                                        <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Billing SPOC Designation</th>
-                                        <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.billing_spoc_desgn || 'NA'}</td>
-                                    </tr>
-                                    <tr>
-                                        <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Billing Escalation Name</th>
-                                        <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.billing_escalation_name || 'NA'}</td>
-                                    </tr>
-                                    <tr>
-                                        <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Billing Escalation Email</th>
-                                        <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.billing_escalation_email || 'NA'}</td>
-                                    </tr>
-                                    <tr>
-                                        <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Billing Escalation Mobile</th>
-                                        <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.billing_escalation_mobile || 'NA'}</td>
-                                    </tr>
-                                    <tr>
-                                        <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Billing Escalation Designation</th>
-                                        <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.billing_escalation_desgn || 'NA'}</td>
-                                    </tr>
-                                    <tr>
-                                        <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Authorized Detail Name</th>
-                                        <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.authorized_detail_name || 'NA'}</td>
-                                    </tr>
-                                    <tr>
-                                        <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Authorized Detail Email</th>
-                                        <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.authorized_detail_email || 'NA'}</td>
-                                    </tr>
-                                    <tr>
-                                        <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Authorized Detail Mobile</th>
-                                        <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.authorized_detail_mobile || 'NA'}</td>
-                                    </tr>
-                                    <tr>
-                                        <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Authorized Detail Designation</th>
-                                        <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.authorized_detail_desgn || 'NA'}</td>
-                                    </tr>
+                                        <tr className='bg-[#c1dff2] text-[#4d606b]'>
+                                            <th className="py-2 px-4 border border-black  whitespace-nowrap text-center font-bold">PARTICULARS</th>
+                                            <td className="py-2 px-4 border border-black text-center  whitespace-nowrap uppercase font-bold">INFORMATION</td>
+                                        </tr>
 
-
-                                    <tr>
-                                        <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Key Account Name</th>
-                                        <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.client_spoc_name || 'NA'}</td>
-                                    </tr>
-
-                                    <tr>
-                                        <th className="py-2 px-4 border border-black text-left  whitespace-nowrap">Key Account Email</th>
-                                        <td className="py-2 px-4 border border-black text-left  whitespace-nowrap">
-                                            {customer?.client_spoc_email ? JSON.parse(customer?.client_spoc_email).join(', ') || 'NA' : 'NA'}
-                                        </td>
-                                    </tr>
-
-                                    <tr>
-                                        <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Key Account Mobile</th>
-                                        <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.client_spoc_mobile || 'NA'}</td>
-                                    </tr>
-                                    <tr>
-                                        <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Key Account Designation</th>
-                                        <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.client_spoc_desgn || 'NA'}</td>
-                                    </tr>
-
-                                    <tr>
-                                        <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Visible Feilds</th>
-                                        <td className="py-2 px-4 border border-black text-left whitespace-nowrap">  {customer?.visible_fields ? JSON.parse(customer?.visible_fields).join(', ') || 'NA' : 'NA'}</td>
-                                    </tr>
-                                    <tr>
-                                        <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Secondary Credentials (Username)</th>
-                                        <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.username || 'NA'}</td>
-                                    </tr>
                                         <tr>
-                                        <th className="py-2 px-4 border border-black text-left whitespace-nowrap">
-                                            Custom Logo
-                                        </th>
-                                        <td className="py-2 px-4 border border-black text-left">
-                                            {customer?.custom_logo ? (
-                                                <img src={customer?.custom_logo} alt="Company Logo" className="h-16 w-auto" />
-                                            ) : (
-                                                <span className="text-gray-500 italic">Not Available</span>
-                                            )}
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <th className="py-2 px-4 border border-black text-left whitespace-nowrap">PDF Footer</th>
-                                        <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.custom_address || 'NA'}</td>
-                                    </tr>
+                                            <th className="py-2 px-4 border border-black  whitespace-nowrap text-left">Name of the Organization</th>
+                                            <td className="py-2 px-4 border border-black text-left  whitespace-nowrap">{customer?.name || 'NA'}</td>
+                                        </tr>
+                                        <tr>
+                                            <th className="py-2 px-4 border border-black  whitespace-nowrap text-left">Client Unique Code</th>
+                                            <td className="py-2 px-4 border border-black text-left  whitespace-nowrap">{customer?.client_unique_id || 'NA'}</td>
+                                        </tr>
+                                        <tr>
+                                            <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Registered Address</th>
+                                            <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.address || 'NA'}</td>
+                                        </tr>
+                                        <tr>
+                                            <th className="py-2 px-4 border border-black text-left whitespace-nowrap">State</th>
+                                            <td className={`py-2 px-4 border border-black text-left whitespace-nowrap`}>
+                                                {customer?.state || 'null'}
 
-                                    <tr>
-                                        <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Disclaimer Emails</th>
-                                        <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.disclaimer_emails || 'NA'}</td>
-                                    </tr>
-                                      <tr>
-                                        <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Status</th>
-                                        <td className={`py-2 px-4 border border-black text-left whitespace-nowrap ${customer?.status == 1 ? "text-green-500" : customer?.status == 0 ? "text-red-500" : null} }`}>
-                                            {customer?.status == 1 ? "Active" : customer?.status == 0 ? "Inactive" : null}
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table></div>
+                                            </td>
+                                        </tr>
+
+                                        <tr>
+                                            <th className="py-2 px-4 border border-black text-left whitespace-nowrap">State Code</th>
+                                            <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.state_code || 'NA'}</td>
+                                        </tr>
+                                        <tr>
+                                            <th className="py-2 px-4 border border-black text-left whitespace-nowrap">GSTIN</th>
+                                            <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.gst_number || 'NA'}</td>
+                                        </tr>
+                                        <tr>
+                                            <th className="py-2 px-4 border border-black text-left whitespace-nowrap">TAT</th>
+                                            <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.tat_days || 'NA'}</td>
+                                        </tr>
+                                        <tr>
+                                            <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Agreement Date </th>
+                                            <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.agreement_date || 'NA'}</td>
+                                        </tr>
+                                        <tr>
+                                            <th className="py-2 px-4 border border-black text-left whitespace-nowrap">
+                                                Client Logo
+                                            </th>
+                                            <td className="py-2 px-4 border border-black text-left">
+                                                {customer?.logo ? (
+                                                    <img src={customer?.logo} alt="Company Logo" className="h-16 w-auto" />
+                                                ) : (
+                                                    <span className="text-gray-500 italic">Not Available</span>
+                                                )}
+                                            </td>
+                                        </tr>
+
+
+                                        <tr>
+                                            <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Standard Process</th>
+                                            <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.client_standard || 'NA'}</td>
+                                        </tr>
+                                        <tr>
+                                            <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Agreement Period</th>
+                                            <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.agreement_duration || 'NA'}</td>
+                                        </tr>
+                                        <tr>
+                                            <th className="py-2 px-4 border border-black text-left whitespace-nowrap">
+                                                Uploaded Agreement
+                                            </th>
+                                            <td className="py-2 px-4 border border-black text-left">
+                                                {customer?.agreement ? (
+                                                    <img src={customer?.agreement} alt="Company Logo" className="h-16 w-auto" />
+                                                ) : (
+                                                    <span className="text-gray-500 italic">Not Available</span>
+                                                )}
+                                            </td>
+                                        </tr>
+
+
+                                        <tr>
+                                            <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Client SPOC Name</th>
+                                            <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.first_level_matrix_name || 'NA'}</td>
+                                        </tr>
+                                        <tr>
+                                            <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Client SPOC Email</th>
+                                            <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.emails && JSON.parse(customer?.emails).join(", ")}</td>
+                                        </tr>
+                                        <tr>
+                                            <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Client SPOC Mobile</th>
+                                            <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.mobile || 'NA'}</td>
+                                        </tr>
+                                        <tr>
+                                            <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Client SPOC Designation</th>
+                                            <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.first_level_matrix_designation || 'NA'}</td>
+                                        </tr>
+
+                                        <tr>
+                                            <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Escalation Manager Name</th>
+                                            <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.esc_manager_name || 'NA'}</td>
+                                        </tr>
+                                        <tr>
+                                            <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Escalation Manager Email</th>
+                                            <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.esc_manager_email || 'NA'}</td>
+                                        </tr>
+                                        <tr>
+                                            <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Escalation Manager Mobile</th>
+                                            <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.esc_manager_mobile || 'NA'}</td>
+                                        </tr>
+                                        <tr>
+                                            <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Escalation Manager Designation</th>
+                                            <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.esc_manager_desgn || 'NA'}</td>
+                                        </tr>
+
+                                        <tr>
+                                            <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Billing SPOC Name</th>
+                                            <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.billing_spoc_name || 'NA'}</td>
+                                        </tr>
+                                        <tr>
+                                            <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Billing SPOC Email</th>
+                                            <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.billing_spoc_email || 'NA'}</td>
+                                        </tr>
+                                        <tr>
+                                            <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Billing SPOC Mobile</th>
+                                            <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.billing_spoc_mobile || 'NA'}</td>
+                                        </tr>
+                                        <tr>
+                                            <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Billing SPOC Designation</th>
+                                            <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.billing_spoc_desgn || 'NA'}</td>
+                                        </tr>
+                                        <tr>
+                                            <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Billing Escalation Name</th>
+                                            <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.billing_escalation_name || 'NA'}</td>
+                                        </tr>
+                                        <tr>
+                                            <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Billing Escalation Email</th>
+                                            <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.billing_escalation_email || 'NA'}</td>
+                                        </tr>
+                                        <tr>
+                                            <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Billing Escalation Mobile</th>
+                                            <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.billing_escalation_mobile || 'NA'}</td>
+                                        </tr>
+                                        <tr>
+                                            <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Billing Escalation Designation</th>
+                                            <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.billing_escalation_desgn || 'NA'}</td>
+                                        </tr>
+                                        <tr>
+                                            <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Authorized Detail Name</th>
+                                            <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.authorized_detail_name || 'NA'}</td>
+                                        </tr>
+                                        <tr>
+                                            <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Authorized Detail Email</th>
+                                            <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.authorized_detail_email || 'NA'}</td>
+                                        </tr>
+                                        <tr>
+                                            <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Authorized Detail Mobile</th>
+                                            <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.authorized_detail_mobile || 'NA'}</td>
+                                        </tr>
+                                        <tr>
+                                            <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Authorized Detail Designation</th>
+                                            <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.authorized_detail_desgn || 'NA'}</td>
+                                        </tr>
+
+
+                                        <tr>
+                                            <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Key Account Name</th>
+                                            <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.client_spoc_name || 'NA'}</td>
+                                        </tr>
+
+                                        <tr>
+                                            <th className="py-2 px-4 border border-black text-left  whitespace-nowrap">Key Account Email</th>
+                                            <td className="py-2 px-4 border border-black text-left  whitespace-nowrap">
+                                                {customer?.client_spoc_email ? JSON.parse(customer?.client_spoc_email).join(', ') || 'NA' : 'NA'}
+                                            </td>
+                                        </tr>
+
+                                        <tr>
+                                            <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Key Account Mobile</th>
+                                            <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.client_spoc_mobile || 'NA'}</td>
+                                        </tr>
+                                        <tr>
+                                            <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Key Account Designation</th>
+                                            <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.client_spoc_desgn || 'NA'}</td>
+                                        </tr>
+
+                                        <tr>
+                                            <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Visible Feilds</th>
+                                            <td className="py-2 px-4 border border-black text-left whitespace-nowrap">  {customer?.visible_fields ? JSON.parse(customer?.visible_fields).join(', ') || 'NA' : 'NA'}</td>
+                                        </tr>
+                                        <tr>
+                                            <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Secondary Credentials (Username)</th>
+                                            <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.username || 'NA'}</td>
+                                        </tr>
+                                        <tr>
+                                            <th className="py-2 px-4 border border-black text-left whitespace-nowrap">
+                                                Custom Logo
+                                            </th>
+                                            <td className="py-2 px-4 border border-black text-left">
+                                                {customer?.custom_logo ? (
+                                                    <img src={customer?.custom_logo} alt="Company Logo" className="h-16 w-auto" />
+                                                ) : (
+                                                    <span className="text-gray-500 italic">Not Available</span>
+                                                )}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th className="py-2 px-4 border border-black text-left whitespace-nowrap">PDF Footer</th>
+                                            <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.custom_address || 'NA'}</td>
+                                        </tr>
+
+                                        <tr>
+                                            <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Disclaimer Emails</th>
+                                            <td className="py-2 px-4 border border-black text-left whitespace-nowrap">{customer?.disclaimer_emails || 'NA'}</td>
+                                        </tr>
+                                        <tr>
+                                            <th className="py-2 px-4 border border-black text-left whitespace-nowrap">Status</th>
+                                            <td className={`py-2 px-4 border border-black text-left whitespace-nowrap ${customer?.status == 1 ? "text-green-500" : customer?.status == 0 ? "text-red-500" : null} }`}>
+                                                {customer?.status == 1 ? "Active" : customer?.status == 0 ? "Inactive" : null}
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                         <h2 className='text-center md:text-4xl text-2xl font-bold pb-8 pt-7 md:pb-4'>Scope Of Services</h2>
 
                         <div className="overflow-x-auto bg-white shadow-md rounded-md md:m-10 md:mt-4 m-3 h-full">

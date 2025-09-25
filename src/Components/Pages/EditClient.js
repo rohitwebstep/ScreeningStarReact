@@ -1,4 +1,4 @@
-import { React, useState, useEffect, useCallback } from 'react'
+import { React, useState, useEffect, useCallback, useRef } from 'react'
 import "react-datepicker/dist/react-datepicker.css";
 import { MultiSelect } from "react-multi-select-component";
 import { State } from "country-state-city";
@@ -21,7 +21,18 @@ const EditClient = () => {
     const [emailsInput, setEmailsInput] = useState("");
     const [emailError, setEmailError] = useState("");
     const navigate = useNavigate();
+    const tableScrollRef = useRef(null);
+    const topScrollRef = useRef(null);
+    const [scrollWidth, setScrollWidth] = useState("100%");
 
+    // 🔹 Sync scroll positions
+    const syncScroll = (e) => {
+        if (e.target === topScrollRef.current) {
+            tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+        } else {
+            topScrollRef.current.scrollLeft = e.target.scrollLeft;
+        }
+    };
     const [priceData, setPriceData] = useState({});
     const [files, setFiles] = useState([]);
     const [selectedServices, setSelectedServices] = useState({});
@@ -478,6 +489,11 @@ const EditClient = () => {
             // console.log("sendDataRunning is false, no update performed.");
         }
     };
+    useEffect(() => {
+        if (tableScrollRef.current) {
+            setScrollWidth(tableScrollRef.current.scrollWidth + "px");
+        }
+    }, [services, loading]);
 
     const validateRequiredFields = () => {
         const requiredFields = [
@@ -1306,107 +1322,116 @@ const EditClient = () => {
 
                         <div className="clientserviceTable">
 
-                            <div className="overflow-x-auto py-6 px-0 bg-white mt-10 m-auto">
-                                <table className="min-w-full">
-                                    <thead>
-                                        <tr className='bg-[#c1dff2] text-[#4d606b]'>
-                                            <th className="py-2 md:py-3 px-4 border-r border-b text-left uppercase whitespace-nowrap">Group</th>
-                                            <th className="py-2 md:py-3 px-4 border-r border-b text-left uppercase whitespace-nowrap">Service code</th>
-                                            <th className="py-2 md:py-3 px-4 border-r border-b text-left uppercase whitespace-nowrap">Verification Service</th>
-                                            <th className="py-2 md:py-3 px-4 border-r border-b text-left uppercase whitespace-nowrap">Price</th>
-                                            <th className="py-2 md:py-3 px-4 border-r border-b text-left uppercase whitespace-nowrap">Select Package</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {services.reduce((acc, item, index) => {
-                                            const isSameGroup = index > 0 && item.group_title === services[index - 1].group_title;
+                            <div className="table-container rounded-lg">
+                                {/* Top Scroll */}
+                                <div className="top-scroll" ref={topScrollRef} onScroll={syncScroll}>
+                                    <div className="top-scroll-inner" style={{ width: scrollWidth }} />
+                                </div>
 
-                                            if (item.services.length > 0) {
-                                                if (!isSameGroup) {
-                                                    acc.push(
-                                                        <tr key={`group-${item.group_id}`} className='bg-[#c1dff2] text-[#4d606b]'>
-                                                            <th className="py-2 md:py-3 px-4 border-r border-b text-center uppercase whitespace-nowrap">
-                                                                {item.symbol}
-                                                            </th>
-                                                            <th colSpan={4} className="py-2 md:py-3 px-4 border-r border-b text-center uppercase whitespace-nowrap">
-                                                                {item.group_title}
-                                                            </th>
-                                                        </tr>
-                                                    );
+                                {/* Actual Table Scroll */}
+                                <div className="table-scroll rounded-lg" ref={tableScrollRef} onScroll={syncScroll}>
+
+                                    <table className="min-w-full">
+                                        <thead>
+                                            <tr className='bg-[#c1dff2] text-[#4d606b]'>
+                                                <th className="py-2 md:py-3 px-4 border-r border-b text-left uppercase whitespace-nowrap">Group</th>
+                                                <th className="py-2 md:py-3 px-4 border-r border-b text-left uppercase whitespace-nowrap">Service code</th>
+                                                <th className="py-2 md:py-3 px-4 border-r border-b text-left uppercase whitespace-nowrap">Verification Service</th>
+                                                <th className="py-2 md:py-3 px-4 border-r border-b text-left uppercase whitespace-nowrap">Price</th>
+                                                <th className="py-2 md:py-3 px-4 border-r border-b text-left uppercase whitespace-nowrap">Select Package</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {services.reduce((acc, item, index) => {
+                                                const isSameGroup = index > 0 && item.group_title === services[index - 1].group_title;
+
+                                                if (item.services.length > 0) {
+                                                    if (!isSameGroup) {
+                                                        acc.push(
+                                                            <tr key={`group-${item.group_id}`} className='bg-[#c1dff2] text-[#4d606b]'>
+                                                                <th className="py-2 md:py-3 px-4 border-r border-b text-center uppercase whitespace-nowrap">
+                                                                    {item.symbol}
+                                                                </th>
+                                                                <th colSpan={4} className="py-2 md:py-3 px-4 border-r border-b text-center uppercase whitespace-nowrap">
+                                                                    {item.group_title}
+                                                                </th>
+                                                            </tr>
+                                                        );
+                                                    }
+
+                                                    item.services.forEach((service, serviceIndex) => {
+                                                        const serviceNumber = serviceIndex + 1;
+
+                                                        const { status, price, packages } = checkServiceById(selectedClient, service.service_id, item.group_id);
+                                                        // console.log('service', selectedClient)
+                                                        acc.push(
+                                                            <tr key={`${item.group_id}-${service.service_id}`}>
+                                                                <td className="py-2 md:py-3 px-4 border-l border-r border-b whitespace-nowrap"></td>
+                                                                <td className="py-2 md:py-3 px-4 border-l border-r border-b whitespace-nowrap">
+                                                                    {service.service_code}
+                                                                </td>
+                                                                <td className="py-2 md:py-3 px-4 border-l border-r border-b whitespace-nowrap">
+                                                                    <div key={service.service_id}>
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            id={`scope_${service.service_id}`}
+                                                                            name="services"
+                                                                            checked={status || false}
+                                                                            onChange={() => handleCheckboxChange(selectedClient, {
+                                                                                group_id: item.group_id,
+                                                                                group_symbol: item.symbol,
+                                                                                service_code: service.service_code,
+                                                                                group_name: item.group_title,
+                                                                                service_id: service.service_id,
+                                                                                service_name: service.service_title,
+                                                                                price: priceData[service.service_id]?.pricingPackages || '',
+                                                                                selected_packages: status[service.service_id] || []
+                                                                            })}
+                                                                            className="mr-2 w-5 h-5"
+                                                                        />
+                                                                        <label htmlFor={`scope_${service.service_id}`} className="ml-2">{service.service_title}</label>
+                                                                    </div>
+                                                                </td>
+
+                                                                <td className="py-2 md:py-3 px-4 border-r border-b whitespace-nowrap">
+                                                                    <input
+                                                                        type="number"
+                                                                        name="pricingPackages"
+                                                                        value={price || ""}
+                                                                        onChange={(e) => handlePriceChange(e, service.service_id)}
+                                                                        className='outline-none'
+                                                                        disabled={!status}
+                                                                        onBlur={(e) => handlePriceChange(e, service.service_id)}  // Send on blur/focus out
+                                                                    />
+                                                                </td>
+                                                                <td className="py-2 md:py-3 px-4 border-r border-b whitespace-nowrap uppercase text-left">
+                                                                    <MultiSelect
+                                                                        options={packageList.map(pkg => ({ value: pkg.id, label: pkg.title }))}
+                                                                        value={Array.isArray(packages) ? packages.map(pkg => ({
+                                                                            value: pkg.id,
+                                                                            label: pkg.name
+                                                                        })) : []}
+
+
+                                                                        onChange={(selectedList) => handlePackageChange(selectedList, service.service_id)}
+                                                                        labelledBy="Select"
+                                                                        disabled={!status} // Enable if service is selected
+                                                                        className='uppercase'
+                                                                    />
+                                                                </td>
+
+                                                            </tr>
+                                                        );
+                                                    });
                                                 }
 
-                                                item.services.forEach((service, serviceIndex) => {
-                                                    const serviceNumber = serviceIndex + 1;
+                                                return acc;
+                                            }, [])}
+                                        </tbody>
 
-                                                    const { status, price, packages } = checkServiceById(selectedClient, service.service_id, item.group_id);
-                                                    // console.log('service', selectedClient)
-                                                    acc.push(
-                                                        <tr key={`${item.group_id}-${service.service_id}`}>
-                                                            <td className="py-2 md:py-3 px-4 border-l border-r border-b whitespace-nowrap"></td>
-                                                            <td className="py-2 md:py-3 px-4 border-l border-r border-b whitespace-nowrap">
-                                                                {service.service_code}
-                                                            </td>
-                                                            <td className="py-2 md:py-3 px-4 border-l border-r border-b whitespace-nowrap">
-                                                                <div key={service.service_id}>
-                                                                    <input
-                                                                        type="checkbox"
-                                                                        id={`scope_${service.service_id}`}
-                                                                        name="services"
-                                                                        checked={status || false}
-                                                                        onChange={() => handleCheckboxChange(selectedClient, {
-                                                                            group_id: item.group_id,
-                                                                            group_symbol: item.symbol,
-                                                                            service_code: service.service_code,
-                                                                            group_name: item.group_title,
-                                                                            service_id: service.service_id,
-                                                                            service_name: service.service_title,
-                                                                            price: priceData[service.service_id]?.pricingPackages || '',
-                                                                            selected_packages: status[service.service_id] || []
-                                                                        })}
-                                                                        className="mr-2 w-5 h-5"
-                                                                    />
-                                                                    <label htmlFor={`scope_${service.service_id}`} className="ml-2">{service.service_title}</label>
-                                                                </div>
-                                                            </td>
+                                    </table>
 
-                                                            <td className="py-2 md:py-3 px-4 border-r border-b whitespace-nowrap">
-                                                                <input
-                                                                    type="number"
-                                                                    name="pricingPackages"
-                                                                    value={price || ""}
-                                                                    onChange={(e) => handlePriceChange(e, service.service_id)}
-                                                                    className='outline-none'
-                                                                    disabled={!status}
-                                                                    onBlur={(e) => handlePriceChange(e, service.service_id)}  // Send on blur/focus out
-                                                                />
-                                                            </td>
-                                                            <td className="py-2 md:py-3 px-4 border-r border-b whitespace-nowrap uppercase text-left">
-                                                                <MultiSelect
-                                                                    options={packageList.map(pkg => ({ value: pkg.id, label: pkg.title }))}
-                                                                    value={Array.isArray(packages) ? packages.map(pkg => ({
-                                                                        value: pkg.id,
-                                                                        label: pkg.name
-                                                                    })) : []}
-
-
-                                                                    onChange={(selectedList) => handlePackageChange(selectedList, service.service_id)}
-                                                                    labelledBy="Select"
-                                                                    disabled={!status} // Enable if service is selected
-                                                                    className='uppercase'
-                                                                />
-                                                            </td>
-
-                                                        </tr>
-                                                    );
-                                                });
-                                            }
-
-                                            return acc;
-                                        }, [])}
-                                    </tbody>
-
-                                </table>
-
+                                </div>
                             </div>
                         </div>
 

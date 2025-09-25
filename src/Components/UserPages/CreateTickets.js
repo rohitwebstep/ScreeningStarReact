@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Swal from 'sweetalert2';
 import { useNavigate } from 'react-router-dom';
 import { useApiLoadingBranch } from '../BranchApiLoadingContext';
@@ -13,10 +13,22 @@ const CreateTickets = () => {
   const [tickets, setTickets] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const optionsPerPage = [10, 50, 100, 200,500,1000];
+  const optionsPerPage = [10, 50, 100, 200, 500, 1000];
   const [searchTerm, setSearchTerm] = useState('');
   const [totalResults, setTotalResults] = useState(0);
   const navigate = useNavigate();
+     const tableScrollRef = useRef(null);
+    const topScrollRef = useRef(null);
+    const [scrollWidth, setScrollWidth] = useState("100%");
+
+    // 🔹 Sync scroll positions
+    const syncScroll = (e) => {
+        if (e.target === topScrollRef.current) {
+            tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+        } else {
+            topScrollRef.current.scrollLeft = e.target.scrollLeft;
+        }
+    };
 
   const [formData, setFormData] = useState({
     title: '',
@@ -235,6 +247,11 @@ const CreateTickets = () => {
       }
     });
   };
+          useEffect(() => {
+      if (tableScrollRef.current) {
+        setScrollWidth(tableScrollRef.current.scrollWidth + "px");
+      }
+    }, [currentItems, loading]); 
 
   return (
     <div className="bg-white border-black border md:p-12 p-6 w-full mx-auto">
@@ -276,13 +293,13 @@ const CreateTickets = () => {
         <div className="md:w-3/5">
           <div className="mb-4">
             <div>
-            <input
-              type="text"
-              placeholder="Search by Title"
-              value={searchTerm}
-              onChange={handleSearch}
-              className="w-[450px] rounded-md p-2.5 border border-gray-300"
-            />
+              <input
+                type="text"
+                placeholder="Search by Title"
+                value={searchTerm}
+                onChange={handleSearch}
+                className="w-[450px] rounded-md p-2.5 border border-gray-300"
+              />
             </div>
             <select
               value={itemsPerPage}
@@ -300,61 +317,77 @@ const CreateTickets = () => {
             </select>
           </div>
 
-          <div className="overflow-auto">
-            <table className="min-w-full border-collapse border border-black rounded-lg overflow-scroll whitespace-nowrap">
-              <thead className="rounded-lg">
-                <tr className="bg-[#c1dff2] text-[#4d606b]">
-                  <th className="uppercase border border-black px-4 py-2">SL</th>
-                  <th className="uppercase border border-black px-4 py-2 text-left">Title</th>
-                  <th className="uppercase border border-black px-4 py-2 text-left">Ticket Number</th>
-                  <th className="uppercase border border-black px-4 py-2 text-center">Created At</th>
-                  <th className="uppercase border border-black px-4 py-2 text-center" colSpan={2}>ACTION</th>
+          <div className="table-container rounded-lg">
+            {/* Top Scroll */}
+            <div
+              className="top-scroll"
+              ref={topScrollRef}
+              onScroll={syncScroll}
+            >
+              <div className="top-scroll-inner" style={{ width: tableScrollRef.current?.scrollWidth || "100%" }} />
+            </div>
 
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr>
-                    <td colSpan="7" className="text-center py-4">
-                      <div className="flex w-full justify-center items-center h-20">
-                        <div className="loader border-t-4 border-[#2c81ba] rounded-full w-10 h-10 animate-spin"></div>
-                      </div>
-                    </td>
+            {/* Actual Table Scroll */}
+            <div
+              className="table-scroll rounded-lg"
+              ref={tableScrollRef}
+              onScroll={syncScroll}
+            >
+              <table className="min-w-full border-collapse border border-black rounded-lg overflow-scroll whitespace-nowrap">
+                <thead className="rounded-lg">
+                  <tr className="bg-[#c1dff2] text-[#4d606b]">
+                    <th className="uppercase border border-black px-4 py-2">SL</th>
+                    <th className="uppercase border border-black px-4 py-2 text-left">Title</th>
+                    <th className="uppercase border border-black px-4 py-2 text-left">Ticket Number</th>
+                    <th className="uppercase border border-black px-4 py-2 text-center">Created At</th>
+                    <th className="uppercase border border-black px-4 py-2 text-center" colSpan={2}>ACTION</th>
+
                   </tr>
-                ) : currentItems.length > 0 ? (
-                  currentItems.map((ticket, index) => (
-                    <tr key={ticket.id} className="text-center">
-                      <td className="border border-black px-4 py-2">{(currentPage - 1) * itemsPerPage + index + 1}</td>
-                      <td className="border border-black px-4 py-2 text-left">{ticket.title}</td>
-                      <td className="border border-black px-4 py-2">{ticket.ticket_number}</td>
-                      <td className="border border-black px-4 py-2">{new Date(ticket.created_at).toLocaleDateString().replace(/\//g, '-')}</td>
-                      <td className='border border-black  px-4 py-2'> <button
-                        onClick={() => handleview(ticket.ticket_number)}
-                        className="bg-blue-500 text-white hover:scale-105 px-4 py-2 hover:bg-blue-800 rounded-md mr-2"
-                      >
-                        View
-                      </button>
-                      </td>
-                      <td className='border border-black  px-4 py-2'>
-
-                        <button
-                          disabled={deletingId === ticket.ticket_number}
-                          className={`bg-red-500 hover:scale-105 hover:bg-red-600  text-white px-4 py-2 rounded ${deletingId === ticket.ticket_number ? "opacity-50 cursor-not-allowed" : ""} `}
-                          onClick={() => handleDelete(ticket.ticket_number)}>
-                          {deletingId === ticket.ticket_number ? "Deleting..." : "Delete"}
-                        </button>
+                </thead>
+                <tbody>
+                  {loading ? (
+                    <tr>
+                      <td colSpan="7" className="text-center py-4">
+                        <div className="flex w-full justify-center items-center h-20">
+                          <div className="loader border-t-4 border-[#2c81ba] rounded-full w-10 h-10 animate-spin"></div>
+                        </div>
                       </td>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="4" className="text-center py-4">
-                      No tickets found.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                  ) : currentItems.length > 0 ? (
+                    currentItems.map((ticket, index) => (
+                      <tr key={ticket.id} className="text-center">
+                        <td className="border border-black px-4 py-2">{(currentPage - 1) * itemsPerPage + index + 1}</td>
+                        <td className="border border-black px-4 py-2 text-left">{ticket.title}</td>
+                        <td className="border border-black px-4 py-2">{ticket.ticket_number}</td>
+                        <td className="border border-black px-4 py-2">{new Date(ticket.created_at).toLocaleDateString().replace(/\//g, '-')}</td>
+                        <td className='border border-black  px-4 py-2'> <button
+                          onClick={() => handleview(ticket.ticket_number)}
+                          className="bg-blue-500 text-white hover:scale-105 px-4 py-2 hover:bg-blue-800 rounded-md mr-2"
+                        >
+                          View
+                        </button>
+                        </td>
+                        <td className='border border-black  px-4 py-2'>
+
+                          <button
+                            disabled={deletingId === ticket.ticket_number}
+                            className={`bg-red-500 hover:scale-105 hover:bg-red-600  text-white px-4 py-2 rounded ${deletingId === ticket.ticket_number ? "opacity-50 cursor-not-allowed" : ""} `}
+                            onClick={() => handleDelete(ticket.ticket_number)}>
+                            {deletingId === ticket.ticket_number ? "Deleting..." : "Delete"}
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="4" className="text-center py-4">
+                        No tickets found.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           <div className="mt-4 text-center">

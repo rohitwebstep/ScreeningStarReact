@@ -1,7 +1,7 @@
 ////old code
 
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import Swal from "sweetalert2";
 import * as XLSX from "xlsx";
 import { useNavigate } from "react-router-dom";
@@ -17,16 +17,28 @@ const Attendance = () => {
   const [responseError, setResponseError] = useState(null);
   const [filtredDataRaw, setFiltredDataRaw] = useState([]);
   const [searchName, setSearchName] = useState("");
+  const tableScrollRef = useRef(null);
+  const topScrollRef = useRef(null);
+  const [scrollWidth, setScrollWidth] = useState("100%");
+
+  // 🔹 Sync scroll positions
+  const syncScroll = (e) => {
+    if (e.target === topScrollRef.current) {
+      tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+    } else {
+      topScrollRef.current.scrollLeft = e.target.scrollLeft;
+    }
+  };
 
   const [searchTerm, setSearchTerm] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-const tableRef = React.useRef(null);
+  const tableRef = React.useRef(null);
   const [loading, setLoading] = useState(true);
   const [tableData, setTableData] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const optionsPerPage = [10, 50, 100, 200,500,1000];
+  const optionsPerPage = [10, 50, 100, 200, 500, 1000];
   const navigate = useNavigate();
 
   function groupByAdmin(data) {
@@ -361,26 +373,26 @@ const tableRef = React.useRef(null);
 
 
 
- const exportToExcel = () => {
-  console.log('1')
-  if (!tableRef.current) return;
-  console.log('2')
+  const exportToExcel = () => {
+    console.log('1')
+    if (!tableRef.current) return;
+    console.log('2')
 
-  // Grab the rendered table from DOM
-  const tableElement = tableRef.current;
-  console.log('3')
+    // Grab the rendered table from DOM
+    const tableElement = tableRef.current;
+    console.log('3')
 
-  // Convert HTML table → Excel worksheet
-  const worksheet = XLSX.utils.table_to_sheet(tableElement, { raw: true });
-  console.log('4')
+    // Convert HTML table → Excel worksheet
+    const worksheet = XLSX.utils.table_to_sheet(tableElement, { raw: true });
+    console.log('4')
 
-  // Create workbook and append sheet
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, "Attendance");
+    // Create workbook and append sheet
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Attendance");
 
-  // Export Excel
-  XLSX.writeFile(workbook, "Attendance.xlsx");
-};
+    // Export Excel
+    XLSX.writeFile(workbook, "Attendance.xlsx");
+  };
 
 
 
@@ -448,8 +460,12 @@ const tableRef = React.useRef(null);
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
-  console.log('paginatedData', paginatedData)
 
+  useEffect(() => {
+    if (tableScrollRef.current) {
+      setScrollWidth(tableScrollRef.current.scrollWidth + "px");
+    }
+  }, [paginatedAdminBlocks, loading]);
   const handlePageChange = (newPage) => {
     if (newPage > 0 && newPage <= totalPages) {
       setCurrentPage(newPage);
@@ -522,91 +538,99 @@ const tableRef = React.useRef(null);
         </div>
 
         {/* Table */}
-        <div className="overflow-x-auto">
-          <table ref={tableRef} className="min-w-full border-collapse border border-black rounded-lg whitespace-nowrap mb-4">
-            <thead>
-              <tr className="bg-[#c1dff2] text-[#4d606b] text-center">
-                <th className="border border-black px-4 py-2">SL NO</th>
-                <th className="border border-black px-4 py-2">EMPLOYEE ID</th>
-                <th className="border border-black px-4 py-2">NAME OF THE EMPLOYEE</th>
-                <th className="border border-black px-4 py-2">ATTENDANCE</th>
-                {Array.from({ length: 31 }, (_, i) => (
-                  <th key={i + 1} className="border border-black px-2 py-2">
-                    {i + 1}
-                  </th>
-                ))}
-                <th className="border border-black px-4 py-2">LEAVE</th>
-                <th className="border border-black px-4 py-2">PRESENT</th>
-                <th className="border border-black px-4 py-2">LEAVE FROM</th>
-                <th className="border border-black px-4 py-2">LEAVE TO</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginatedAdminBlocks.map(({ admin, year, month, records }, index) => {
-                const breakTypes = [
-                  "LOGIN", "TEA BREAK IN-1", "TEA BREAK OUT-1", "LUNCH BREAK IN",
-                  "LUNCH BREAK OUT", "TEA BREAK IN-2", "TEA BREAK OUT-2", "LOGOUT"
-                ];
+        <div className="table-container rounded-lg">
+          {/* Top Scroll */}
+          <div className="top-scroll" ref={topScrollRef} onScroll={syncScroll}>
+            <div className="top-scroll-inner" style={{ width: scrollWidth }} />
+          </div>
 
-                const daysInMonth = getDaysInMonth(year, month);
-                const presentCount = records.filter(r => r.first_login_time || r.last_logout_time).length;
-                const leaveCount = records.length - presentCount;
-                const leaveFrom = records.find(r => !r.first_login_time && !r.last_logout_time)?.date || "";
-                const leaveTo = [...records].reverse().find(r => !r.first_login_time && !r.last_logout_time)?.date || "";
+          {/* Actual Table Scroll */}
+          <div className="table-scroll rounded-lg" ref={tableScrollRef} onScroll={syncScroll}>
+            <table ref={tableRef} className="min-w-full border-collapse border border-black rounded-lg whitespace-nowrap mb-4">
+              <thead>
+                <tr className="bg-[#c1dff2] text-[#4d606b] text-center">
+                  <th className="border border-black px-4 py-2">SL NO</th>
+                  <th className="border border-black px-4 py-2">EMPLOYEE ID</th>
+                  <th className="border border-black px-4 py-2">NAME OF THE EMPLOYEE</th>
+                  <th className="border border-black px-4 py-2">ATTENDANCE</th>
+                  {Array.from({ length: 31 }, (_, i) => (
+                    <th key={i + 1} className="border border-black px-2 py-2">
+                      {i + 1}
+                    </th>
+                  ))}
+                  <th className="border border-black px-4 py-2">LEAVE</th>
+                  <th className="border border-black px-4 py-2">PRESENT</th>
+                  <th className="border border-black px-4 py-2">LEAVE FROM</th>
+                  <th className="border border-black px-4 py-2">LEAVE TO</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedAdminBlocks.map(({ admin, year, month, records }, index) => {
+                  const breakTypes = [
+                    "LOGIN", "TEA BREAK IN-1", "TEA BREAK OUT-1", "LUNCH BREAK IN",
+                    "LUNCH BREAK OUT", "TEA BREAK IN-2", "TEA BREAK OUT-2", "LOGOUT"
+                  ];
 
-                return (
-                  <React.Fragment key={`${admin.emp_id}-${year}-${month}`}>
-                    <tr className="bg-yellow-100 text-center font-bold text-black">
-                      <td colSpan={35} className="border border-black py-2 text-lg">
-                        ATTENDANCE SHEET — {admin.admin_name} ({admin.emp_id}) — {month.padStart(2, '0')}/{year}
-                      </td>
-                    </tr>
+                  const daysInMonth = getDaysInMonth(year, month);
+                  const presentCount = records.filter(r => r.first_login_time || r.last_logout_time).length;
+                  const leaveCount = records.length - presentCount;
+                  const leaveFrom = records.find(r => !r.first_login_time && !r.last_logout_time)?.date || "";
+                  const leaveTo = [...records].reverse().find(r => !r.first_login_time && !r.last_logout_time)?.date || "";
 
-                    {breakTypes.map((label, i) => (
-                      <tr key={`${admin.emp_id}-${label}-${year}-${month}`} className="text-center">
-                        {i === 0 && (
-                          <>
-                            <td rowSpan={breakTypes.length} className="border border-black">{(currentPage - 1) * itemsPerPage + index + 1}</td>
-                            <td rowSpan={breakTypes.length} className="border border-black">{admin.emp_id}</td>
-                            <td rowSpan={breakTypes.length} className="border border-black">{admin.admin_name}</td>
-                          </>
-                        )}
-                        <td className="border border-black">{label}</td>
-                        {Array.from({ length: 31 }, (_, d) => {
-                          const day = d + 1;
-                          const record = records.find(r => new Date(r.date).getDate() === day);
-                          const key = label.toLowerCase();
-                          let value = "";
-
-                          if (record) {
-                            if (label === "LOGIN") value = record.first_login_time;
-                            else if (label === "LOGOUT") value = record.last_logout_time;
-                            else value = record.break_times?.[key];
-                          }
-
-                          return (
-                            <td key={d} className="border border-black text-xs px-2 py-1">
-                              {formatDate(value)}
-                            </td>
-                          );
-                        })}
-                        {i === 0 && (
-                          <>
-                            <td rowSpan={breakTypes.length} className="border border-black">{leaveCount}</td>
-                            <td rowSpan={breakTypes.length} className="border border-black">{presentCount}</td>
-                            <td rowSpan={breakTypes.length} className="border border-black">{leaveFrom ? formatDate2(leaveFrom) : ""}</td>
-                            <td rowSpan={breakTypes.length} className="border border-black">{leaveTo ? formatDate2(leaveTo) : ""}</td>
-                          </>
-                        )}
+                  return (
+                    <React.Fragment key={`${admin.emp_id}-${year}-${month}`}>
+                      <tr className="bg-yellow-100 text-center font-bold text-black">
+                        <td colSpan={35} className="border border-black py-2 text-lg">
+                          ATTENDANCE SHEET — {admin.admin_name} ({admin.emp_id}) — {month.padStart(2, '0')}/{year}
+                        </td>
                       </tr>
-                    ))}
-                  </React.Fragment>
-                );
-              })}
-            </tbody>
+
+                      {breakTypes.map((label, i) => (
+                        <tr key={`${admin.emp_id}-${label}-${year}-${month}`} className="text-center">
+                          {i === 0 && (
+                            <>
+                              <td rowSpan={breakTypes.length} className="border border-black">{(currentPage - 1) * itemsPerPage + index + 1}</td>
+                              <td rowSpan={breakTypes.length} className="border border-black">{admin.emp_id}</td>
+                              <td rowSpan={breakTypes.length} className="border border-black">{admin.admin_name}</td>
+                            </>
+                          )}
+                          <td className="border border-black">{label}</td>
+                          {Array.from({ length: 31 }, (_, d) => {
+                            const day = d + 1;
+                            const record = records.find(r => new Date(r.date).getDate() === day);
+                            const key = label.toLowerCase();
+                            let value = "";
+
+                            if (record) {
+                              if (label === "LOGIN") value = record.first_login_time;
+                              else if (label === "LOGOUT") value = record.last_logout_time;
+                              else value = record.break_times?.[key];
+                            }
+
+                            return (
+                              <td key={d} className="border border-black text-xs px-2 py-1">
+                                {formatDate(value)}
+                              </td>
+                            );
+                          })}
+                          {i === 0 && (
+                            <>
+                              <td rowSpan={breakTypes.length} className="border border-black">{leaveCount}</td>
+                              <td rowSpan={breakTypes.length} className="border border-black">{presentCount}</td>
+                              <td rowSpan={breakTypes.length} className="border border-black">{leaveFrom ? formatDate2(leaveFrom) : ""}</td>
+                              <td rowSpan={breakTypes.length} className="border border-black">{leaveTo ? formatDate2(leaveTo) : ""}</td>
+                            </>
+                          )}
+                        </tr>
+                      ))}
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
 
 
-          </table>
+            </table>
+          </div>
         </div>
 
 

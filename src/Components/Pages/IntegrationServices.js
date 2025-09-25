@@ -2931,8 +2931,12 @@ const InactiveClients = () => {
         }
     };
 
+    useEffect(() => {
+        if (tableScrollRef.current) {
+            setScrollWidth(tableScrollRef.current.scrollWidth + "px");
+        }
+    }, [paginatedData, loading]);
 
-    console.log('formDatafinal', formData)
     {
         loading && (
             <div className="flex w-full bg-white  justify-center items-center h-20">
@@ -2940,6 +2944,8 @@ const InactiveClients = () => {
             </div>
         )
     }
+
+
 
     return (
         <div className="">

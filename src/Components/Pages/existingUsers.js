@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { MdEdit, MdDelete } from 'react-icons/md';
 import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
@@ -7,7 +7,7 @@ import { FaChevronLeft } from 'react-icons/fa';
 import Default from "../../imgs/default.png"
 import DatePicker from "react-datepicker";
 import { format, parseISO } from "date-fns";
-import "react-datepicker/dist/react-datepicker.css";    
+import "react-datepicker/dist/react-datepicker.css";
 import axios from 'axios';
 const ExistingUsers = () => {
     const { validateAdminLogin, setApiLoading, apiLoading } = useApiLoading();
@@ -18,7 +18,7 @@ const ExistingUsers = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [searchQuery, setSearchQuery] = useState("");
     const [itemsPerPage, setItemsPerPage] = useState(10);
-    const optionsPerPage = [10, 50, 100, 200,500,1000]; const navigate = useNavigate();
+    const optionsPerPage = [10, 50, 100, 200, 500, 1000]; const navigate = useNavigate();
     const [users, setUsers] = useState([]);
     const [editingUserId, setEditingUserId] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -26,6 +26,18 @@ const ExistingUsers = () => {
     const [adminRoles, setAdminRoles] = useState([]);
     const [files, setFiles] = useState({});
     const [services, setServices] = useState([]);
+    const tableScrollRef = useRef(null);
+    const topScrollRef = useRef(null);
+    const [scrollWidth, setScrollWidth] = useState("100%");
+
+    // 🔹 Sync scroll positions
+    const syncScroll = (e) => {
+        if (e.target === topScrollRef.current) {
+            tableScrollRef.current.scrollLeft = e.target.scrollLeft;
+        } else {
+            topScrollRef.current.scrollLeft = e.target.scrollLeft;
+        }
+    };
 
     const [errors, setErrors] = useState({});
     const [submitMessage, setSubmitMessage] = useState('');
@@ -535,6 +547,11 @@ const ExistingUsers = () => {
                 : prev.services.filter((id) => id !== value),
         }));
     };
+    useEffect(() => {
+        if (tableScrollRef.current) {
+            setScrollWidth(tableScrollRef.current.scrollWidth + "px");
+        }
+    }, [currentData, loading]);
     const handleCheckboxChangeRole = (e) => {
         const { value, checked } = e.target;
 
@@ -851,125 +868,134 @@ const ExistingUsers = () => {
                                 ))}
                             </select>
                         </div>
-                        <div className="overflow-x-auto">
-                            <table className="min-w-full border-collapse border whitespace-nowrap border-black">
-                                <thead>
-                                    <tr className="bg-[#c1dff2] text-[#4d606b]">
-                                        <th className="border border-black uppercase px-4 py-2">SL</th>
-                                        <th className="border border-black uppercase px-4 py-2">
-                                            Employee Photo
-                                        </th>
-                                        <th className="border border-black uppercase px-4 py-2">
-                                            Employee ID
-                                        </th>
-                                        <th className="border border-black uppercase text-left px-4 py-2">
-                                            Name
-                                        </th>
-                                        <th className="border border-black uppercase text-left px-4 py-2">
-                                            Mobile Number
-                                        </th>
-                                        <th className="border border-black uppercase text-left px-4 py-2">
-                                            Email
-                                        </th>
-                                        <th className="border border-black uppercase px-4 py-2">
-                                            Designation
-                                        </th>
-                                        <th className="border border-black uppercase px-4 py-2">Role</th>
-                                        <th className="border border-black uppercase px-4 py-2">
-                                            Date Of Joining
-                                        </th>
-                                        <th className="border border-black uppercase px-4 py-2">
-                                            Status
-                                        </th>
-                                        <th
-                                            className="border border-black uppercase px-4 py-2"
-                                            colSpan={2}
-                                        >
-                                            Action
-                                        </th>
-                                    </tr>
-                                </thead>
-                                {loading ? (
-                                    <tbody>
-                                        <tr>
-                                            <td colSpan="11" className="py-10 text-center">
-                                                <div className='flex justify-center items-center'>
-                                                    <div className="loader border-t-4 border-[#2c81ba] rounded-full w-10 h-10 animate-spin"></div>
-                                                </div>
-                                            </td>
+                        <div className="table-container rounded-lg">
+                            {/* Top Scroll */}
+                            <div className="top-scroll" ref={topScrollRef} onScroll={syncScroll}>
+                                <div className="top-scroll-inner" style={{ width: scrollWidth }} />
+                            </div>
+
+                            {/* Actual Table Scroll */}
+                            <div className="table-scroll rounded-lg" ref={tableScrollRef} onScroll={syncScroll}>
+
+                                <table className="min-w-full border-collapse border whitespace-nowrap border-black">
+                                    <thead>
+                                        <tr className="bg-[#c1dff2] text-[#4d606b]">
+                                            <th className="border border-black uppercase px-4 py-2">SL</th>
+                                            <th className="border border-black uppercase px-4 py-2">
+                                                Employee Photo
+                                            </th>
+                                            <th className="border border-black uppercase px-4 py-2">
+                                                Employee ID
+                                            </th>
+                                            <th className="border border-black uppercase text-left px-4 py-2">
+                                                Name
+                                            </th>
+                                            <th className="border border-black uppercase text-left px-4 py-2">
+                                                Mobile Number
+                                            </th>
+                                            <th className="border border-black uppercase text-left px-4 py-2">
+                                                Email
+                                            </th>
+                                            <th className="border border-black uppercase px-4 py-2">
+                                                Designation
+                                            </th>
+                                            <th className="border border-black uppercase px-4 py-2">Role</th>
+                                            <th className="border border-black uppercase px-4 py-2">
+                                                Date Of Joining
+                                            </th>
+                                            <th className="border border-black uppercase px-4 py-2">
+                                                Status
+                                            </th>
+                                            <th
+                                                className="border border-black uppercase px-4 py-2"
+                                                colSpan={2}
+                                            >
+                                                Action
+                                            </th>
                                         </tr>
-                                    </tbody>
-                                ) : (
-                                    <tbody>
-                                        {currentData.length > 0 ? (
-                                            currentData.map((user, index) => (
-                                                <tr key={user.id}>
-                                                    <td className="border border-black px-4 py-2">
-                                                        {(currentPage - 1) * itemsPerPage + index + 1}
-                                                    </td>
-                                                    <td className="border border-black text-center px-4 py-2">
-                                                        <img
-                                                            src={user.profile_picture ? user.profile_picture : `${Default}`}
-                                                            alt={user.name}
-                                                            className="w-10 h-10 mx-auto rounded-full"
-                                                        />
-                                                    </td>
-                                                    <td className="border border-black px-4 py-2">
-                                                        {user.emp_id || "N/A"}
-                                                    </td>
-                                                    <td className="border border-black px-4 py-2">
-                                                        {user.name || "N/A"}
-                                                    </td>
-                                                    <td className="border border-black px-4 py-2">
-                                                        {user.mobile || "N/A"}
-                                                    </td>
-                                                    <td className="border border-black px-4 py-2">
-                                                        {user.email || "N/A"}
-                                                    </td>
-                                                    <td className="border border-black px-4 py-2">
-                                                        {user.designation || "N/A"}
-                                                    </td>
-                                                    <td className="border border-black px-4 py-2">
-                                                        {formatRole(user.role || "N/A")}
-                                                    </td>
-                                                    <td className="border border-black px-4 py-2 text-left">
-                                                        {formatDate(user.date_of_joining) || "N/A"}
-
-                                                    </td>
-                                                    <td className={`border border-black px-4  text-center uppercase py-2 ${user.status && user.status == 1 ? 'text-green-500' : 'text-red-500'}`}>
-                                                        {user.status && user.status == 1 ? 'Active' : 'Inactive'}
-                                                    </td>
-                                                    <td className="border border-black px-4 py-2">
-                                                        <button onClick={() => handleEdit(user)}>
-                                                            <MdEdit
-                                                                className="text-blue-500 font-bold transform transition-transform duration-300 ease-in-out hover:text-blue-600 hover:scale-110 hover:shadow-md"
-                                                                aria-label="Edit"
-                                                            />
-
-
-                                                        </button>
-                                                    </td>
-                                                    <td className="border border-black px-4 py-2">
-                                                        <button onClick={() => handleDelete(user.id)}>
-                                                            <MdDelete className={`text-red-500 text-lg font-bold transform transition-transform duration-300 ease-in-out hover:text-red-600 hover:scale-110 hover:shadow-md   ${deleteLoadingId == user.id ? 'opacity-50 text-black  hover:text-black cursor-not-allowed' : ''} `} />
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))
-                                        ) : (
+                                    </thead>
+                                    {loading ? (
+                                        <tbody>
                                             <tr>
-                                                <td
-                                                    colSpan="11"
-                                                    className="px-4 py-2 text-center text-red-500"
-                                                    style={{ height: "100px" }}
-                                                >
-                                                    {responseError || "No Admin Found"}
+                                                <td colSpan="11" className="py-10 text-center">
+                                                    <div className='flex justify-center items-center'>
+                                                        <div className="loader border-t-4 border-[#2c81ba] rounded-full w-10 h-10 animate-spin"></div>
+                                                    </div>
                                                 </td>
                                             </tr>
-                                        )}
-                                    </tbody>
-                                )}
-                            </table>
+                                        </tbody>
+                                    ) : (
+                                        <tbody>
+                                            {currentData.length > 0 ? (
+                                                currentData.map((user, index) => (
+                                                    <tr key={user.id}>
+                                                        <td className="border border-black px-4 py-2">
+                                                            {(currentPage - 1) * itemsPerPage + index + 1}
+                                                        </td>
+                                                        <td className="border border-black text-center px-4 py-2">
+                                                            <img
+                                                                src={user.profile_picture ? user.profile_picture : `${Default}`}
+                                                                alt={user.name}
+                                                                className="w-10 h-10 mx-auto rounded-full"
+                                                            />
+                                                        </td>
+                                                        <td className="border border-black px-4 py-2">
+                                                            {user.emp_id || "N/A"}
+                                                        </td>
+                                                        <td className="border border-black px-4 py-2">
+                                                            {user.name || "N/A"}
+                                                        </td>
+                                                        <td className="border border-black px-4 py-2">
+                                                            {user.mobile || "N/A"}
+                                                        </td>
+                                                        <td className="border border-black px-4 py-2">
+                                                            {user.email || "N/A"}
+                                                        </td>
+                                                        <td className="border border-black px-4 py-2">
+                                                            {user.designation || "N/A"}
+                                                        </td>
+                                                        <td className="border border-black px-4 py-2">
+                                                            {formatRole(user.role || "N/A")}
+                                                        </td>
+                                                        <td className="border border-black px-4 py-2 text-left">
+                                                            {formatDate(user.date_of_joining) || "N/A"}
+
+                                                        </td>
+                                                        <td className={`border border-black px-4  text-center uppercase py-2 ${user.status && user.status == 1 ? 'text-green-500' : 'text-red-500'}`}>
+                                                            {user.status && user.status == 1 ? 'Active' : 'Inactive'}
+                                                        </td>
+                                                        <td className="border border-black px-4 py-2">
+                                                            <button onClick={() => handleEdit(user)}>
+                                                                <MdEdit
+                                                                    className="text-blue-500 font-bold transform transition-transform duration-300 ease-in-out hover:text-blue-600 hover:scale-110 hover:shadow-md"
+                                                                    aria-label="Edit"
+                                                                />
+
+
+                                                            </button>
+                                                        </td>
+                                                        <td className="border border-black px-4 py-2">
+                                                            <button onClick={() => handleDelete(user.id)}>
+                                                                <MdDelete className={`text-red-500 text-lg font-bold transform transition-transform duration-300 ease-in-out hover:text-red-600 hover:scale-110 hover:shadow-md   ${deleteLoadingId == user.id ? 'opacity-50 text-black  hover:text-black cursor-not-allowed' : ''} `} />
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            ) : (
+                                                <tr>
+                                                    <td
+                                                        colSpan="11"
+                                                        className="px-4 py-2 text-center text-red-500"
+                                                        style={{ height: "100px" }}
+                                                    >
+                                                        {responseError || "No Admin Found"}
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    )}
+                                </table>
+                            </div>
                         </div>
                         <div className="flex justify-between items-center mt-4">
                             <button
