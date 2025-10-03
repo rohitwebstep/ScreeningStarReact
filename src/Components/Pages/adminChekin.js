@@ -84,6 +84,33 @@ const AdminChekin = () => {
     const [loadingGenrate, setLoadingGenrate] = useState(null);
     const [filterData, setFilterData] = useState([]);
 
+   const changeLabelStatus = (label) => {
+        const mapping = {
+            "overall": "application_count",
+            "pending": "pending_application_count",
+            "qc pending": "qc_pending_count",
+            "completed": "completed_application_count",
+            "wip": "wip_application_count",
+            "insuff": "insuff_application_count",
+            "stopcheck": "stopcheck_application_count",
+            "not doable": "not_doable_application_count",
+            "candidate denied": "candidate_denied_application_count"
+        };
+
+        if (!label) return null;
+
+        let normalized = label.toLowerCase().replace(/_/g, ' ').trim();
+        if (mapping[normalized]) {
+            return mapping[normalized];
+        }
+
+        const reversed = Object.entries(mapping).find(([key, value]) => value === label);
+        if (reversed) {
+            return reversed[0];
+        }
+
+        return null;
+    };
 
 
 
@@ -2817,7 +2844,7 @@ const AdminChekin = () => {
                                 >
                                     {selectedValue ? (
                                         <>
-                                            {selectedValue.replace(/count/gi, '').charAt(0).toUpperCase() + selectedValue.replace(/count/gi, '').slice(1)}
+                                            {changeLabelStatus(selectedValue)}
                                         </>
                                     ) : (
                                         "Select Status"
@@ -2844,21 +2871,25 @@ const AdminChekin = () => {
                                                 </div>
 
                                                 {/* Dropdown Options */}
-                                                {filteredDropdownData.map((item) => (
+                                                 {filteredDropdownData
+                                                .filter((item) => item.status !== "previous completed count")
+                                                .map((item) => (
                                                     <div
                                                         key={item.status}
-                                                        className={`p-2 hover:bg-gray-100 cursor-pointer ${selectedValue === item.status ? "bg-gray-200" : ""
+                                                        className={`p-2 hover:bg-gray-100 uppercase cursor-pointer ${selectedValue === item.status ? "bg-gray-200" : ""
                                                             }`}
                                                         onClick={() => {
                                                             setSelectedValue(item.status);
                                                             fetchData(item.status);
-                                                            setCurrentPage(1)
+                                                            setCurrentPage(1);
                                                             setShowDropdown(false);
                                                         }}
                                                     >
-                                                        {`${item.status.replace(/\bcount\b/gi, '').trim().charAt(0).toUpperCase() + item.status.replace(/\bcount\b/gi, '').trim().slice(1)}`}
+                                                        {changeLabelStatus(item.status)}
                                                     </div>
-                                                ))}
+                                                )) || (
+                                                    <div className="p-2 text-gray-500">No results found</div>
+                                                )}
                                             </>
                                         ) : (
                                             <div className="p-2 text-gray-500">No results found</div>

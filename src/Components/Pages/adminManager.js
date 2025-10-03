@@ -10,7 +10,10 @@ const AdminManager = () => {
     const [responseError, setResponseError] = useState(null);
 
     const navigate = useNavigate();
-
+    const [dates, setDates] = useState({
+        fromDate: "",
+        toDate: "",
+    });
     const [activeId, setActiveId] = useState(null);
     const [filterData, setFilterData] = useState([]);
     const [clientData, setClientData] = useState([]);
@@ -62,7 +65,38 @@ const AdminManager = () => {
         };
     }, []);
 
-    const fetchData = useCallback((filterStatus = null) => {
+
+    const changeLabel = (label) => {
+        const mapping = {
+            "overall": "application_count",
+            "pending": "pending_application_count",
+            "qc pending": "qc_pending_count",
+            "completed": "completed_application_count",
+            "wip": "wip_application_count",
+            "insuff": "insuff_application_count",
+            "stopcheck": "stopcheck_application_count",
+            "not doable": "not_doable_application_count",
+            "candidate denied": "candidate_denied_application_count"
+        };
+
+        if (!label) return null;
+
+        let normalized = label.toLowerCase().replace(/_/g, ' ').trim();
+        if (mapping[normalized]) {
+            return mapping[normalized];
+        }
+
+        const reversed = Object.entries(mapping).find(([key, value]) => value === label);
+        if (reversed) {
+            return reversed[0];
+        }
+
+        return null;
+    };
+
+
+
+    const fetchData = useCallback((filterStatus = null, fromDate, toDate) => {
         setLoading(true);
         setApiLoading(true);
         const adminId = JSON.parse(localStorage.getItem("admin"))?.id;
@@ -90,12 +124,21 @@ const AdminManager = () => {
             _token: token,
         });
 
+        // Add filterStatus if present
         if (filterStatus) {
             queryParams.append('filter_status', toCamelCase(filterStatus));
         }
 
+        // Add fromDate and toDate if present
+        if (fromDate) {
+            queryParams.append('from', fromDate);
+        }
+        if (toDate) {
+            queryParams.append('to', toDate);
+        }
+
         const finalUrl = `${baseUrl}?${queryParams.toString()}`;
-        console.log(finalUrl);
+        // console.log(finalUrl);
 
         fetch(finalUrl, requestOptions)
             .then((response) => {
@@ -212,9 +255,27 @@ const AdminManager = () => {
         (Array.isArray(data.client_spoc_name) &&
             data.client_spoc_name.some(spoc => spoc && spoc.toLowerCase().includes(searchTerm.toLowerCase())))
     );
+    const filteredOptions = filteredData.filter((data) => {
+        if (!selectedValue) {
+            return true;
+        }
+
+        const dbKey = changeLabel(selectedValue);
+
+        if (!dbKey) {
+            return false;
+        }
+
+        const value = data.summary[selectedValue];
+
+        const include = value !== undefined && value > 0;
+
+        return include;
+    });
 
 
-    const paginatedData = filteredData.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
+
+    const paginatedData = filteredOptions.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
 
     const handleBlock = async (id) => {
         const admin_id = JSON.parse(localStorage.getItem("admin"))?.id;
@@ -269,7 +330,25 @@ const AdminManager = () => {
             }
         }
     };
-    console.log(`filterData - `, filterData);
+
+
+    const handleFilterDateChange = (e) => {
+        const { name, value } = e.target;
+
+        // Update state
+        setDates((prev) => {
+            const updatedDates = { ...prev, [name]: value };
+
+            // Call fetchData only if both fromDate and toDate have value
+            if (updatedDates.fromDate && updatedDates.toDate) {
+                fetchData(null, updatedDates.fromDate, updatedDates.toDate);
+            }
+
+            return updatedDates;
+        });
+    };
+
+    // console.log(`filterData - `, filterData);
     const statusList = Object.keys(filterData).map(key => ({
         status: key.replace(/([A-Z])/g, ' $1').toLowerCase(),  // Formatting the status name
         count: filterData[key]
@@ -396,6 +475,31 @@ const AdminManager = () => {
                                 </option>
                             ))}
                         </select>
+
+                        <div className="flex gap-4">
+                            <div className="flex flex-col">
+                                <label className="mb-1 font-medium">From Date</label>
+                                <input
+                                    type="date"
+                                    name="fromDate"
+                                    value={dates.fromDate}
+                                    onChange={handleFilterDateChange}
+                                    className="border rounded px-3 py-2"
+                                />
+                            </div>
+
+                            <div className="flex flex-col">
+                                <label className="mb-1 font-medium">To Date</label>
+                                <input
+                                    type="date"
+                                    name="toDate"
+                                    value={dates.toDate}
+                                    onChange={handleFilterDateChange}
+                                    className="border rounded px-3 py-2"
+                                />
+                            </div>
+                        </div>
+
                     </div>
                     <div className="text-left">
                         <div className="relative w-full" ref={dropdownRef}>
@@ -404,7 +508,7 @@ const AdminManager = () => {
                                 onClick={() => setShowDropdown(!showDropdown)}
                             >
                                 {selectedValue
-                                    ? selectedValue.replace(/count/gi, '').charAt(0).toUpperCase() + selectedValue.replace(/count/gi, '').slice(1)
+                                    ? changeLabel(selectedValue)
                                     : "Select Status"}
                             </div>
 
@@ -426,10 +530,11 @@ const AdminManager = () => {
 
                                             {filteredDropdownData
                                                 .filter((item) => item.status !== "previous completed count")
-                                                .map((item, index) => (
+                                                .map((item) => (
                                                     <div
                                                         key={item.status}
-                                                        className={`p-2 hover:bg-gray-100 uppercase cursor-pointer ${selectedValue === item.status ? "bg-gray-200" : ""}`}
+                                                        className={`p-2 hover:bg-gray-100 uppercase cursor-pointer ${selectedValue === item.status ? "bg-gray-200" : ""
+                                                            }`}
                                                         onClick={() => {
                                                             setSelectedValue(item.status);
                                                             fetchData(item.status);
@@ -437,10 +542,13 @@ const AdminManager = () => {
                                                             setShowDropdown(false);
                                                         }}
                                                     >
-                                                        {`${item.status.replace(/\bcount\b/gi, "").trim().charAt(0).toUpperCase() +
-                                                            item.status.replace(/\bcount\b/gi, "").trim().slice(1)}`}
+                                                        {changeLabel(item.status)}
                                                     </div>
-                                                ))}
+                                                )) || (
+                                                    <div className="p-2 text-gray-500">No results found</div>
+                                                )}
+
+
                                         </>
                                     ) : (
                                         <div className="p-2 text-gray-500">No results found</div>
@@ -509,62 +617,96 @@ const AdminManager = () => {
                                                     <td className="border border-black px-4 py-2">
                                                         {item.client_spoc_name || 'N/A'}
                                                     </td>
-                                                    <td className="border border-black px-4 py-2 text-center">{item.application_count}</td>
+                                                    <td className="border border-black px-4 py-2 text-center">
+                                                        {item.summary ? (
+                                                                <table className="border-collapse border border-gray-300 w-full">
+                                                                    <tbody>
+                                                                        {Object.entries(item.summary).reduce((rows, [key, value], index, array) => {
+                                                                            // Start a new row every 2 items
+                                                                            if (index % 2 === 0) rows.push([]);
+                                                                            rows[rows.length - 1].push([key, value]);
+                                                                            return rows;
+                                                                        }, []).map((pairRow, rowIndex) => (
+                                                                            <tr key={rowIndex} className="border-b border-gray-300">
+                                                                                {pairRow.map(([key, value]) => (
+                                                                                    <React.Fragment key={key}>
+                                                                                        <td className="border border-gray-300 px-4 py-2 uppercase text-left">{changeLabel(key)}</td>
+                                                                                        <td className="border border-gray-300 px-4 py-2">{value}</td>
+                                                                                    </React.Fragment>
+                                                                                ))}
+                                                                                {/* If odd number of items, fill the remaining 2 cells */}
+                                                                                {pairRow.length === 1 && (
+                                                                                    <>
+                                                                                        <td className="border border-gray-300 px-4 py-2"></td>
+                                                                                        <td className="border border-gray-300 px-4 py-2"></td>
+                                                                                    </>
+                                                                                )}
+                                                                            </tr>
+                                                                        ))}
+                                                                    </tbody>
+                                                                </table>
+
+
+                                                                ) : (
+                                                                "-"
+                                                        )}
+                                                            </td>
+
 
                                                     {item.head_branch_applications_count >= 0 && (
-                                                        <td className="border border-black px-4 py-2 text-center">
-                                                            <div className="flex gap-3 ">
-                                                                {item.application_count <= item.head_branch_applications_count ? (
-                                                                    // Condition 1: Show only CHECK IN button
-                                                                    <button
-                                                                        className="px-4 py-2 text-white  whitespace-nowrap rounded-md font-bold bg-green-500 hover:bg-green-600 hover:scale-105 transition-transform duration-300 ease-in-out transform"
-                                                                        onClick={() => handleCheckInGo(item.head_branch_id, item.main_id, item.name)}
-                                                                    >
-                                                                        CHECK IN
-                                                                    </button>
-                                                                ) : item.application_count > item.head_branch_applications_count && item.head_branch_applications_count > 0 ? (
-                                                                    // Condition 2: Show both CHECK IN and VIEW BRANCHES buttons
-                                                                    <>
+                                                            <td className="border border-black px-4 py-2 text-center">
+                                                                <div className="flex gap-3 ">
+                                                                    {item.application_count <= item.head_branch_applications_count ? (
+                                                                        // Condition 1: Show only CHECK IN button
                                                                         <button
-                                                                            className="px-4 py-2 text-white rounded-md font-bold bg-green-500 hover:bg-green-600 hover:scale-105 transition-transform duration-300 ease-in-out transform"
+                                                                            className="px-4 py-2 text-white  whitespace-nowrap rounded-md font-bold bg-green-500 hover:bg-green-600 hover:scale-105 transition-transform duration-300 ease-in-out transform"
                                                                             onClick={() => handleCheckInGo(item.head_branch_id, item.main_id, item.name)}
                                                                         >
                                                                             CHECK IN
                                                                         </button>
-                                                                        <button
-                                                                            onClick={() => handleCheckIn(item.main_id)}
-                                                                            className={`ml-2 px-4 py-2  whitespace-nowrap text-white rounded-md font-bold bg-green-500 hover:bg-green-600 transition-transform duration-300 ease-in-out transform ${isLoading === item.main_id
-                                                                                ? 'opacity-50 cursor-not-allowed'
-                                                                                : activeCases && activeCases.main_id === item.main_id
-                                                                                    ? 'bg-red-500 hover:bg-red-600 focus:ring-2 focus:ring-red-300'
-                                                                                    : 'bg-green-500 hover:bg-green-600 focus:ring-2 focus:ring-green-300'
-                                                                                } ${!isLoading && 'hover:scale-105'}`}
-                                                                            disabled={isLoading === item.main_id}
-                                                                        >
-                                                                            {activeCases && activeCases.main_id === item.main_id ? 'Less' : 'View Status'}
-                                                                        </button>
-                                                                    </>
-                                                                ) : (
-                                                                    // Condition 3: Show only VIEW BRANCHES button
-                                                                    item.head_branch_applications_count === 0 && item.application_count > 0 && (
-                                                                        <button
-                                                                            onClick={() => handleCheckIn(item.main_id)}
-                                                                            className={`px-4 py-2  whitespace-nowrap text-white rounded-md font-bold bg-green-500 hover:bg-green-600 transition-transform duration-300 ease-in-out transform ${isLoading === item.main_id
-                                                                                ? 'opacity-50 cursor-not-allowed'
-                                                                                : activeCases && activeCases.main_id === item.main_id
-                                                                                    ? 'bg-red-500 hover:bg-red-600 focus:ring-2 focus:ring-red-300'
-                                                                                    : 'bg-green-500 hover:bg-green-600 focus:ring-2 focus:ring-green-300'
-                                                                                } ${!isLoading && 'hover:scale-105'}`}
-                                                                            disabled={isLoading === item.main_id}
-                                                                        >
-                                                                            {activeCases && activeCases.main_id === item.main_id ? 'Less' : 'View Status'}
-                                                                        </button>
-                                                                    )
-                                                                )}
+                                                                    ) : item.application_count > item.head_branch_applications_count && item.head_branch_applications_count > 0 ? (
+                                                                        // Condition 2: Show both CHECK IN and VIEW BRANCHES buttons
+                                                                        <>
+                                                                            <button
+                                                                                className="px-4 py-2 text-white rounded-md font-bold bg-green-500 hover:bg-green-600 hover:scale-105 transition-transform duration-300 ease-in-out transform"
+                                                                                onClick={() => handleCheckInGo(item.head_branch_id, item.main_id, item.name)}
+                                                                            >
+                                                                                CHECK IN
+                                                                            </button>
+                                                                            <button
+                                                                                onClick={() => handleCheckIn(item.main_id)}
+                                                                                className={`ml-2 px-4 py-2  whitespace-nowrap text-white rounded-md font-bold bg-green-500 hover:bg-green-600 transition-transform duration-300 ease-in-out transform ${isLoading === item.main_id
+                                                                                    ? 'opacity-50 cursor-not-allowed'
+                                                                                    : activeCases && activeCases.main_id === item.main_id
+                                                                                        ? 'bg-red-500 hover:bg-red-600 focus:ring-2 focus:ring-red-300'
+                                                                                        : 'bg-green-500 hover:bg-green-600 focus:ring-2 focus:ring-green-300'
+                                                                                    } ${!isLoading && 'hover:scale-105'}`}
+                                                                                disabled={isLoading === item.main_id}
+                                                                            >
+                                                                                {activeCases && activeCases.main_id === item.main_id ? 'Less' : 'View Status'}
+                                                                            </button>
+                                                                        </>
+                                                                    ) : (
+                                                                        // Condition 3: Show only VIEW BRANCHES button
+                                                                        item.head_branch_applications_count === 0 && item.application_count > 0 && (
+                                                                            <button
+                                                                                onClick={() => handleCheckIn(item.main_id)}
+                                                                                className={`px-4 py-2  whitespace-nowrap text-white rounded-md font-bold bg-green-500 hover:bg-green-600 transition-transform duration-300 ease-in-out transform ${isLoading === item.main_id
+                                                                                    ? 'opacity-50 cursor-not-allowed'
+                                                                                    : activeCases && activeCases.main_id === item.main_id
+                                                                                        ? 'bg-red-500 hover:bg-red-600 focus:ring-2 focus:ring-red-300'
+                                                                                        : 'bg-green-500 hover:bg-green-600 focus:ring-2 focus:ring-green-300'
+                                                                                    } ${!isLoading && 'hover:scale-105'}`}
+                                                                                disabled={isLoading === item.main_id}
+                                                                            >
+                                                                                {activeCases && activeCases.main_id === item.main_id ? 'Less' : 'View Status'}
+                                                                            </button>
+                                                                        )
+                                                                    )}
 
-                                                            </div>
-                                                        </td>
-                                                    )}
+                                                                </div>
+                                                            </td>
+                                                        )}
                                                 </tr>
                                                 {activeCases && activeCases.main_id === item.main_id && nonHeadBranchData.length > 0 && (
                                                     <tr className="text-center py-4">

@@ -354,7 +354,6 @@ const Attendance = () => {
 
       // Step 2: Group by admin
       const groupedResult = groupByAdmin(filteredFlat); // Must match your UI format
-      console.log(`groupedResult - `, groupedResult);
 
       setTableData(groupedResult || []);
       setFiltredDataRaw(groupedResult || []);
@@ -367,12 +366,6 @@ const Attendance = () => {
       setLoading(false);
     }
   };
-
-
-
-
-  console.log('setFiltredDataRaw', filtredDataRaw)
-
 
 
 
