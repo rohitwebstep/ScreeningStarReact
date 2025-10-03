@@ -2856,7 +2856,7 @@ const AdminChekin = () => {
                                                             setShowDropdown(false);
                                                         }}
                                                     >
-                                                        {`${item.status.replace(/\bcount\b/gi, '').trim().charAt(0).toUpperCase() + item.status.replace(/\bcount\b/gi, '').trim().slice(1)} (${item.count})`}
+                                                        {`${item.status.replace(/\bcount\b/gi, '').trim().charAt(0).toUpperCase() + item.status.replace(/\bcount\b/gi, '').trim().slice(1)}`}
                                                     </div>
                                                 ))}
                                             </>

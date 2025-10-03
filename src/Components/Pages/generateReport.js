@@ -212,6 +212,7 @@ const GenerateReport = () => {
                 third_insuff_reopened_date: '',
                 overall_status: '',
                 report_date: '',
+                interim_date: '',
                 report_status: '',
                 report_type: '',
                 final_verification_status: '',
@@ -645,10 +646,15 @@ const GenerateReport = () => {
                                 : (prevFormData.updated_json.insuffDetails.report_date
                                     ? parseAndConvertDate(prevFormData.updated_json.insuffDetails.report_date)
                                     : null),
+                            interim_date: (cmtData.interim_date && !isNaN(new Date(cmtData.interim_date).getTime()))
+                                ? parseAndConvertDate(cmtData.interim_date)
+                                : (prevFormData.updated_json.insuffDetails.interim_date
+                                    ? parseAndConvertDate(prevFormData.updated_json.insuffDetails.interim_date)
+                                    : null),
 
                             report_status: cmtData.report_status ? cmtData.report_status : prevFormData.updated_json.insuffDetails.report_status || 'open',
 
-                            report_type: cmtData.report_type ? cmtData.report_type : prevFormData.updated_json.insuffDetails.report_type || 'interim_report',
+                            report_type: cmtData.report_type ? cmtData.report_type : prevFormData.updated_json.insuffDetails.report_type || '',
 
                             final_verification_status: cmtData.final_verification_status ? cmtData.final_verification_status : prevFormData.updated_json.insuffDetails.final_verification_status || 'green',
 
@@ -3552,7 +3558,7 @@ const GenerateReport = () => {
                                 </div>
                                 <div className="grid md:grid-cols-2 gap-3">
                                     <div className="mb-4">
-                                        <label className='capitalize text-gray-500' htmlFor="report date">report date</label>
+                                        <label className='capitalize text-gray-500' htmlFor="report date">Final Report Date</label>
                                         <DatePicker
                                             selected={parseDate(formData.updated_json.insuffDetails.report_date)}
                                             onChange={(date) =>
@@ -3568,17 +3574,35 @@ const GenerateReport = () => {
                                         />
 
                                     </div>
-                                    <div className="mb-4">
-                                        <label className='capitalize text-gray-500' htmlFor="eport status">Report Status:</label>
-                                        <select name="updated_json.insuffDetails.report_status" id=""
-                                            value={formData.updated_json.insuffDetails.report_status}
-                                            onChange={handleChange}
-                                            className="border rounded-md p-2 mt-2 uppercase w-full">
-                                            <option value="open">Open</option>
-                                            <option value="closed">Closed</option>
-                                        </select>
+                                    <div className="mb-4 cols-2">
+                                        <label className='capitalize text-gray-500' htmlFor="interim_date">Interim Date</label>
+                                        <DatePicker
+                                            selected={parseDate(formData.updated_json.insuffDetails.interim_date)}
+                                            onChange={(date) =>
+                                                handleChange({
+                                                    target: {
+                                                        name: 'updated_json.insuffDetails.interim_date',
+                                                        value: date ? format(date, 'yyyy-MM-dd') : '',
+                                                    },
+                                                })
+                                            }
+                                            dateFormat="dd-MM-yyyy"
+                                            className="uppercase border w-full rounded-md p-2 mt-2"
+                                        />
 
                                     </div>
+
+                                </div>
+                                <div className="mb-4">
+                                    <label className='capitalize text-gray-500' htmlFor="eport status">Report Status:</label>
+                                    <select name="updated_json.insuffDetails.report_status" id=""
+                                        value={formData.updated_json.insuffDetails.report_status}
+                                        onChange={handleChange}
+                                        className="border rounded-md p-2 mt-2 uppercase w-full">
+                                        <option value="open">Open</option>
+                                        <option value="closed">Closed</option>
+                                    </select>
+
                                 </div>
                                 <div className="grid md:grid-cols-3 gap-3">
                                     <div className="mb-4">
@@ -3587,7 +3611,7 @@ const GenerateReport = () => {
                                             value={formData.updated_json.insuffDetails.report_type}
                                             onChange={handleChange}
                                             className="border rounded-md p-2 mt-2 uppercase w-full">
-                                            <option value=" ">Select Report Type</option>
+                                            <option value="">Select Report Type</option>
                                             <option value="interim_report">Interim Report</option>
                                             <option value="final_report">Final Report</option>
                                         </select>

@@ -268,7 +268,7 @@ const ClientManager = () => {
             sub_client: item.sub_client,
             photo: item.photo,
             location: item.location,
-            generate_report_type: item.generate_report_type || '',
+            generate_report_type: item.generate_report_type || 'CONFIDENTIAL BACKGROUND SCREENING REPOR',
             services: updatedServices || [], // Ensure services are passed correctly
         });
         setClientApplicationId(item.id);
@@ -378,7 +378,7 @@ const ClientManager = () => {
             ticket_id: formData.ticket_id,
             sub_client: formData.sub_client,
             photo: formData.photo,
-            generate_report_type: formData.generate_report_type,
+            generate_report_type: formData.generate_report_type || 'CONFIDENTIAL BACKGROUND SCREENING REPOR',
             location: formData.location,
             send_mail: fileCount === 0 ? 1 : 0,
         };
@@ -776,7 +776,6 @@ const ClientManager = () => {
                                     value={formData.generate_report_type}
                                     onChange={handleChange}
                                     className="border rounded-md p-2 mt-2 uppercase w-full">
-                                    <option value="">Select Report Type</option>
                                     <option value="CONFIDENTIAL BACKGROUND SCREENING REPORT">
                                         CONFIDENTIAL BACKGROUND SCREENING REPORT
                                     </option>

@@ -320,7 +320,9 @@ const Attendance = () => {
       }
 
       const attendanceRecords = result.data.attendance_records || [];
+      const filteredFlat = result.data.attendance_records || [];
 
+      /*
       // Step 1: Filter by date
       const filteredFlat = attendanceRecords.filter((entry) => {
         if (entry?.date) {
@@ -337,8 +339,8 @@ const Attendance = () => {
         }
         return false;
       });
+      */
 
-      console.log('attendanceRecords', attendanceRecords)
       if (filteredFlat.length === 0) {
         Swal.fire({
           icon: "info",
@@ -352,6 +354,7 @@ const Attendance = () => {
 
       // Step 2: Group by admin
       const groupedResult = groupByAdmin(filteredFlat); // Must match your UI format
+      console.log(`groupedResult - `, groupedResult);
 
       setTableData(groupedResult || []);
       setFiltredDataRaw(groupedResult || []);
@@ -444,15 +447,21 @@ const Attendance = () => {
     });
   });
 
+  console.log(`tableData - `, tableData);
+
   const filteredAdminBlocks = adminMonthBlocks.filter(({ admin }) =>
     admin.admin_name.toLowerCase().includes(searchName.toLowerCase())
   );
+
+  console.log('adminMonthBlocks', adminMonthBlocks)
   console.log('filteredAdminBlocks', filteredAdminBlocks)
 
   const paginatedAdminBlocks = filteredAdminBlocks.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
+
+
 
 
   const totalPages = Math.ceil(filteredAdminBlocks.length / itemsPerPage);
