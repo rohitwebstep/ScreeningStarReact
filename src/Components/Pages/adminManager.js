@@ -339,10 +339,7 @@ const AdminManager = () => {
         setDates((prev) => {
             const updatedDates = { ...prev, [name]: value };
 
-            // Call fetchData only if both fromDate and toDate have value
-            if (updatedDates.fromDate && updatedDates.toDate) {
-                fetchData(null, updatedDates.fromDate, updatedDates.toDate);
-            }
+
 
             return updatedDates;
         });
@@ -476,29 +473,52 @@ const AdminManager = () => {
                             ))}
                         </select>
 
-                        <div className="flex gap-4">
-                            <div className="flex flex-col">
-                                <label className="mb-1 font-medium">From Date</label>
-                                <input
-                                    type="date"
-                                    name="fromDate"
-                                    value={dates.fromDate}
-                                    onChange={handleFilterDateChange}
-                                    className="border rounded px-3 py-2"
-                                />
+                        <div className="flex flex-col md:flex-row md:items-end lg:w-9/12 gap-4 mb-4">
+                            {/* Date Inputs */}
+                            <div className="flex gap-4 flex-1">
+                                <div className="flex flex-col">
+                                    <label className="mb-1 font-medium">From Date</label>
+                                    <input
+                                        type="date"
+                                        name="fromDate"
+                                        value={dates.fromDate}
+                                        onChange={handleFilterDateChange}
+                                        className="border rounded px-3 py-2"
+                                    />
+                                </div>
+
+                                <div className="flex flex-col">
+                                    <label className="mb-1 font-medium">To Date</label>
+                                    <input
+                                        type="date"
+                                        name="toDate"
+                                        value={dates.toDate}
+                                        onChange={handleFilterDateChange}
+                                        className="border rounded px-3 py-2"
+                                    />
+                                </div>
                             </div>
 
-                            <div className="flex flex-col">
-                                <label className="mb-1 font-medium">To Date</label>
-                                <input
-                                    type="date"
-                                    name="toDate"
-                                    value={dates.toDate}
-                                    onChange={handleFilterDateChange}
-                                    className="border rounded px-3 py-2"
-                                />
+                            {/* Buttons */}
+                            <div className="flex gap-2 items-center">
+                                <button
+                                    onClick={() => fetchData(null, dates.fromDate, dates.toDate)}
+                                    className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-800"
+                                >
+                                    Filter
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setDates({ fromDate: "", toDate: "" });
+                                        fetchData(); // fetch all data
+                                    }}
+                                    className="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400"
+                                >
+                                    Clear Filter
+                                </button>
                             </div>
                         </div>
+
 
                     </div>
                     <div className="text-left">
@@ -619,94 +639,94 @@ const AdminManager = () => {
                                                     </td>
                                                     <td className="border border-black px-4 py-2 text-center">
                                                         {item.summary ? (
-                                                                <table className="border-collapse border border-gray-300 w-full">
-                                                                    <tbody>
-                                                                        {Object.entries(item.summary).reduce((rows, [key, value], index, array) => {
-                                                                            // Start a new row every 2 items
-                                                                            if (index % 2 === 0) rows.push([]);
-                                                                            rows[rows.length - 1].push([key, value]);
-                                                                            return rows;
-                                                                        }, []).map((pairRow, rowIndex) => (
-                                                                            <tr key={rowIndex} className="border-b border-gray-300">
-                                                                                {pairRow.map(([key, value]) => (
-                                                                                    <React.Fragment key={key}>
-                                                                                        <td className="border border-gray-300 px-4 py-2 uppercase text-left">{changeLabel(key)}</td>
-                                                                                        <td className="border border-gray-300 px-4 py-2">{value}</td>
-                                                                                    </React.Fragment>
-                                                                                ))}
-                                                                                {/* If odd number of items, fill the remaining 2 cells */}
-                                                                                {pairRow.length === 1 && (
-                                                                                    <>
-                                                                                        <td className="border border-gray-300 px-4 py-2"></td>
-                                                                                        <td className="border border-gray-300 px-4 py-2"></td>
-                                                                                    </>
-                                                                                )}
-                                                                            </tr>
-                                                                        ))}
-                                                                    </tbody>
-                                                                </table>
+                                                            <table className="border-collapse border border-gray-300 w-full">
+                                                                <tbody>
+                                                                    {Object.entries(item.summary).reduce((rows, [key, value], index, array) => {
+                                                                        // Start a new row every 2 items
+                                                                        if (index % 2 === 0) rows.push([]);
+                                                                        rows[rows.length - 1].push([key, value]);
+                                                                        return rows;
+                                                                    }, []).map((pairRow, rowIndex) => (
+                                                                        <tr key={rowIndex} className="border-b border-gray-300">
+                                                                            {pairRow.map(([key, value]) => (
+                                                                                <React.Fragment key={key}>
+                                                                                    <td className="border border-gray-300 px-4 py-2 uppercase text-left">{changeLabel(key)}</td>
+                                                                                    <td className="border border-gray-300 px-4 py-2">{value}</td>
+                                                                                </React.Fragment>
+                                                                            ))}
+                                                                            {/* If odd number of items, fill the remaining 2 cells */}
+                                                                            {pairRow.length === 1 && (
+                                                                                <>
+                                                                                    <td className="border border-gray-300 px-4 py-2"></td>
+                                                                                    <td className="border border-gray-300 px-4 py-2"></td>
+                                                                                </>
+                                                                            )}
+                                                                        </tr>
+                                                                    ))}
+                                                                </tbody>
+                                                            </table>
 
 
-                                                                ) : (
-                                                                "-"
+                                                        ) : (
+                                                            "-"
                                                         )}
-                                                            </td>
+                                                    </td>
 
 
                                                     {item.head_branch_applications_count >= 0 && (
-                                                            <td className="border border-black px-4 py-2 text-center">
-                                                                <div className="flex gap-3 ">
-                                                                    {item.application_count <= item.head_branch_applications_count ? (
-                                                                        // Condition 1: Show only CHECK IN button
+                                                        <td className="border border-black px-4 py-2 text-center">
+                                                            <div className="flex gap-3 ">
+                                                                {item.application_count <= item.head_branch_applications_count ? (
+                                                                    // Condition 1: Show only CHECK IN button
+                                                                    <button
+                                                                        className="px-4 py-2 text-white  whitespace-nowrap rounded-md font-bold bg-green-500 hover:bg-green-600 hover:scale-105 transition-transform duration-300 ease-in-out transform"
+                                                                        onClick={() => handleCheckInGo(item.head_branch_id, item.main_id, item.name)}
+                                                                    >
+                                                                        CHECK IN
+                                                                    </button>
+                                                                ) : item.application_count > item.head_branch_applications_count && item.head_branch_applications_count > 0 ? (
+                                                                    // Condition 2: Show both CHECK IN and VIEW BRANCHES buttons
+                                                                    <>
                                                                         <button
-                                                                            className="px-4 py-2 text-white  whitespace-nowrap rounded-md font-bold bg-green-500 hover:bg-green-600 hover:scale-105 transition-transform duration-300 ease-in-out transform"
+                                                                            className="px-4 py-2 text-white rounded-md font-bold bg-green-500 hover:bg-green-600 hover:scale-105 transition-transform duration-300 ease-in-out transform"
                                                                             onClick={() => handleCheckInGo(item.head_branch_id, item.main_id, item.name)}
                                                                         >
                                                                             CHECK IN
                                                                         </button>
-                                                                    ) : item.application_count > item.head_branch_applications_count && item.head_branch_applications_count > 0 ? (
-                                                                        // Condition 2: Show both CHECK IN and VIEW BRANCHES buttons
-                                                                        <>
-                                                                            <button
-                                                                                className="px-4 py-2 text-white rounded-md font-bold bg-green-500 hover:bg-green-600 hover:scale-105 transition-transform duration-300 ease-in-out transform"
-                                                                                onClick={() => handleCheckInGo(item.head_branch_id, item.main_id, item.name)}
-                                                                            >
-                                                                                CHECK IN
-                                                                            </button>
-                                                                            <button
-                                                                                onClick={() => handleCheckIn(item.main_id)}
-                                                                                className={`ml-2 px-4 py-2  whitespace-nowrap text-white rounded-md font-bold bg-green-500 hover:bg-green-600 transition-transform duration-300 ease-in-out transform ${isLoading === item.main_id
-                                                                                    ? 'opacity-50 cursor-not-allowed'
-                                                                                    : activeCases && activeCases.main_id === item.main_id
-                                                                                        ? 'bg-red-500 hover:bg-red-600 focus:ring-2 focus:ring-red-300'
-                                                                                        : 'bg-green-500 hover:bg-green-600 focus:ring-2 focus:ring-green-300'
-                                                                                    } ${!isLoading && 'hover:scale-105'}`}
-                                                                                disabled={isLoading === item.main_id}
-                                                                            >
-                                                                                {activeCases && activeCases.main_id === item.main_id ? 'Less' : 'View Status'}
-                                                                            </button>
-                                                                        </>
-                                                                    ) : (
-                                                                        // Condition 3: Show only VIEW BRANCHES button
-                                                                        item.head_branch_applications_count === 0 && item.application_count > 0 && (
-                                                                            <button
-                                                                                onClick={() => handleCheckIn(item.main_id)}
-                                                                                className={`px-4 py-2  whitespace-nowrap text-white rounded-md font-bold bg-green-500 hover:bg-green-600 transition-transform duration-300 ease-in-out transform ${isLoading === item.main_id
-                                                                                    ? 'opacity-50 cursor-not-allowed'
-                                                                                    : activeCases && activeCases.main_id === item.main_id
-                                                                                        ? 'bg-red-500 hover:bg-red-600 focus:ring-2 focus:ring-red-300'
-                                                                                        : 'bg-green-500 hover:bg-green-600 focus:ring-2 focus:ring-green-300'
-                                                                                    } ${!isLoading && 'hover:scale-105'}`}
-                                                                                disabled={isLoading === item.main_id}
-                                                                            >
-                                                                                {activeCases && activeCases.main_id === item.main_id ? 'Less' : 'View Status'}
-                                                                            </button>
-                                                                        )
-                                                                    )}
+                                                                        <button
+                                                                            onClick={() => handleCheckIn(item.main_id)}
+                                                                            className={`ml-2 px-4 py-2  whitespace-nowrap text-white rounded-md font-bold bg-green-500 hover:bg-green-600 transition-transform duration-300 ease-in-out transform ${isLoading === item.main_id
+                                                                                ? 'opacity-50 cursor-not-allowed'
+                                                                                : activeCases && activeCases.main_id === item.main_id
+                                                                                    ? 'bg-red-500 hover:bg-red-600 focus:ring-2 focus:ring-red-300'
+                                                                                    : 'bg-green-500 hover:bg-green-600 focus:ring-2 focus:ring-green-300'
+                                                                                } ${!isLoading && 'hover:scale-105'}`}
+                                                                            disabled={isLoading === item.main_id}
+                                                                        >
+                                                                            {activeCases && activeCases.main_id === item.main_id ? 'Less' : 'View Status'}
+                                                                        </button>
+                                                                    </>
+                                                                ) : (
+                                                                    // Condition 3: Show only VIEW BRANCHES button
+                                                                    item.head_branch_applications_count === 0 && item.application_count > 0 && (
+                                                                        <button
+                                                                            onClick={() => handleCheckIn(item.main_id)}
+                                                                            className={`px-4 py-2  whitespace-nowrap text-white rounded-md font-bold bg-green-500 hover:bg-green-600 transition-transform duration-300 ease-in-out transform ${isLoading === item.main_id
+                                                                                ? 'opacity-50 cursor-not-allowed'
+                                                                                : activeCases && activeCases.main_id === item.main_id
+                                                                                    ? 'bg-red-500 hover:bg-red-600 focus:ring-2 focus:ring-red-300'
+                                                                                    : 'bg-green-500 hover:bg-green-600 focus:ring-2 focus:ring-green-300'
+                                                                                } ${!isLoading && 'hover:scale-105'}`}
+                                                                            disabled={isLoading === item.main_id}
+                                                                        >
+                                                                            {activeCases && activeCases.main_id === item.main_id ? 'Less' : 'View Status'}
+                                                                        </button>
+                                                                    )
+                                                                )}
 
-                                                                </div>
-                                                            </td>
-                                                        )}
+                                                            </div>
+                                                        </td>
+                                                    )}
                                                 </tr>
                                                 {activeCases && activeCases.main_id === item.main_id && nonHeadBranchData.length > 0 && (
                                                     <tr className="text-center py-4">
