@@ -66,7 +66,7 @@ const AdminChekin = () => {
     const [isBulkDownloading, setIsBulkDownloading] = useState(false);
 
     const [viewLoading, setViewLoading] = useState(false);
-   const tableScrollRef = useRef(null);
+    const tableScrollRef = useRef(null);
     const topScrollRef = useRef(null);
     const [scrollWidth, setScrollWidth] = useState("100%");
 
@@ -84,7 +84,7 @@ const AdminChekin = () => {
     const [loadingGenrate, setLoadingGenrate] = useState(null);
     const [filterData, setFilterData] = useState([]);
 
-   const changeLabelStatus = (label) => {
+    const changeLabelStatus = (label) => {
         const mapping = {
             "overall": "application_count",
             "pending": "pending_application_count",
@@ -844,15 +844,14 @@ const AdminChekin = () => {
         doc.roundedRect(rectX, rectY, rectWidth, rectHeightt, borderRadius, borderRadius, 'F');
 
         // Draw text on top
-        doc.text(lines, centerX + 2, nameY + 8, { align: "left" });
 
-        const barY = nameY + 20;
+        const barY = nameY + 10;
         const companyFontSize = 15;
         doc.setFontSize(companyFontSize);
 
         const totalAvailable = pageWidth - 20;
         const profileImageWidth = 45;
-        const imageX = 30;
+        const imageX = 35;
 
         // === Measure text widths
         const companyTextWidth = doc.getTextWidth(companyName) + 40; // padding
@@ -873,35 +872,64 @@ const AdminChekin = () => {
         // 156, 210, 169
         doc.rect(10 + leftBarWidth, barY, rightBarWidth, companyBarHeight, "F");
         const borderColorr = [67, 133, 246]; // RGB for border
-        let borderThickness  // "bold" border thickness
-        if (!applicationInfo?.photo) {
-            borderThickness = 2;
-        } else {
-            borderThickness = 5;
-        }
-        const borderRadiuss = profileImageWidth / 2; // circle border
-        const centerXx = imageX + profileImageWidth / 2;
-        const centerY = profileY + 30 + profileImageWidth / 2;
-        // === Draw Profile Image (on top of left bar)
+        const borderThickness = 1.5; // adjust as needed
         doc.setLineWidth(borderThickness);
         doc.setDrawColor(...borderColorr);
-        if (isProfileExist) {
-            doc.circle(centerXx, centerY, borderRadiuss, "S"); // "S" = stroke only
-            const roundedImage = await getRoundedImage(profilePhoto, 100);
-            doc.addImage(
-                roundedImage,
-                "PNG",
-                imageX,
-                profileY + 30,
-                profileImageWidth,
-                profileImageWidth
-            );
 
+        const x = 10;
+        const y = profileY + 13;
+        const w = leftBarWidth - 2;
+        const h = 39;
+        const len = 8; // corner line length
+
+        // Top-left corner
+        doc.line(x, y, x + len, y);        // top
+        doc.line(x, y, x, y + len);        // left
+
+        // Top-right corner
+        doc.line(x + w, y, x + w - len, y); // top
+        doc.line(x + w, y, x + w, y + len); // right
+
+        // Bottom-left corner
+        doc.line(x, y + h, x + len, y + h);  // bottom
+        doc.line(x, y + h, x, y + h - len);  // left
+
+        // Bottom-right corner
+        doc.line(x + w, y + h, x + w - len, y + h);  // bottom
+        doc.line(x + w, y + h, x + w, y + h - len);  // right
+        const statusImages = {
+            GREEN: "/green.png",  // ✅ Replace with your own image URLs or base64
+            RED: "/red.png",
+            YELLOW: "/yellow.png",
+            ORANGE: "/orange.png",
+        };
+
+        // Get the correct image based on status
+        const status = applicationInfo.final_verification_status.toUpperCase();
+        const statusImage = statusImages[status];
+        if (statusImage) {
+            // Note: If you're using an external URL, convert it to Base64 or use a data URI
+            // Here we use 'addImage' assuming image is Base64 or from same-origin
+            doc.addImage(statusImage, "PNG", 30 + leftBarWidth, profileY + 13, 67, 40);
+        } else {
+            doc.text("No status image available", 10, 40);
         }
+        const roundedImage = profilePhoto;
+        doc.addImage(
+            roundedImage,
+            "PNG",
+            imageX,
+            profileY + 15,
+            35,
+            35
+        );
+
         // === Company Name Text (centered in right bar)
         doc.setFontSize(companyFontSize);
         doc.setTextColor(255);
         doc.setFont("TimesNewRoman", "bold");
+        doc.text(lines, 20, barY + 9, { align: "left" });
+
         doc.text(
             wrappedText,
             leftBarWidth + rightBarWidth / 2 - 35,
@@ -966,7 +994,7 @@ const AdminChekin = () => {
                 ["REFERENCE ID", String(applicationInfo.application_id).toUpperCase(), "DATE OF BIRTH", formatDate(applicationInfo.dob) || "N/A"],
                 ["EMPLOYEE ID", String(applicationInfo.employee_id || "N/A").toUpperCase(), "INSUFF CLEARED", formatDate(applicationInfo.first_insuff_reopened_date, true) || "N/A"],
                 ["VERIFICATION INITIATED", formatDate(applicationInfo.initiation_date).toUpperCase() || "N/A", "FINAL REPORT DATE", formatDate(applicationInfo.report_date) || "N/A"],
-                ["VERIFICATION PURPOSE", (applicationInfo.verification_purpose || "EMPLOYMENT").toUpperCase(), "VERIFICATION STATUS", (applicationInfo.final_verification_status || "N/A").toUpperCase()],
+                // ["VERIFICATION PURPOSE", (applicationInfo.verification_purpose || "EMPLOYMENT").toUpperCase(), "VERIFICATION STATUS", (applicationInfo.final_verification_status || "N/A").toUpperCase()],
                 ["REPORT TYPE", (applicationInfo.report_type || "EMPLOYMENT").replace(/_/g, " ").toUpperCase(), "REPORT STATUS", (applicationInfo.report_status || "N/A").toUpperCase()]
             ];
         } else if (generate_report_type == 'VENDOR CONFIDENTIAL SCREENING REPORT') {
@@ -1063,7 +1091,7 @@ const AdminChekin = () => {
 
         images.forEach((img) => {
             const centerX = currentX + circleRadius;
-            const centerY = iconY;
+            const centerY = iconY + 4;
 
             // Draw white filled circle with black border
             doc.setFillColor(255, 255, 255);   // white fill
@@ -1077,14 +1105,14 @@ const AdminChekin = () => {
 
             currentX += circleRadius * 1.2 + gap; // move to next circle
         });
-        const afterImageBoxY = imageRowY + imageRowHeight + 5; // Add 10 for some spacing
+        const afterImageBoxY = imageRowY + imageRowHeight + 10; // Add 10 for some spacing
 
 
 
         const imageArray = [colored, yellowShield, orangeShield, greenShield];
 
         doc.autoTable({
-            startY: afterImageBoxY,
+            startY: afterImageBoxY + 3,
             head: [
                 [
                     {
@@ -2050,6 +2078,13 @@ const AdminChekin = () => {
         // Update Company Details Y (aligned with the same paragraph block)
         let companyDetailsY = yPosition + disclaimerTextTopMargin - 4;
         let endOfDetailY = companyDetailsY + 10;
+        const sealImage = '/risk-free.png';
+        const imgWidth = 40;
+        const imgHeight = 40;
+        const centerXNew = (pageWidth - imgWidth) / 2;
+
+        doc.addImage(sealImage, "PNG", centerXNew, endOfDetailY, imgWidth, imgHeight);
+
 
         if (endOfDetailY + disclaimerButtonHeight > doc.internal.pageSize.height - 20) {
             doc.addPage();
@@ -2752,13 +2787,13 @@ const AdminChekin = () => {
     const modifiedNames = customerEmails.map(name =>
         name[0] + name.slice(2)
     );
-          useEffect(() => {
-    if (tableScrollRef.current) {
-      setScrollWidth(tableScrollRef.current.scrollWidth + "px");
-    }
-  }, [paginatedData, loading]); 
+    useEffect(() => {
+        if (tableScrollRef.current) {
+            setScrollWidth(tableScrollRef.current.scrollWidth + "px");
+        }
+    }, [paginatedData, loading]);
 
-  
+
     const removeColorNames = (text) => {
         const colorRegex = new RegExp(`\\b(${colorNames.join('|')})\\b`, 'gi');
         return text.replace(colorRegex, '').trim();
@@ -2871,25 +2906,25 @@ const AdminChekin = () => {
                                                 </div>
 
                                                 {/* Dropdown Options */}
-                                                 {filteredDropdownData
-                                                .filter((item) => item.status !== "previous completed count")
-                                                .map((item) => (
-                                                    <div
-                                                        key={item.status}
-                                                        className={`p-2 hover:bg-gray-100 uppercase cursor-pointer ${selectedValue === item.status ? "bg-gray-200" : ""
-                                                            }`}
-                                                        onClick={() => {
-                                                            setSelectedValue(item.status);
-                                                            fetchData(item.status);
-                                                            setCurrentPage(1);
-                                                            setShowDropdown(false);
-                                                        }}
-                                                    >
-                                                        {changeLabelStatus(item.status)}
-                                                    </div>
-                                                )) || (
-                                                    <div className="p-2 text-gray-500">No results found</div>
-                                                )}
+                                                {filteredDropdownData
+                                                    .filter((item) => item.status !== "previous completed count")
+                                                    .map((item) => (
+                                                        <div
+                                                            key={item.status}
+                                                            className={`p-2 hover:bg-gray-100 uppercase cursor-pointer ${selectedValue === item.status ? "bg-gray-200" : ""
+                                                                }`}
+                                                            onClick={() => {
+                                                                setSelectedValue(item.status);
+                                                                fetchData(item.status);
+                                                                setCurrentPage(1);
+                                                                setShowDropdown(false);
+                                                            }}
+                                                        >
+                                                            {changeLabelStatus(item.status)}
+                                                        </div>
+                                                    )) || (
+                                                        <div className="p-2 text-gray-500">No results found</div>
+                                                    )}
                                             </>
                                         ) : (
                                             <div className="p-2 text-gray-500">No results found</div>
@@ -2909,7 +2944,7 @@ const AdminChekin = () => {
 
                     </div>
                 </div>
-              <div className="table-container rounded-lg">
+                <div className="table-container rounded-lg">
                     {/* Top Scroll */}
                     <div className="top-scroll" ref={topScrollRef} onScroll={syncScroll}>
                         <div className="top-scroll-inner" style={{ width: scrollWidth }} />
