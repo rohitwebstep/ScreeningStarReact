@@ -154,6 +154,7 @@ const ClientManager = () => {
                 setFormData(prevFormData => ({
                     ...prevFormData,
                     organizationName: customerInfo.name || '',
+                    generate_report_type: formData.generate_report_type || 'CONFIDENTIAL BACKGROUND SCREENING REPORT',
                 }));
                 setSpocs(customerInfo?.client_spoc_name || []);
 
@@ -268,7 +269,7 @@ const ClientManager = () => {
             sub_client: item.sub_client,
             photo: item.photo,
             location: item.location,
-            generate_report_type: item.generate_report_type || 'CONFIDENTIAL BACKGROUND SCREENING REPOR',
+            generate_report_type: item.generate_report_type || 'CONFIDENTIAL BACKGROUND SCREENING REPORT',
             services: updatedServices || [], // Ensure services are passed correctly
         });
         setClientApplicationId(item.id);
